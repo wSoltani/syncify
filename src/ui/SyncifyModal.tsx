@@ -79,7 +79,7 @@ export function SyncifyModal() {
           remote.exists && remote.payload
             ? {
                 kind: "success",
-                text: `Backup found from ${formatDate(remote.payload.metadata.last_sync_datetime)}.`,
+                text: `Backup found from ${formatBackupDateTime(remote.payload.metadata.last_sync_datetime)}.`,
               }
             : {
                 kind: "info",
@@ -221,14 +221,16 @@ export function SyncifyModal() {
       </section>
 
       {remotePayload ? (
-        <section className="syncify-section compact">
-          <h4 className="syncify-section-title">Latest backup</h4>
-          <div className="syncify-meta-list">
-            <span>{formatDate(remotePayload.metadata.last_sync_datetime)}</span>
-            <span>{remotePayload.metadata.device_info}</span>
-            <span>
-              {remotePayload.metadata.marketplace_key_count} backup entries
+        <section className="syncify-section syncify-backup-section">
+          <div className="syncify-section-header">
+            <h4 className="syncify-section-title">Latest backup</h4>
+            <span className="syncify-backup-time">
+              {formatBackupDateTime(remotePayload.metadata.last_sync_datetime)}
             </span>
+          </div>
+          <div className="syncify-backup-details">
+            <span>{remotePayload.metadata.device_info}</span>
+            <span>{remotePayload.metadata.marketplace_key_count} entries</span>
           </div>
           {cloudNewerThanLocal ? (
             <p className="syncify-message inline" data-kind="warning">
@@ -320,8 +322,8 @@ function StatusCard({
 
   return (
     <div className="syncify-card" data-tone={tone}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+      <span className="syncify-card-label">{label}</span>
+      <strong className="syncify-card-value">{value}</strong>
     </div>
   );
 }
@@ -351,8 +353,18 @@ function getStatusKind(
   return "neutral";
 }
 
-function formatDate(value: string): string {
+function formatBackupDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+
+  const day = date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `${day}, ${time}`;
 }

@@ -1,11 +1,13 @@
+/* Spotify PopupModal shell tweaks scoped to Syncify. Keep these minimal so the
+   Spotify modal can size naturally instead of being forced/cropped. */
 .syncify-modal-shell .main-trackCreditsModal-header,
 .main-trackCreditsModal-header:has(+ * .syncify-panel),
 .main-trackCreditsModal-header:has(~ * .syncify-panel) {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 8px !important;
-    padding: 14px 18px 8px !important;
+    gap: 12px !important;
+    padding: 16px 20px 8px !important;
 }
 
 .syncify-modal-shell .main-trackCreditsModal-header h1,
@@ -20,17 +22,20 @@
 .syncify-modal-shell .main-trackCreditsModal-content,
 .main-trackCreditsModal-mainSection:has(.syncify-panel),
 .main-trackCreditsModal-content:has(.syncify-panel) {
-    min-height: min(72vh, 560px) !important;
-    padding: 10px 18px 16px !important;
+    box-sizing: border-box !important;
+    max-height: calc(100vh - 140px) !important;
+    padding: 10px 20px 18px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 .syncify-modal-shell .syncify-modal-close {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
     padding: 0 !important;
     border: 0 !important;
     border-radius: 999px !important;
@@ -68,10 +73,10 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    width: min(68vw, 620px);
-    min-height: min(60vh, 480px);
+    width: 100%;
     max-width: 100%;
-    margin: 0 auto;
+    min-width: 0;
+    margin: 0;
     padding: 0;
     color: var(--spice-text);
 }
@@ -79,56 +84,71 @@
 .syncify-hero {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 0;
+    gap: 8px;
+    min-width: 0;
 }
 
-.syncify-status-row {
+.syncify-status-row,
+.syncify-section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    width: 100%;
+    min-width: 0;
 }
 
 .syncify-description,
-.syncify-card span,
-.syncify-meta-list {
+.syncify-card-label,
+.syncify-backup-details {
     margin: 0;
     color: var(--spice-subtext);
     line-height: 1.5;
 }
 
 .syncify-heading {
+    min-width: 0;
     margin: 0;
-    font-size: clamp(18px, 4.5vw, 23px);
+    font-size: clamp(18px, 4vw, 23px);
     line-height: 1.2;
 }
 
 .syncify-description {
-    max-width: 560px;
+    max-width: 64ch;
     font-size: 13px;
 }
 
-.syncify-status-pill {
-    align-self: center;
+.syncify-status-pill,
+.syncify-backup-time {
+    display: inline-flex;
     flex: 0 0 auto;
-    padding: 4px 8px;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
-    color: var(--spice-subtext);
-    background: rgba(255, 255, 255, 0.08);
     font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
+    white-space: nowrap;
+}
+
+.syncify-status-pill {
+    padding: 4px 9px;
+    color: var(--spice-subtext);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.syncify-backup-time {
+    padding: 4px 9px;
+    color: var(--spice-text);
+    background: rgba(255, 255, 255, 0.09);
 }
 
 .syncify-status-pill[data-kind="success"],
-.syncify-card[data-tone="success"] strong {
+.syncify-card[data-tone="success"] .syncify-card-value {
     color: var(--spice-button-active, #1ed760);
 }
 
 .syncify-status-pill[data-kind="warning"],
-.syncify-card[data-tone="warning"] strong {
+.syncify-card[data-tone="warning"] .syncify-card-value {
     color: #f6c343;
 }
 
@@ -137,27 +157,31 @@
 }
 
 .syncify-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    min-width: 0;
 }
 
 .syncify-card,
 .syncify-section {
+    box-sizing: border-box;
+    min-width: 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.045);
 }
 
 .syncify-card {
     display: flex;
-    min-width: 0;
+    flex: 1 1 calc(50% - 5px);
     flex-direction: column;
     gap: 4px;
-    padding: 10px;
+    min-width: 180px;
+    padding: 11px 12px;
 }
 
-.syncify-card span {
+.syncify-card-label {
     overflow: hidden;
     font-size: 11px;
     text-overflow: ellipsis;
@@ -165,10 +189,11 @@
     white-space: nowrap;
 }
 
-.syncify-card strong {
+.syncify-card-value {
     overflow: hidden;
     color: var(--spice-text);
     font-size: 17px;
+    font-weight: 700;
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -177,31 +202,54 @@
 .syncify-section {
     display: flex;
     flex-direction: column;
-    gap: 9px;
-    padding: 10px;
+    gap: 10px;
+    padding: 12px;
 }
 
-.syncify-section.compact {
-    padding: 10px;
+.syncify-backup-section {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.07),
+        rgba(255, 255, 255, 0.035)
+    );
 }
 
 .syncify-section-title {
+    min-width: 0;
     margin: 0;
     font-size: 14px;
     line-height: 1.3;
 }
 
-.syncify-meta-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    font-size: 12px;
-}
-
-.syncify-actions {
+.syncify-backup-details {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    font-size: 12px;
+}
+
+.syncify-backup-details span {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.syncify-actions,
+.syncify-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.syncify-actions {
+    align-items: center;
+}
+
+.syncify-footer {
+    justify-content: flex-end;
 }
 
 .syncify-button,
@@ -265,7 +313,7 @@
 .syncify-toggle {
     display: flex;
     align-items: flex-start;
-    gap: 6px;
+    gap: 7px;
     color: var(--spice-subtext);
     font-size: 12px;
     line-height: 1.45;
@@ -273,6 +321,7 @@
 }
 
 .syncify-toggle input {
+    flex: 0 0 auto;
     margin-top: 2px;
     cursor: pointer;
 }
@@ -281,12 +330,6 @@
 .syncify-toggle input:disabled {
     cursor: not-allowed;
     opacity: 0.65;
-}
-
-.syncify-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
 }
 
 .syncify-link-button {
@@ -301,7 +344,7 @@
     margin: 0;
     padding: 8px 10px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 9px;
+    border-radius: 10px;
     color: var(--spice-text);
     background: rgba(255, 255, 255, 0.055);
     font-size: 12px;
@@ -347,26 +390,36 @@
 
 .syncify-message.inline {
     padding: 7px 9px;
-    font-size: 12px;
 }
 
-@media (max-width: 420px) {
-    .syncify-panel {
-        width: 100%;
-        gap: 10px;
+@media (max-width: 560px) {
+    .syncify-modal-shell .main-trackCreditsModal-mainSection,
+    .syncify-modal-shell .main-trackCreditsModal-content,
+    .main-trackCreditsModal-mainSection:has(.syncify-panel),
+    .main-trackCreditsModal-content:has(.syncify-panel) {
+        max-height: calc(100vh - 110px) !important;
+        padding: 10px 14px 14px !important;
     }
 
-    .syncify-status-row {
+    .syncify-status-row,
+    .syncify-section-header {
         align-items: flex-start;
         flex-direction: column;
         gap: 6px;
     }
 
-    .syncify-actions {
+    .syncify-card {
+        flex-basis: 100%;
+        min-width: 0;
+    }
+
+    .syncify-actions,
+    .syncify-footer {
         flex-direction: column;
     }
 
-    .syncify-button {
+    .syncify-button,
+    .syncify-link-button {
         width: 100%;
     }
 }

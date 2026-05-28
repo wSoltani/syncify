@@ -19,6 +19,11 @@ export async function backupNow(
     getUserHash(),
     createPayload(),
   ]);
+
+  if (payload.metadata.marketplace_key_count === 0) {
+    throw new Error("Syncify will not back up an empty extension/theme state.");
+  }
+
   await uploadPayload(config.workerUrl, userHash, payload);
   return payload;
 }
