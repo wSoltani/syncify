@@ -38,6 +38,7 @@ export function SyncifyModal() {
     null,
   );
   const [remoteChecked, setRemoteChecked] = useState(false);
+  const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
 
   const projectConfig = useMemo(() => getProjectConfig(), []);
   const isBusy = status === "loading";
@@ -63,6 +64,7 @@ export function SyncifyModal() {
 
   async function refreshStatus(options?: { silent?: boolean }) {
     try {
+      setIsConfirmingRestore(false);
       setStatus("loading");
       if (!options?.silent) {
         setMessage({ kind: "info", text: "Checking your Syncify backup…" });
@@ -106,6 +108,7 @@ export function SyncifyModal() {
 
   async function runBackup() {
     try {
+      setIsConfirmingRestore(false);
       setStatus("loading");
       setMessage({
         kind: "info",
@@ -126,7 +129,7 @@ export function SyncifyModal() {
     }
   }
 
-  async function runRestore() {
+  function requestRestoreConfirmation() {
     if (!marketplaceAvailable) {
       const text =
         "Spicetify Marketplace is required to restore extensions and themes. Install and enable it, then try again.";
@@ -135,12 +138,16 @@ export function SyncifyModal() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Restore your Syncify backup? This will replace your saved extensions and themes on this device, then reload Spotify.",
-    );
-    if (!confirmed) return;
+    setIsConfirmingRestore(true);
+    setMessage({
+      kind: "warning",
+      text: "Restore will replace this device's saved extensions and themes, then reload Spotify.",
+    });
+  }
 
+  async function runRestore() {
     try {
+      setIsConfirmingRestore(false);
       setStatus("loading");
       setMessage({
         kind: "info",
@@ -252,14 +259,35 @@ export function SyncifyModal() {
           >
             Back up now
           </button>
-          <button
-            className="syncify-button danger"
-            type="button"
-            onClick={runRestore}
-            disabled={isBusy}
-          >
-            Restore backup
-          </button>
+          {isConfirmingRestore ? (
+            <>
+              <button
+                className="syncify-button secondary"
+                type="button"
+                onClick={() => setIsConfirmingRestore(false)}
+                disabled={isBusy}
+              >
+                Cancel
+              </button>
+              <button
+                className="syncify-button danger"
+                type="button"
+                onClick={runRestore}
+                disabled={isBusy}
+              >
+                Confirm restore
+              </button>
+            </>
+          ) : (
+            <button
+              className="syncify-button danger"
+              type="button"
+              onClick={requestRestoreConfirmation}
+              disabled={isBusy}
+            >
+              Restore backup
+            </button>
+          )}
           <button
             className="syncify-button secondary"
             type="button"

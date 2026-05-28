@@ -5,7 +5,7 @@ const CONFIG_STORAGE_KEY = "syncify:config";
 
 const DEFAULT_CONFIG: SyncifyConfig = {
   workerUrl: getProjectConfig().workerUrl,
-  autoBackupEnabled: true,
+  autoBackupEnabled: false,
 };
 
 export function loadConfig(): SyncifyConfig {
