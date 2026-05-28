@@ -101,7 +101,7 @@ The extension also supports optional build-time link overrides:
 ```bash
 SYNCIFY_GITHUB_URL=https://github.com/wSoltani/Syncify \
 SYNCIFY_KOFI_URL=https://ko-fi.com/wsoltani \
-SYNCIFY_ISSUE_URL=mailto:wasoltani+syncify@gmail.com \
+SYNCIFY_ISSUE_URL=https://github.com/wSoltani/Syncify/issues/new \
 npm run build
 ```
 
@@ -112,7 +112,7 @@ window.SyncifyConfig = {
   workerUrl: "http://localhost:8787",
   githubUrl: "https://github.com/wSoltani/Syncify",
   kofiUrl: "https://ko-fi.com/wsoltani",
-  issueUrl: "mailto:wasoltani+syncify@gmail.com",
+  issueUrl: "https://github.com/wSoltani/Syncify/issues/new",
 };
 ```
 

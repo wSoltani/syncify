@@ -7,7 +7,8 @@ const DEFAULT_PROJECT_CONFIG: SyncifyProjectConfig = {
     process.env.SYNCIFY_GITHUB_URL ?? "https://github.com/wSoltani/Syncify",
   kofiUrl: process.env.SYNCIFY_KOFI_URL ?? "https://ko-fi.com/wsoltani",
   issueUrl:
-    process.env.SYNCIFY_ISSUE_URL ?? "mailto:wasoltani+syncify@gmail.com",
+    process.env.SYNCIFY_ISSUE_URL ??
+    "https://github.com/wSoltani/Syncify/issues/new",
 };
 
 export function getProjectConfig(): SyncifyProjectConfig {

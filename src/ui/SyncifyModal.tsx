@@ -165,6 +165,11 @@ export function SyncifyModal() {
   }
 
   function openExternal(url: string) {
+    if (url.startsWith("mailto:")) {
+      window.location.href = url;
+      return;
+    }
+
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
