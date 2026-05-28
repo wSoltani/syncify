@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Syncify",
+    "description": "Back up and restore your Spicetify Marketplace extensions, themes, snippets, and preferences.",
+    "preview": "assets/SYNCIFY.png",
+    "main": "dist/syncify.js",
+    "readme": "README.md",
+    "authors": [
+      {
+        "name": "Wassim Soltani",
+        "url": "https://github.com/wSoltani"
+      }
+    ],
+    "tags": ["backup", "restore", "marketplace", "snapshot", "syncify", "sync"]
+  }
+]
