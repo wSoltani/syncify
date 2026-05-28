@@ -270,7 +270,7 @@ The reload is required because Marketplace initializes installed extensions/them
 
 ## Startup auto-backup safety
 
-Startup auto-backup is enabled by default.
+Startup auto-backup is disabled by default.
 
 Syncify performs safety checks before uploading local state. It blocks auto-backup when the saved backup appears significantly larger than the current local extension/theme state, and it always blocks `0`-entry uploads. This is meant to prevent a fresh or empty install from overwriting a good backup.
 
