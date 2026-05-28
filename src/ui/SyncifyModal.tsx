@@ -139,10 +139,6 @@ export function SyncifyModal() {
     }
 
     setIsConfirmingRestore(true);
-    setMessage({
-      kind: "warning",
-      text: "Restore will replace this device's saved extensions and themes, then reload Spotify.",
-    });
   }
 
   async function runRestore() {
@@ -179,8 +175,17 @@ export function SyncifyModal() {
     Spicetify.showNotification(text, true, 6000);
   }
 
+  function keepModalOpen(event: { stopPropagation(): void }) {
+    event.stopPropagation();
+  }
+
   return (
-    <div className="syncify-panel">
+    <div
+      className="syncify-panel"
+      onClick={keepModalOpen}
+      onMouseDown={keepModalOpen}
+      onPointerDown={keepModalOpen}
+    >
       <section className="syncify-hero" aria-label="Syncify status">
         <p className="syncify-description">
           Back up your installed extensions and themes, then restore them
@@ -250,17 +255,13 @@ export function SyncifyModal() {
 
       <section className="syncify-section compact">
         <h4 className="syncify-section-title">Sync controls</h4>
-        <div className="syncify-actions">
-          <button
-            className="syncify-button"
-            type="button"
-            onClick={runBackup}
-            disabled={isBusy}
-          >
-            Back up now
-          </button>
-          {isConfirmingRestore ? (
-            <>
+        {isConfirmingRestore ? (
+          <div className="syncify-confirm-restore">
+            <p className="syncify-message inline" data-kind="warning">
+              Restore will replace this device's saved extensions and themes,
+              then reload Spotify.
+            </p>
+            <div className="syncify-actions">
               <button
                 className="syncify-button secondary"
                 type="button"
@@ -277,8 +278,18 @@ export function SyncifyModal() {
               >
                 Confirm restore
               </button>
-            </>
-          ) : (
+            </div>
+          </div>
+        ) : (
+          <div className="syncify-actions">
+            <button
+              className="syncify-button"
+              type="button"
+              onClick={runBackup}
+              disabled={isBusy}
+            >
+              Back up now
+            </button>
             <button
               className="syncify-button danger"
               type="button"
@@ -287,16 +298,16 @@ export function SyncifyModal() {
             >
               Restore backup
             </button>
-          )}
-          <button
-            className="syncify-button secondary"
-            type="button"
-            onClick={() => void refreshStatus()}
-            disabled={isBusy}
-          >
-            Refresh status
-          </button>
-        </div>
+            <button
+              className="syncify-button secondary"
+              type="button"
+              onClick={() => void refreshStatus()}
+              disabled={isBusy}
+            >
+              Refresh status
+            </button>
+          </div>
+        )}
         <label className="syncify-toggle">
           <input
             type="checkbox"

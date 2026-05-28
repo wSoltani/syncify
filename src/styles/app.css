@@ -248,6 +248,12 @@
     align-items: center;
 }
 
+.syncify-confirm-restore {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .syncify-footer {
     justify-content: flex-end;
 }
