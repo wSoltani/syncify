@@ -154,6 +154,31 @@ npm run typecheck
 npm run watch
 ```
 
+## Local dev install
+
+For local testing on Windows, you can install a dev-labeled build directly into your Spicetify `Extensions` folder:
+
+```bash
+npm run install:dev
+spicetify apply
+```
+
+This builds a temporary bundle named `Syncify (dev)` and copies it to:
+
+```txt
+%appdata%\spicetify\Extensions\syncify.js
+```
+
+The temporary build changes the Spicetify tooltip and modal title to `Syncify (dev)`, making it easier to tell your local test copy apart from the Marketplace version.
+
+`npm run install:dev` does **not** overwrite the Marketplace bundle at:
+
+```txt
+dist/syncify.js
+```
+
+Use `npm run build` when you want to update the production/Marketplace bundle.
+
 ## Local Spicetify installation
 
 After building, copy or symlink `dist/syncify.js` into your Spicetify `Extensions` directory.

@@ -35,6 +35,7 @@ export interface SyncifyConfig {
 }
 
 export interface SyncifyProjectConfig {
+  extensionName: string;
   workerUrl: string;
   githubUrl: string;
   kofiUrl: string;

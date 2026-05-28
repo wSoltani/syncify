@@ -2,6 +2,8 @@ import { context, build } from "esbuild";
 
 const watch = process.argv.includes("--watch");
 const env = process.env;
+const outfile = env.SYNCIFY_OUTFILE ?? "dist/syncify.js";
+const extensionName = env.SYNCIFY_EXTENSION_NAME ?? "Syncify";
 
 function defineEnvValue(value) {
   return value === undefined ? "undefined" : JSON.stringify(value);
@@ -9,7 +11,7 @@ function defineEnvValue(value) {
 
 const options = {
   entryPoints: ["src/app.tsx"],
-  outfile: "dist/syncify.js",
+  outfile,
   bundle: true,
   minify: !watch,
   sourcemap: watch,
@@ -17,7 +19,7 @@ const options = {
   target: ["es2017"],
   legalComments: "none",
   banner: {
-    js: "// NAME: Syncify\n// AUTHOR: wsoltani\n// DESCRIPTION: Back up and restore Spicetify extensions and themes.",
+    js: `// NAME: ${extensionName}\n// AUTHOR: wsoltani\n// DESCRIPTION: Back up and restore Spicetify extensions and themes.`,
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify(
@@ -27,6 +29,7 @@ const options = {
     "process.env.SYNCIFY_GITHUB_URL": defineEnvValue(env.SYNCIFY_GITHUB_URL),
     "process.env.SYNCIFY_KOFI_URL": defineEnvValue(env.SYNCIFY_KOFI_URL),
     "process.env.SYNCIFY_ISSUE_URL": defineEnvValue(env.SYNCIFY_ISSUE_URL),
+    "process.env.SYNCIFY_EXTENSION_NAME": JSON.stringify(extensionName),
   },
   external: ["react", "react-dom"],
   loader: {
@@ -41,5 +44,5 @@ if (watch) {
   console.log("Watching Syncify extension...");
 } else {
   await build(options);
-  console.log("Built dist/syncify.js");
+  console.log(`Built ${outfile}`);
 }

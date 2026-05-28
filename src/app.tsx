@@ -1,6 +1,7 @@
 import appStyles from "./styles/app.css";
 import syncifyIcon from "../assets/icon.svg";
 import { runStartupSyncCheck } from "./core/startupSync";
+import { getProjectConfig } from "./core/projectConfig";
 import { SyncifyModal } from "./ui/SyncifyModal";
 
 const LOG_PREFIX = "[Syncify]";
@@ -64,8 +65,9 @@ function injectStyles(): void {
 }
 
 function injectTopbarButton(): void {
+  const { extensionName } = getProjectConfig();
   const button = new Spicetify.Topbar.Button(
-    "Syncify",
+    extensionName,
     syncifyIcon,
     (self) => {
       debug("Topbar button clicked", describeTopbarButton(self));
@@ -148,7 +150,7 @@ function openSyncifyModal(): void {
 
   try {
     Spicetify.PopupModal.display({
-      title: "Syncify",
+      title: getProjectConfig().extensionName,
       content: container,
       isLarge: false,
     });
@@ -173,7 +175,10 @@ function prepareSyncifyModalShell(container: Element): void {
     if (!closeButton) return;
 
     closeButton.classList.add("syncify-modal-close");
-    closeButton.setAttribute("aria-label", "Close Syncify");
+    closeButton.setAttribute(
+      "aria-label",
+      `Close ${getProjectConfig().extensionName}`,
+    );
     closeButton.title = "Close";
     closeButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';

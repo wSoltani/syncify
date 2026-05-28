@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.config.mjs",
+    "install:dev": "node scripts/install-dev.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "typecheck": "tsc --noEmit"
   },

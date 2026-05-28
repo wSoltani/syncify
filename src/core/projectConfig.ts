@@ -1,6 +1,7 @@
 import type { SyncifyProjectConfig } from "../types/syncify";
 
 const DEFAULT_PROJECT_CONFIG: SyncifyProjectConfig = {
+  extensionName: process.env.SYNCIFY_EXTENSION_NAME ?? "Syncify",
   workerUrl:
     process.env.SYNCIFY_WORKER_URL ?? "https://syncify-worker.wsoltani.com",
   githubUrl:
@@ -19,6 +20,9 @@ export function getProjectConfig(): SyncifyProjectConfig {
   ).SyncifyConfig;
 
   return {
+    extensionName:
+      normalizeUrl(runtimeConfig?.extensionName) ??
+      DEFAULT_PROJECT_CONFIG.extensionName,
     workerUrl:
       normalizeUrl(runtimeConfig?.workerUrl) ??
       DEFAULT_PROJECT_CONFIG.workerUrl,
