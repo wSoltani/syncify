@@ -1,50 +1,43 @@
-# Syncify Extension
+# Syncify
+
+<p align="center">
+  <img src="assets/SYNCIFY-BANNER.png" alt="Syncify banner">
+</p>
+
+<p align="center">
+  <a href="https://github.com/wSoltani/Syncify"><img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Syncify-181717?logo=github"></a>
+  <a href="https://github.com/spicetify/marketplace"><img alt="Spicetify Marketplace" src="https://img.shields.io/badge/Spicetify-Marketplace-1DB954?logo=spotify&logoColor=white"></a>
+  <a href="https://ko-fi.com/wsoltani"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-Ko--fi-ff5f5f?logo=ko-fi&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <strong>Your Spicetify setup needs a savepoint. </strong><br>
+  Back up your Marketplace extensions, themes, snippets, and preferences, then restore them when Spotify/Spicetify breaks.
+</p>
+
+---
+
+## What is Syncify?
 
 Syncify is a Spicetify extension for backing up and restoring a user's installed extensions and themes.
 
 It saves the browser `localStorage` entries that Spicetify Marketplace uses to remember installed extensions, snippets, themes, and related preferences. The goal is simple: create a backup, restore it later, reload Spotify, and let Marketplace rehydrate the user's extensions and themes.
 
-> This repository contains the **Spicetify extension client only**. The Cloudflare Worker backend lives in a separate repository/project: `syncify-worker`.
+> This repository contains the **Spicetify extension client only**. The Cloudflare Worker backend lives in a separate repository/project.
 
-## Companion backend
-
-The extension requires a deployed Syncify Worker backend. During local development, point the extension at the Worker URL with build-time environment variables:
-
-```bash
-SYNCIFY_WORKER_URL=http://localhost:8787 npm run build
-```
-
-For production builds, use the deployed Worker URL:
-
-```bash
-SYNCIFY_WORKER_URL=https://your-syncify-worker.workers.dev npm run build
-```
-
-The extension also supports optional build-time link overrides:
-
-```bash
-SYNCIFY_GITHUB_URL=https://github.com/wsoltani/Syncify \
-SYNCIFY_KOFI_URL=https://ko-fi.com/wsoltani \
-SYNCIFY_ISSUE_URL=mailto:wasoltani+syncify@gmail.com \
-npm run build
-```
-
-At runtime, `window.SyncifyConfig` can override the same values before Syncify initializes:
-
-```js
-window.SyncifyConfig = {
-  workerUrl: "http://localhost:8787",
-  githubUrl: "https://github.com/wsoltani/Syncify",
-  kofiUrl: "https://ko-fi.com/wsoltani",
-  issueUrl: "mailto:wasoltani+syncify@gmail.com",
-};
-```
-
-## Why Syncify exists
+## Why does Syncify exist?
 
 Spicetify Marketplace stores installed extension and theme state in Spotify's Chromium/Electron `localStorage`. If that state is lost, users have to rebuild their setup manually.
 
 Syncify provides a backup and restore layer for those installed extensions and themes without requiring filesystem access from inside Spotify.
+
+## Like Syncify?
+
+If Syncify saved your setup, your time, or your sanity, consider supporting the project:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/wsoltani)
+
+Starring the repo, sharing it, or reporting bugs also helps a ton. 💚
 
 ## What the extension does
 
@@ -89,35 +82,38 @@ marketplace:colorShift
 
 Syncify does **not** currently back up arbitrary non-Marketplace extension settings unless those settings are also stored under the `marketplace:` namespace.
 
-## Repository layout
+## Companion backend
 
-```txt
-syncify/
-  assets/
-    icon.svg                # Topbar button icon
-  dist/
-    syncify.js              # Built Spicetify extension bundle
-  src/
-    app.tsx                 # Extension entrypoint
-    api/
-      syncifyApi.ts         # HTTP client for the Syncify Worker backend
-    core/
-      config.ts             # Local Syncify user config
-      crypto.ts             # SHA-256 and stable hashing helpers
-      device.ts             # Device metadata helper
-      marketplace.ts        # Marketplace localStorage collection/restore
-      projectConfig.ts      # Build/runtime project URLs and backend endpoint
-      startupSync.ts        # Guarded startup auto-backup logic
-      syncService.ts        # Backup/restore orchestration
-      user.ts               # Spotify user identity hash helper
-    styles/
-      app.css               # Modal styles injected by the extension
-    types/
-      syncify.ts            # Syncify payload/config types
-      spicetify.d.ts        # Spicetify API typings from scaffold
-  esbuild.config.mjs        # Extension build config
-  package.json
-  tsconfig.json
+The extension requires a deployed Syncify Worker backend. During local development, point the extension at the Worker URL with build-time environment variables:
+
+```bash
+SYNCIFY_WORKER_URL=http://localhost:8787 npm run build
+```
+
+For production builds, use the deployed Worker URL:
+
+```bash
+SYNCIFY_WORKER_URL=https://syncify-worker.wsoltani.com npm run build
+```
+
+The extension also supports optional build-time link overrides:
+
+```bash
+SYNCIFY_GITHUB_URL=https://github.com/wSoltani/Syncify \
+SYNCIFY_KOFI_URL=https://ko-fi.com/wsoltani \
+SYNCIFY_ISSUE_URL=mailto:wasoltani+syncify@gmail.com \
+npm run build
+```
+
+At runtime, `window.SyncifyConfig` can override the same values before Syncify initializes:
+
+```js
+window.SyncifyConfig = {
+  workerUrl: "http://localhost:8787",
+  githubUrl: "https://github.com/wSoltani/Syncify",
+  kofiUrl: "https://ko-fi.com/wsoltani",
+  issueUrl: "mailto:wasoltani+syncify@gmail.com",
+};
 ```
 
 ## Requirements
@@ -267,7 +263,7 @@ For restore to be useful, Spicetify Marketplace must be installed and enabled.
 2. Build this extension with the production Worker URL:
 
    ```bash
-   SYNCIFY_WORKER_URL=https://your-syncify-worker.workers.dev npm run build
+   SYNCIFY_WORKER_URL=https://syncify-worker.wsoltani.com npm run build
    ```
 
 3. Install the resulting `dist/syncify.js` locally and test:
