@@ -1,8 +1,10 @@
-# Syncify
-
 <p align="center">
   <img src="assets/SYNCIFY-BANNER.png" alt="Syncify banner">
 </p>
+
+<h1 align="center">
+  Syncify
+</h1>
 
 <p align="center">
   <a href="https://github.com/wSoltani/Syncify"><img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Syncify-181717?logo=github"></a>
@@ -82,6 +84,41 @@ marketplace:colorShift
 
 Syncify does **not** currently back up arbitrary non-Marketplace extension settings unless those settings are also stored under the `marketplace:` namespace.
 
+## Manual installation
+
+After building, copy or symlink `dist/syncify.js` into your Spicetify `Extensions` directory.
+
+Typical Windows path:
+
+```txt
+%appdata%\spicetify\Extensions\syncify.js
+```
+
+Typical Linux/macOS path:
+
+```txt
+~/.config/spicetify/Extensions/syncify.js
+```
+
+Then enable and apply it:
+
+```bash
+spicetify config extensions syncify.js
+spicetify apply
+```
+
+Restart Spotify if needed.
+
+## Development
+
+## Requirements
+
+- Node.js and npm
+- Spicetify installed locally
+- Spotify desktop client patched with Spicetify
+- Spicetify Marketplace installed and enabled for restore to be useful
+- A running/deployed `syncify-worker` backend
+
 ## Companion backend
 
 The extension requires a deployed Syncify Worker backend. During local development, point the extension at the Worker URL with build-time environment variables:
@@ -115,14 +152,6 @@ window.SyncifyConfig = {
   issueUrl: "https://github.com/wSoltani/Syncify/issues/new",
 };
 ```
-
-## Requirements
-
-- Node.js and npm
-- Spicetify installed locally
-- Spotify desktop client patched with Spicetify
-- Spicetify Marketplace installed and enabled for restore to be useful
-- A running/deployed `syncify-worker` backend
 
 ## Install dependencies
 
@@ -178,31 +207,6 @@ dist/syncify.js
 ```
 
 Use `npm run build` when you want to update the production/Marketplace bundle.
-
-## Local Spicetify installation
-
-After building, copy or symlink `dist/syncify.js` into your Spicetify `Extensions` directory.
-
-Typical Windows path:
-
-```txt
-%appdata%\spicetify\Extensions\syncify.js
-```
-
-Typical Linux/macOS path:
-
-```txt
-~/.config/spicetify/Extensions/syncify.js
-```
-
-Then enable and apply it:
-
-```bash
-spicetify config extensions syncify.js
-spicetify apply
-```
-
-Restart Spotify if needed.
 
 ## Backend contract
 
