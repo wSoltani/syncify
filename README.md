@@ -109,6 +109,8 @@ spicetify apply
 
 Restart Spotify if needed.
 
+---
+
 ## Development
 
 ## Requirements
@@ -307,7 +309,6 @@ For restore to be useful, Spicetify Marketplace must be installed and enabled.
 
 ## Current limitations
 
-- No Marketplace submission metadata has been prepared yet.
 - No user-controlled encryption/passphrase layer yet.
 - Only `marketplace:` keys are backed up.
 - Worker currently stores the latest backup only; snapshot/history support is not implemented yet.
