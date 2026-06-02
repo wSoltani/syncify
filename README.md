@@ -21,9 +21,9 @@
 
 ## What is Syncify?
 
-Syncify is a Spicetify extension for backing up and restoring a user's installed extensions and themes.
+Syncify is a Spicetify extension for backing up and restoring Marketplace extensions, themes, snippets, and preferences.
 
-It saves the browser `localStorage` entries that Spicetify Marketplace uses to remember installed extensions, snippets, themes, and related preferences. The goal is simple: create a backup, restore it later, reload Spotify, and let Marketplace rehydrate the user's extensions and themes.
+It saves the browser `localStorage` entries that Spicetify Marketplace uses to remember installed items, then restores them later and reloads Spotify so Marketplace can rehydrate the setup.
 
 > This repository contains the **Spicetify extension client only**. The Cloudflare Worker backend lives in a separate repository/project.
 
@@ -235,25 +235,6 @@ The raw Spotify identifier is not sent to the Syncify backend.
 
 Important security note: a plain SHA-256 hash of a username or stable user identifier is pseudonymous, not a strong authentication secret. A future version should consider optional user-controlled encryption or passphrase-based protection if stronger privacy is required.
 
-## Payload schema
-
-Current client payload shape:
-
-```ts
-interface SyncifyPayload {
-  schema_version: 1;
-  metadata: {
-    last_sync_datetime: string;
-    device_info: string;
-    marketplace_key_count: number;
-  };
-  payload_hash: string;
-  marketplace_data: {
-    keys: Record<string, string>;
-  };
-}
-```
-
 ## Backup safety
 
 Syncify refuses to upload an empty backup. If the local collected state has `0` backup entries, `Back up` and startup auto-backup both fail before sending anything to the Worker.
@@ -264,15 +245,14 @@ Manual backups with non-zero entries are still allowed, including cases where th
 
 ## Restore behavior
 
-Restore is intentionally explicit and destructive:
+Restore is explicit and destructive:
 
-1. The user clicks `Restore Backup`.
-2. Syncify asks for confirmation.
-3. Syncify downloads the remote payload.
-4. Syncify writes restored `marketplace:` keys into `localStorage`.
-5. Syncify reloads Spotify.
+1. Select a saved backup version.
+2. Confirm restore.
+3. Syncify writes the saved `marketplace:` keys into `localStorage`.
+4. Syncify reloads Spotify so Marketplace can rehydrate the setup.
 
-The reload is required because Marketplace initializes installed extensions/themes/snippets from `localStorage` during startup.
+Marketplace usually reloads restored items automatically, but some items may require opening Marketplace, another reload, or a manual reinstall if Marketplace does not rehydrate them cleanly.
 
 ## Startup auto-backup safety
 
@@ -284,9 +264,7 @@ Manual backup remains available through the modal when local backup entries are 
 
 ## Marketplace dependency
 
-Syncify does not download extension files itself. It restores the saved entries that tell Spicetify Marketplace which extensions and themes to load.
-
-For restore to be useful, Spicetify Marketplace must be installed and enabled.
+Syncify does not download extension files itself. It restores the saved Marketplace state that tells Spicetify Marketplace what to load, so Marketplace must be installed and enabled for restore to be useful.
 
 ## Production release checklist
 
@@ -309,9 +287,9 @@ For restore to be useful, Spicetify Marketplace must be installed and enabled.
 
 ## Current limitations
 
-- No user-controlled encryption/passphrase layer yet.
 - Only `marketplace:` keys are backed up.
-- Worker currently stores the latest backup only; snapshot/history support is not implemented yet.
+- Restore depends on Spicetify Marketplace rehydrating restored items.
+- No user-controlled encryption/passphrase layer yet.
 
 ## License
 
