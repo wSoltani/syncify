@@ -9,60 +9,48 @@
 <p align="center">
   <a href="https://github.com/wSoltani/Syncify"><img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Syncify-181717?logo=github"></a>
   <a href="https://github.com/spicetify/marketplace"><img alt="Spicetify Marketplace" src="https://img.shields.io/badge/Spicetify-Marketplace-1DB954?logo=spotify&logoColor=white"></a>
-  <a href="https://ko-fi.com/wsoltani"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-Ko--fi-ff5f5f?logo=ko-fi&logoColor=white"></a>
+  <a href="https://ko-fi.com/wsoltani"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-Ko--fi-ff5f5f?logo=ko-fi"></a>
 </p>
 
 <p align="center">
-  <strong>Your Spicetify setup needs a savepoint. </strong><br>
-  Back up your Marketplace extensions, themes, snippets, and preferences, then restore them when Spotify/Spicetify breaks.
+  <strong>Your Spicetify setup needs a savepoint.</strong><br>
+  Back up your Marketplace extensions, themes, snippets, and preferences, then restore them when Spotify or Spicetify breaks.
 </p>
 
 ---
 
 ## What is Syncify?
 
-Syncify is a Spicetify extension for backing up and restoring Marketplace extensions, themes, snippets, and preferences.
+Syncify is a Spicetify extension that backs up the `marketplace:*` browser `localStorage` entries used by Spicetify Marketplace.
 
-It saves the browser `localStorage` entries that Spicetify Marketplace uses to remember installed items, then restores them later and reloads Spotify so Marketplace can rehydrate the setup.
+It stores the latest backup plus two older versions, so you can restore a previous state if the newest backup is broken, accidental, or overwritten by auto-backup.
 
-> This repository contains the **Spicetify extension client only**. The Cloudflare Worker backend lives in a separate repository/project.
+> This repo contains the **Spicetify extension client**. The Cloudflare Worker backend lives in `syncify-worker`.
 
-## Why does Syncify exist?
+## Features
 
-Spicetify Marketplace stores installed extension and theme state in Spotify's Chromium/Electron `localStorage`. If that state is lost, users have to rebuild their setup manually.
+- Back up Marketplace extensions, themes, snippets, and preferences.
+- Keep the 3 most recent backup versions.
+- Restore a selected backup version after confirmation.
+- Reload Spotify after restore so Marketplace can rehydrate the setup.
+- Block empty `0`-entry backups.
+- Run optional startup auto-backups with downgrade protection.
 
-Syncify provides a backup and restore layer for those installed extensions and themes without requiring filesystem access from inside Spotify.
+## Important restore note
 
-## Like Syncify?
+Syncify restores Marketplace state; it does not download extension files itself. Spicetify Marketplace must be installed and enabled.
 
-If Syncify saved your setup, your time, or your sanity, consider supporting the project:
+Marketplace usually rehydrates restored items after Spotify reloads. If an item appears installed but does not load, open Marketplace, reload Spotify again, or reinstall that specific item from Marketplace.
 
-[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/wsoltani)
+## What gets backed up?
 
-Starring the repo, sharing it, or reporting bugs also helps a ton. 💚
-
-## What the extension does
-
-- Adds a `Syncify` button to the Spotify top bar.
-- Opens a Spicetify modal UI.
-- Shows local/remote backup status, version history, backup metadata, and Marketplace availability.
-- Collects all `localStorage` keys beginning with `marketplace:`.
-- Uploads the collected extension/theme backup to the Syncify Worker backend.
-- Refuses to upload an empty `0`-entry backup, protecting existing backups from fresh/broken local states.
-- Downloads the saved backups for the current Spotify user.
-- Restores selected saved extension/theme entries into `localStorage` after confirmation.
-- Reloads Spotify after restore so Marketplace can initialize the restored extensions and themes.
-- Supports startup auto-backup with downgrade-prevention checks and empty-state upload protection.
-
-## What Syncify backs up
-
-Syncify backs up all keys matching:
+Syncify backs up keys matching:
 
 ```txt
 marketplace:*
 ```
 
-This includes, but is not limited to:
+Examples include:
 
 ```txt
 marketplace:installed-extensions
@@ -73,69 +61,83 @@ marketplace:theme-installed
 marketplace:tabs
 marketplace:active-tab
 marketplace:sort
-marketplace:stars
-marketplace:tags
-marketplace:hideInstalled
-marketplace:albumArtBasedColors
-marketplace:albumArtBasedColorsMode
-marketplace:albumArtBasedColorsVibrancy
-marketplace:colorShift
 ```
 
-Syncify does **not** currently back up arbitrary non-Marketplace extension settings unless those settings are also stored under the `marketplace:` namespace.
+Non-Marketplace extension settings are only backed up if they are stored under the `marketplace:` namespace.
 
-## Manual installation
+## Install manually
 
-After building, copy or symlink `dist/syncify.js` into your Spicetify `Extensions` directory.
+Build the extension, then copy or symlink `dist/syncify.js` into your Spicetify `Extensions` folder.
 
-Typical Windows path:
+Windows:
 
 ```txt
 %appdata%\spicetify\Extensions\syncify.js
 ```
 
-Typical Linux/macOS path:
+Linux/macOS:
 
 ```txt
 ~/.config/spicetify/Extensions/syncify.js
 ```
 
-Then enable and apply it:
+Enable and apply it:
 
 ```bash
 spicetify config extensions syncify.js
 spicetify apply
 ```
 
-Restart Spotify if needed.
-
----
-
 ## Development
 
-## Requirements
+Install dependencies:
 
-- Node.js and npm
-- Spicetify installed locally
-- Spotify desktop client patched with Spicetify
-- Spicetify Marketplace installed and enabled for restore to be useful
-- A running/deployed `syncify-worker` backend
+```bash
+npm install
+```
 
-## Companion backend
+Build `dist/syncify.js`:
 
-The extension requires a deployed Syncify Worker backend. During local development, point the extension at the Worker URL with build-time environment variables:
+```bash
+npm run build
+```
+
+Typecheck:
+
+```bash
+npm run typecheck
+```
+
+Watch mode:
+
+```bash
+npm run watch
+```
+
+Install a Windows dev build into Spicetify:
+
+```bash
+npm run install:dev
+spicetify apply
+```
+
+`install:dev` installs a temporary `Syncify (dev)` build and does not update `dist/syncify.js`.
+
+## Backend configuration
+
+The extension needs a Syncify Worker URL at build time:
 
 ```bash
 SYNCIFY_WORKER_URL=http://localhost:8787 npm run build
 ```
 
-For production builds, use the deployed Worker URL:
+Production example:
 
 ```bash
 SYNCIFY_WORKER_URL=https://syncify-worker.wsoltani.com npm run build
 ```
 
-The extension also supports optional build-time link overrides:
+Optional build-time overrides:
 
 ```bash
 SYNCIFY_GITHUB_URL=https://github.com/wSoltani/Syncify \
@@ -144,7 +146,7 @@ SYNCIFY_ISSUE_URL=https://github.com/wSoltani/Syncify/issues/new \
 npm run build
 ```
 
-At runtime, `window.SyncifyConfig` can override the same values before Syncify initializes:
+At runtime, `window.SyncifyConfig` can override the same links before Syncify initializes:
 
 ```js
 window.SyncifyConfig = {
@@ -155,142 +157,28 @@ window.SyncifyConfig = {
 };
 ```
 
-## Install dependencies
-
-```bash
-npm install
-```
-
-## Build
-
-```bash
-npm run build
-```
-
-The build output is:
-
-```txt
-dist/syncify.js
-```
-
-## Typecheck
-
-```bash
-npm run typecheck
-```
-
-## Development watch mode
-
-```bash
-npm run watch
-```
-
-## Local dev install
-
-For local testing on Windows, you can install a dev-labeled build directly into your Spicetify `Extensions` folder:
-
-```bash
-npm run install:dev
-spicetify apply
-```
-
-This builds a temporary bundle named `Syncify (dev)` and copies it to:
-
-```txt
-%appdata%\spicetify\Extensions\syncify.js
-```
-
-The temporary build changes the Spicetify tooltip and modal title to `Syncify (dev)`, making it easier to tell your local test copy apart from the Marketplace version.
-
-`npm run install:dev` does **not** overwrite the Marketplace bundle at:
-
-```txt
-dist/syncify.js
-```
-
-Use `npm run build` when you want to update the production/Marketplace bundle.
-
 ## Backend contract
 
-The extension expects the Worker backend to support:
+The Worker backend supports:
 
-- `POST /` for backup upload/history retention
-- `GET /` for latest backup download with optional embedded history
-- `OPTIONS /` for CORS preflight
-- `x-syncify-user-hash` request header
-- JSON payloads matching the Syncify schema
+- `POST /` — upload a backup and retain history.
+- `GET /` — download the latest backup with optional embedded `backup_history`.
+- `OPTIONS /` — CORS preflight.
+- `x-syncify-user-hash` — required SHA-256 user hash header.
 
-## Identity model
+Syncify sends only a pseudonymous SHA-256 hash of the active Spotify user identifier. The raw Spotify identifier is not sent to the backend.
 
-Syncify derives a pseudonymous user key from the active Spotify user returned by Spicetify Platform APIs.
-
-Flow:
-
-1. Resolve active Spotify user via `Spicetify.Platform.UserAPI.getUser()`.
-2. Extract a stable identifier such as `username`, `canonicalUsername`, `id`, or `uri`.
-3. Hash it with browser Web Crypto SHA-256.
-4. Send only the resulting hash to the backend using the `x-syncify-user-hash` header.
-
-The raw Spotify identifier is not sent to the Syncify backend.
-
-Important security note: a plain SHA-256 hash of a username or stable user identifier is pseudonymous, not a strong authentication secret. A future version should consider optional user-controlled encryption or passphrase-based protection if stronger privacy is required.
-
-## Backup safety
-
-Syncify refuses to upload an empty backup. If the local collected state has `0` backup entries, `Back up` and startup auto-backup both fail before sending anything to the Worker.
-
-This prevents a fresh install, failed Marketplace load, or reset Spicetify state from overwriting an existing remote backup with an empty payload.
-
-Manual backups with non-zero entries are still allowed, including cases where the user intentionally removed many extensions/themes.
-
-## Restore behavior
-
-Restore is explicit and destructive:
-
-1. Select a saved backup version.
-2. Confirm restore.
-3. Syncify writes the saved `marketplace:` keys into `localStorage`.
-4. Syncify reloads Spotify so Marketplace can rehydrate the setup.
-
-Marketplace usually reloads restored items automatically, but some items may require opening Marketplace, another reload, or a manual reinstall if Marketplace does not rehydrate them cleanly.
-
-## Startup auto-backup safety
-
-Startup auto-backup is disabled by default.
-
-Syncify performs safety checks before uploading local state. It blocks auto-backup when the saved backup appears significantly larger than the current local extension/theme state, and it always blocks `0`-entry uploads. This is meant to prevent a fresh or empty install from overwriting a good backup.
-
-Manual backup remains available through the modal when local backup entries are present.
-
-## Marketplace dependency
-
-Syncify does not download extension files itself. It restores the saved Marketplace state that tells Spicetify Marketplace what to load, so Marketplace must be installed and enabled for restore to be useful.
-
-## Production release checklist
-
-1. Deploy `syncify-worker` first and confirm the Worker URL is live.
-2. Build this extension with the production Worker URL:
-
-   ```bash
-   SYNCIFY_WORKER_URL=https://syncify-worker.wsoltani.com npm run build
-   ```
-
-3. Install the resulting `dist/syncify.js` locally and test:
-   - backup with non-zero entries
-   - refresh status
-   - restore
-   - startup behavior
-   - empty-state backup refusal
-4. Update version/release metadata as needed.
-5. Prepare Marketplace submission assets/metadata.
-6. Submit the built extension to the Spicetify Marketplace flow according to Marketplace contribution requirements.
-
-## Current limitations
+## Limitations
 
 - Only `marketplace:` keys are backed up.
 - Restore depends on Spicetify Marketplace rehydrating restored items.
+- Backups are stored as plaintext JSON by the backend.
 - No user-controlled encryption/passphrase layer yet.
 
-## License
+## Support
 
-MIT
+If Syncify saved your setup, consider supporting the project:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/wsoltani)
+
+Starring the repo, sharing it, or reporting bugs also helps a ton. 💚
