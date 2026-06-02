@@ -1,7 +1,7 @@
 [
   {
     "name": "Syncify",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "description": "Back up and restore your Spicetify Marketplace extensions, themes, snippets, and preferences.",
     "preview": "assets/SYNCIFY.png",
     "main": "dist/syncify.js",
