@@ -37,6 +37,9 @@ export function SyncifyModal() {
   const [remotePayload, setRemotePayload] = useState<SyncifyPayload | null>(
     null,
   );
+  const [remoteBackups, setRemoteBackups] = useState<SyncifyPayload[]>([]);
+  const [selectedRestorePayload, setSelectedRestorePayload] =
+    useState<SyncifyPayload | null>(null);
   const [remoteChecked, setRemoteChecked] = useState(false);
   const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
 
@@ -73,6 +76,8 @@ export function SyncifyModal() {
       await refreshLocalSummary();
       const remote = await fetchRemoteState(config);
       setRemotePayload(remote.payload);
+      setRemoteBackups(remote.backups);
+      setSelectedRestorePayload(remote.payload);
       setRemoteChecked(true);
       setStatus(remote.exists ? "success" : "idle");
 
@@ -116,6 +121,15 @@ export function SyncifyModal() {
       });
       const payload = await backupNow(config);
       setRemotePayload(payload);
+      setRemoteBackups((backups) =>
+        [
+          payload,
+          ...backups.filter(
+            (backup) => backup.payload_hash !== payload.payload_hash,
+          ),
+        ].slice(0, 3),
+      );
+      setSelectedRestorePayload(payload);
       setRemoteChecked(true);
       await refreshLocalSummary();
       setStatus("success");
@@ -129,7 +143,7 @@ export function SyncifyModal() {
     }
   }
 
-  function requestRestoreConfirmation() {
+  function requestRestoreConfirmation(payload = selectedRestorePayload) {
     if (!marketplaceAvailable) {
       const text =
         "Spicetify Marketplace is required to restore extensions and themes. Install and enable it, then try again.";
@@ -138,6 +152,15 @@ export function SyncifyModal() {
       return;
     }
 
+    if (!payload) {
+      const text =
+        "No Syncify cloud backup was found for this Spotify account.";
+      setMessage({ kind: "error", text });
+      Spicetify.showNotification(text, true, 6000);
+      return;
+    }
+
+    setSelectedRestorePayload(payload);
     setIsConfirmingRestore(true);
   }
 
@@ -149,8 +172,12 @@ export function SyncifyModal() {
         kind: "info",
         text: "Restoring your extensions and themes…",
       });
-      const { payload, restoredCount } = await restoreNow(config);
+      const { payload, restoredCount } = await restoreNow(
+        config,
+        selectedRestorePayload ?? undefined,
+      );
       setRemotePayload(payload);
+      setSelectedRestorePayload(payload);
       setRemoteChecked(true);
       setStatus("success");
       setMessage({
@@ -240,19 +267,45 @@ export function SyncifyModal() {
       {remotePayload ? (
         <section className="syncify-section syncify-backup-section">
           <div className="syncify-section-header">
-            <h4 className="syncify-section-title">Latest backup</h4>
+            <h4 className="syncify-section-title">Version history</h4>
             <span className="syncify-backup-time">
-              {formatBackupDateTime(remotePayload.metadata.last_sync_datetime)}
+              {remoteBackups.length} saved
             </span>
           </div>
-          <div className="syncify-backup-details">
-            <span>{remotePayload.metadata.device_info}</span>
-            <span>{remotePayload.metadata.marketplace_key_count} entries</span>
+          <div className="syncify-backup-list">
+            {remoteBackups.map((backup, index) => {
+              const isSelected =
+                selectedRestorePayload?.payload_hash === backup.payload_hash;
+
+              return (
+                <button
+                  className="syncify-backup-version"
+                  data-selected={isSelected ? "true" : "false"}
+                  type="button"
+                  key={`${backup.payload_hash}-${backup.metadata.last_sync_datetime}`}
+                  onClick={() => setSelectedRestorePayload(backup)}
+                  disabled={isBusy}
+                >
+                  <span className="syncify-backup-version-main">
+                    <strong>
+                      {index === 0 ? "Latest" : `Backup ${index + 1}`}
+                    </strong>
+                    <span>
+                      {formatBackupDateTime(backup.metadata.last_sync_datetime)}
+                    </span>
+                  </span>
+                  <span className="syncify-backup-details">
+                    <span>{backup.metadata.device_info}</span>
+                    <span>{backup.metadata.marketplace_key_count} entries</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
           {cloudNewerThanLocal ? (
             <p className="syncify-message inline" data-kind="warning">
-              This device differs from your backup. Restore to apply the saved
-              extensions and themes here, or back up to replace it.
+              This device differs from your latest backup. Select any saved
+              version to restore it, or back up to add a new version.
             </p>
           ) : null}
         </section>
@@ -263,8 +316,8 @@ export function SyncifyModal() {
         {isConfirmingRestore ? (
           <div className="syncify-confirm-restore">
             <p className="syncify-message inline" data-kind="warning">
-              Restore will replace this device's saved extensions and themes,
-              then reload Spotify.
+              Restore will replace this device's saved extensions and themes
+              with the selected backup, then reload Spotify.
             </p>
             <div className="syncify-actions">
               <button
@@ -293,15 +346,15 @@ export function SyncifyModal() {
               onClick={runBackup}
               disabled={isBusy}
             >
-              Back up now
+              Back up
             </button>
             <button
               className="syncify-button danger"
               type="button"
-              onClick={requestRestoreConfirmation}
-              disabled={isBusy}
+              onClick={() => requestRestoreConfirmation()}
+              disabled={isBusy || !selectedRestorePayload}
             >
-              Restore backup
+              Restore selected
             </button>
             <button
               className="syncify-button secondary"
@@ -327,27 +380,30 @@ export function SyncifyModal() {
       </section>
 
       <section className="syncify-footer" aria-label="Syncify links">
-        <button
-          className="syncify-link-button"
-          type="button"
-          onClick={() => openExternal(projectConfig.issueUrl)}
-        >
-          Report an issue
-        </button>
-        <button
-          className="syncify-link-button"
-          type="button"
-          onClick={() => openExternal(projectConfig.githubUrl)}
-        >
-          GitHub
-        </button>
-        <button
-          className="syncify-link-button"
-          type="button"
-          onClick={() => openExternal(projectConfig.kofiUrl)}
-        >
-          Ko-fi
-        </button>
+        <span className="syncify-version">v{projectConfig.version}</span>
+        <div className="syncify-footer-actions">
+          <button
+            className="syncify-link-button"
+            type="button"
+            onClick={() => openExternal(projectConfig.issueUrl)}
+          >
+            Report an issue
+          </button>
+          <button
+            className="syncify-link-button"
+            type="button"
+            onClick={() => openExternal(projectConfig.githubUrl)}
+          >
+            GitHub
+          </button>
+          <button
+            className="syncify-link-button"
+            type="button"
+            onClick={() => openExternal(projectConfig.kofiUrl)}
+          >
+            Ko-fi
+          </button>
+        </div>
       </section>
     </div>
   );

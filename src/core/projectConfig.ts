@@ -2,6 +2,7 @@ import type { SyncifyProjectConfig } from "../types/syncify";
 
 const DEFAULT_PROJECT_CONFIG: SyncifyProjectConfig = {
   extensionName: process.env.SYNCIFY_EXTENSION_NAME ?? "Syncify",
+  version: process.env.SYNCIFY_VERSION ?? "0.0.0",
   workerUrl:
     process.env.SYNCIFY_WORKER_URL ?? "https://syncify-worker.wsoltani.com",
   githubUrl:
@@ -23,6 +24,8 @@ export function getProjectConfig(): SyncifyProjectConfig {
     extensionName:
       normalizeUrl(runtimeConfig?.extensionName) ??
       DEFAULT_PROJECT_CONFIG.extensionName,
+    version:
+      normalizeText(runtimeConfig?.version) ?? DEFAULT_PROJECT_CONFIG.version,
     workerUrl:
       normalizeUrl(runtimeConfig?.workerUrl) ??
       DEFAULT_PROJECT_CONFIG.workerUrl,
@@ -37,5 +40,9 @@ export function getProjectConfig(): SyncifyProjectConfig {
 }
 
 function normalizeUrl(value: unknown): string | null {
+  return normalizeText(value);
+}
+
+function normalizeText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }

@@ -43,12 +43,12 @@ Starring the repo, sharing it, or reporting bugs also helps a ton. 💚
 
 - Adds a `Syncify` button to the Spotify top bar.
 - Opens a Spicetify modal UI.
-- Shows local/remote backup status, backup metadata, and Marketplace availability.
+- Shows local/remote backup status, version history, backup metadata, and Marketplace availability.
 - Collects all `localStorage` keys beginning with `marketplace:`.
 - Uploads the collected extension/theme backup to the Syncify Worker backend.
 - Refuses to upload an empty `0`-entry backup, protecting existing backups from fresh/broken local states.
-- Downloads the saved backup for the current Spotify user.
-- Restores saved extension/theme entries into `localStorage` after confirmation.
+- Downloads the saved backups for the current Spotify user.
+- Restores selected saved extension/theme entries into `localStorage` after confirmation.
 - Reloads Spotify after restore so Marketplace can initialize the restored extensions and themes.
 - Supports startup auto-backup with downgrade-prevention checks and empty-state upload protection.
 
@@ -208,8 +208,8 @@ Restart Spotify if needed.
 
 The extension expects the Worker backend to support:
 
-- `POST /` for backup upload
-- `GET /` for backup download
+- `POST /` for backup upload/history retention
+- `GET /` for latest backup download with optional embedded history
 - `OPTIONS /` for CORS preflight
 - `x-syncify-user-hash` request header
 - JSON payloads matching the Syncify schema
@@ -250,7 +250,7 @@ interface SyncifyPayload {
 
 ## Backup safety
 
-Syncify refuses to upload an empty backup. If the local collected state has `0` backup entries, `Back up now` and startup auto-backup both fail before sending anything to the Worker.
+Syncify refuses to upload an empty backup. If the local collected state has `0` backup entries, `Back up` and startup auto-backup both fail before sending anything to the Worker.
 
 This prevents a fresh install, failed Marketplace load, or reset Spicetify state from overwriting an existing remote backup with an empty payload.
 

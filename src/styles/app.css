@@ -221,11 +221,74 @@
     line-height: 1.3;
 }
 
+.syncify-backup-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.syncify-backup-version {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: var(--spice-text);
+    background: rgba(255, 255, 255, 0.045);
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        opacity 120ms ease,
+        transform 120ms ease;
+}
+
+.syncify-backup-version:hover:not(:disabled),
+.syncify-backup-version[data-selected="true"] {
+    border-color: rgba(30, 215, 96, 0.45);
+    background: rgba(30, 215, 96, 0.1);
+}
+
+.syncify-backup-version:active:not(:disabled) {
+    transform: scale(0.99);
+}
+
+.syncify-backup-version:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.syncify-backup-version-main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.syncify-backup-version-main strong,
+.syncify-backup-version-main span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.syncify-backup-version-main span,
+.syncify-backup-details {
+    color: var(--spice-subtext);
+    font-size: 12px;
+}
+
 .syncify-backup-details {
     display: flex;
+    flex: 0 1 auto;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
-    font-size: 12px;
 }
 
 .syncify-backup-details span {
@@ -238,7 +301,8 @@
 }
 
 .syncify-actions,
-.syncify-footer {
+.syncify-footer,
+.syncify-footer-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -255,7 +319,18 @@
 }
 
 .syncify-footer {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.syncify-footer-actions {
     justify-content: flex-end;
+}
+
+.syncify-version {
+    color: var(--spice-subtext);
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 .syncify-button,
@@ -419,9 +494,23 @@
         min-width: 0;
     }
 
-    .syncify-actions,
-    .syncify-footer {
+    .syncify-backup-version {
+        align-items: flex-start;
         flex-direction: column;
+    }
+
+    .syncify-backup-details {
+        justify-content: flex-start;
+    }
+
+    .syncify-actions,
+    .syncify-footer,
+    .syncify-footer-actions {
+        flex-direction: column;
+    }
+
+    .syncify-footer {
+        align-items: stretch;
     }
 
     .syncify-button,

@@ -4,6 +4,7 @@ const watch = process.argv.includes("--watch");
 const env = process.env;
 const outfile = env.SYNCIFY_OUTFILE ?? "dist/syncify.js";
 const extensionName = env.SYNCIFY_EXTENSION_NAME ?? "Syncify";
+const packageVersion = env.npm_package_version ?? "0.0.0";
 
 function defineEnvValue(value) {
   return value === undefined ? "undefined" : JSON.stringify(value);
@@ -25,6 +26,7 @@ const options = {
     "process.env.NODE_ENV": JSON.stringify(
       watch ? "development" : "production",
     ),
+    "process.env.SYNCIFY_VERSION": JSON.stringify(packageVersion),
     "process.env.SYNCIFY_WORKER_URL": defineEnvValue(env.SYNCIFY_WORKER_URL),
     "process.env.SYNCIFY_GITHUB_URL": defineEnvValue(env.SYNCIFY_GITHUB_URL),
     "process.env.SYNCIFY_KOFI_URL": defineEnvValue(env.SYNCIFY_KOFI_URL),

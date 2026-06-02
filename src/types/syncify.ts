@@ -22,11 +22,13 @@ export interface SyncifyPayload {
   metadata: SyncifyMetadata;
   payload_hash: string;
   marketplace_data: SyncifyMarketplaceData;
+  backup_history?: SyncifyPayload[];
 }
 
 export interface SyncifyRemoteState {
   exists: boolean;
   payload: SyncifyPayload | null;
+  backups: SyncifyPayload[];
 }
 
 export interface SyncifyConfig {
@@ -36,6 +38,7 @@ export interface SyncifyConfig {
 
 export interface SyncifyProjectConfig {
   extensionName: string;
+  version: string;
   workerUrl: string;
   githubUrl: string;
   kofiUrl: string;

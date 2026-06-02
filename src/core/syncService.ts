@@ -40,15 +40,16 @@ export async function fetchRemoteState(
 
 export async function restoreNow(
   config: SyncifyConfig,
+  selectedPayload?: SyncifyPayload,
 ): Promise<{ payload: SyncifyPayload; restoredCount: number }> {
-  const remoteState = await fetchRemoteState(config);
+  const payload = selectedPayload ?? (await fetchRemoteState(config)).payload;
 
-  if (!remoteState.exists || !remoteState.payload) {
+  if (!payload) {
     throw new Error(
       "No Syncify cloud backup was found for this Spotify account.",
     );
   }
 
-  const restoredCount = restoreMarketplaceKeys(remoteState.payload);
-  return { payload: remoteState.payload, restoredCount };
+  const restoredCount = restoreMarketplaceKeys(payload);
+  return { payload, restoredCount };
 }
