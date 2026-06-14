@@ -67,7 +67,7 @@ Non-Marketplace extension settings are only backed up if they are stored under t
 
 ## Install manually
 
-Build the extension, then copy or symlink `dist/syncify.js` into your Spicetify `Extensions` folder.
+The easiest way to install Syncify is from the Spicetify Marketplace. If you prefer to install it manually, download the prebuilt `syncify.js` extension file from the latest GitHub release, then copy or symlink it into your Spicetify `Extensions` folder. You only need to build the extension yourself if you are developing or modifying Syncify.
 
 Windows:
 
