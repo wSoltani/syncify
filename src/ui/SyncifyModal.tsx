@@ -1,10 +1,6 @@
 import { loadConfig, saveConfig } from "../core/config";
 import { getProjectConfig } from "../core/projectConfig";
-import {
-  getInstalledMarketplaceItemCount,
-  isMarketplaceAvailable,
-  summarizeMarketplaceState,
-} from "../core/marketplace";
+import { summarizeMarketplaceState } from "../core/marketplace";
 import { backupNow, fetchRemoteState, restoreNow } from "../core/syncService";
 import type {
   SyncifyConfig,
@@ -33,6 +29,9 @@ export function SyncifyModal() {
   const [message, setMessage] = useState<MessageState | null>(null);
   const [localKeyCount, setLocalKeyCount] = useState(0);
   const [installedItemCount, setInstalledItemCount] = useState(0);
+  const [marketplaceAvailable, setMarketplaceAvailable] = useState<
+    boolean | null
+  >(null);
   const [localHash, setLocalHash] = useState<string | null>(null);
   const [remotePayload, setRemotePayload] = useState<SyncifyPayload | null>(
     null,
@@ -47,7 +46,6 @@ export function SyncifyModal() {
   const isBusy = status === "loading";
   const alertMessage =
     message?.kind === "warning" || message?.kind === "error" ? message : null;
-  const marketplaceAvailable = useMemo(() => isMarketplaceAvailable(), []);
   const cloudKeyCount = remotePayload?.metadata.marketplace_key_count ?? 0;
   const cloudNewerThanLocal = Boolean(
     remotePayload && localHash && remotePayload.payload_hash !== localHash,
@@ -61,7 +59,8 @@ export function SyncifyModal() {
     const summary = await summarizeMarketplaceState();
     setLocalKeyCount(summary.keyCount);
     setLocalHash(summary.hash);
-    setInstalledItemCount(getInstalledMarketplaceItemCount());
+    setInstalledItemCount(summary.installedItemCount);
+    setMarketplaceAvailable(summary.marketplaceAvailable);
     return summary;
   }
 
@@ -144,7 +143,7 @@ export function SyncifyModal() {
   }
 
   function requestRestoreConfirmation(payload = selectedRestorePayload) {
-    if (!marketplaceAvailable) {
+    if (marketplaceAvailable === false) {
       const text =
         "Spicetify Marketplace is required to restore extensions and themes. Install and enable it, then try again.";
       setMessage({ kind: "error", text });
@@ -259,8 +258,20 @@ export function SyncifyModal() {
         />
         <StatusCard
           label="Restore"
-          value={marketplaceAvailable ? "Ready" : "Missing"}
-          tone={marketplaceAvailable ? "success" : "warning"}
+          value={
+            marketplaceAvailable === null
+              ? "Checking"
+              : marketplaceAvailable
+                ? "Ready"
+                : "Missing"
+          }
+          tone={
+            marketplaceAvailable === null
+              ? "neutral"
+              : marketplaceAvailable
+                ? "success"
+                : "warning"
+          }
         />
       </section>
 

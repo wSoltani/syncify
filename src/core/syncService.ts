@@ -21,7 +21,9 @@ export async function backupNow(
   ]);
 
   if (payload.metadata.marketplace_key_count === 0) {
-    throw new Error("Syncify will not back up an empty extension/theme state.");
+    throw new Error(
+      "Syncify found no Marketplace data to back up. Open Marketplace once so it loads its state, then try again.",
+    );
   }
 
   await uploadPayload(config.workerUrl, userHash, payload);
@@ -50,6 +52,6 @@ export async function restoreNow(
     );
   }
 
-  const restoredCount = restoreMarketplaceKeys(payload);
+  const restoredCount = await restoreMarketplaceKeys(payload);
   return { payload, restoredCount };
 }

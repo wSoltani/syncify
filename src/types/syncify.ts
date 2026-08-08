@@ -48,4 +48,6 @@ export interface SyncifyProjectConfig {
 export interface SyncifySnapshotSummary {
   keyCount: number;
   hash: string;
+  installedItemCount: number;
+  marketplaceAvailable: boolean;
 }
