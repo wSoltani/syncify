@@ -21,7 +21,7 @@
 
 ## What is Syncify?
 
-Syncify is a Spicetify extension that backs up the `marketplace:*` browser `localStorage` entries used by Spicetify Marketplace.
+Syncify is a Spicetify extension that backs up the `marketplace:*` browser `localStorage` and `IndexedDB` entries used by Spicetify Marketplace.
 
 It stores the latest backup plus two older versions, so you can restore a previous state if the newest backup is broken, accidental, or overwritten by auto-backup.
 
