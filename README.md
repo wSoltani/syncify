@@ -123,6 +123,17 @@ spicetify apply
 
 `install:dev` installs a temporary `Syncify (dev)` build and does not update `dist/syncify.js`.
 
+## Releasing
+
+Spicetify Marketplace installs the committed `dist/syncify.js` from `master`, so every release commits a fresh production build.
+
+```bash
+npm version patch   # or minor / major
+git push --follow-tags
+```
+
+`npm version` bumps `package.json`, copies the version into `manifest.json`, rebuilds `dist/syncify.js`, then commits and tags `vX.Y.Z`. Pushing the tag runs the Release workflow, which checks the versions and the committed build, then creates the GitHub release with `syncify.js` attached. The CI workflow fails any push or PR whose `dist/syncify.js` is out of date.
+
 ## Backend configuration
 
 The extension needs a Syncify Worker URL at build time:

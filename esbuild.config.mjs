@@ -1,10 +1,12 @@
+import { readFileSync } from "node:fs";
 import { context, build } from "esbuild";
 
 const watch = process.argv.includes("--watch");
 const env = process.env;
 const outfile = env.SYNCIFY_OUTFILE ?? "dist/syncify.js";
 const extensionName = env.SYNCIFY_EXTENSION_NAME ?? "Syncify";
-const packageVersion = env.npm_package_version ?? "0.0.0";
+// Read package.json directly so the version is right during `npm version`.
+const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
 
 function defineEnvValue(value) {
   return value === undefined ? "undefined" : JSON.stringify(value);

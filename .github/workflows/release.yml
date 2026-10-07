@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
+      - run: npm run build
+      - name: Ensure committed dist matches the tag
+        run: |
+          if ! git diff --exit-code -- dist; then
+            echo "::error::dist/syncify.js in the tagged commit is stale. Rebuild, commit and re-tag."
+            exit 1
+          fi
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/syncify.js \
+            --title "Syncify $GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag

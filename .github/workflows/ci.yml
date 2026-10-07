@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node scripts/check-release.mjs
+      - run: npm run build
+      # Marketplace serves the committed dist/syncify.js, so it must match src.
+      - name: Ensure dist is up to date
+        run: |
+          if ! git diff --exit-code -- dist; then
+            echo "::error::dist/syncify.js is stale. Run 'npm run build' and commit it."
+            exit 1
+          fi
