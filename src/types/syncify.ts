@@ -34,6 +34,20 @@ export interface SyncifyRemoteState {
 export interface SyncifyConfig {
   workerUrl: string | null;
   autoBackupEnabled: boolean;
+  /** `null` means the shortcut is turned off. */
+  shortcut: SyncifyShortcut | null;
+  entryPoint: SyncifyEntryPoint;
+}
+
+/** Where Syncify's "open" button appears: top bar, profile menu, or both. */
+export type SyncifyEntryPoint = "both" | "topbar" | "menu";
+
+export interface SyncifyShortcut {
+  key: string;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  meta: boolean;
 }
 
 export interface SyncifyProjectConfig {

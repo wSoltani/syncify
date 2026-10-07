@@ -1,6 +1,6 @@
 {
   "name": "syncify",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "Synchronize Spicetify Marketplace state across devices.",
   "type": "module",
@@ -8,7 +8,8 @@
     "build": "node esbuild.config.mjs",
     "install:dev": "node scripts/install-dev.mjs",
     "watch": "node esbuild.config.mjs --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "version": "node scripts/sync-version.mjs && npm run build && git add manifest.json dist/syncify.js"
   },
   "keywords": [
     "spicetify",

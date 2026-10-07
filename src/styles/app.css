@@ -518,3 +518,35 @@
         width: 100%;
     }
 }
+
+.syncify-shortcut-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.syncify-shortcut-key {
+    min-width: 96px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: var(--spice-text);
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.syncify-shortcut-key[data-recording="true"] {
+    color: var(--spice-button, #1ed760);
+    box-shadow: 0 0 0 1px var(--spice-button, #1ed760) inset;
+}
+
+.syncify-choice-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+}

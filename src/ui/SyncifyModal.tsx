@@ -2,9 +2,22 @@ import { loadConfig, saveConfig } from "../core/config";
 import { getProjectConfig } from "../core/projectConfig";
 import { summarizeMarketplaceState } from "../core/marketplace";
 import { backupNow, fetchRemoteState, restoreNow } from "../core/syncService";
+import {
+  applyShortcut,
+  DEFAULT_SHORTCUT,
+  formatShortcut,
+  isShortcutTaken,
+  shortcutFromEvent,
+} from "../core/shortcut";
+import {
+  applyEntryPoint,
+  isMenuEntryPointAvailable,
+} from "../core/entryPoints";
 import type {
   SyncifyConfig,
+  SyncifyEntryPoint,
   SyncifyPayload,
+  SyncifyShortcut,
   SyncifyStatus,
 } from "../types/syncify";
 import type {
@@ -41,8 +54,11 @@ export function SyncifyModal() {
     useState<SyncifyPayload | null>(null);
   const [remoteChecked, setRemoteChecked] = useState(false);
   const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
+  const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
+  const [shortcutError, setShortcutError] = useState<string | null>(null);
 
   const projectConfig = useMemo(() => getProjectConfig(), []);
+  const menuAvailable = useMemo(() => isMenuEntryPointAvailable(), []);
   const isBusy = status === "loading";
   const alertMessage =
     message?.kind === "warning" || message?.kind === "error" ? message : null;
@@ -54,6 +70,42 @@ export function SyncifyModal() {
   useEffect(() => {
     void refreshStatus({ silent: true });
   }, []);
+
+  // Capture phase on window runs before Mousetrap (bubble phase on document),
+  // so recording never triggers the current shortcut or Spotify's own ones.
+  useEffect(() => {
+    if (!isRecordingShortcut) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const result = shortcutFromEvent(event);
+      if (result.kind === "ignore") return;
+      if (result.kind === "cancel") {
+        setIsRecordingShortcut(false);
+        setShortcutError(null);
+        return;
+      }
+      if (result.kind === "error") {
+        setShortcutError(result.message);
+        return;
+      }
+
+      if (isShortcutTaken(result.shortcut)) {
+        setShortcutError(
+          `${formatShortcut(result.shortcut)} is already used by Spotify or another extension. Try a different combo.`,
+        );
+        return;
+      }
+
+      setIsRecordingShortcut(false);
+      updateShortcut(result.shortcut);
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [isRecordingShortcut, config]);
 
   async function refreshLocalSummary() {
     const summary = await summarizeMarketplaceState();
@@ -108,6 +160,32 @@ export function SyncifyModal() {
         ? "Automatic backups are on. Syncify will still protect larger cloud backups from being overwritten."
         : "Automatic backups are off. You can still back up manually.",
     });
+  }
+
+  function updateShortcut(shortcut: SyncifyShortcut | null) {
+    const nextConfig = { ...config, shortcut };
+    setConfig(nextConfig);
+    saveConfig(nextConfig);
+    applyShortcut(shortcut);
+    setShortcutError(null);
+    setMessage({
+      kind: "success",
+      text: shortcut
+        ? `${formatShortcut(shortcut)} now opens Syncify.`
+        : "Keyboard shortcut turned off.",
+    });
+  }
+
+  function updateEntryPoint(entryPoint: SyncifyEntryPoint) {
+    const nextConfig = { ...config, entryPoint };
+    setConfig(nextConfig);
+    saveConfig(nextConfig);
+    applyEntryPoint(entryPoint);
+  }
+
+  function startRecordingShortcut() {
+    setShortcutError(null);
+    setIsRecordingShortcut(true);
   }
 
   async function runBackup() {
@@ -390,6 +468,104 @@ export function SyncifyModal() {
         </label>
       </section>
 
+      <section className="syncify-section compact">
+        <h4 className="syncify-section-title">Show Syncify in</h4>
+        <div
+          className="syncify-choice-group"
+          role="radiogroup"
+          aria-label="Where Syncify appears"
+        >
+          {ENTRY_POINT_OPTIONS.map((option) => {
+            const needsMenu = option.value !== "topbar";
+            return (
+              <label className="syncify-toggle" key={option.value}>
+                <input
+                  type="radio"
+                  name="syncify-entry-point"
+                  value={option.value}
+                  checked={config.entryPoint === option.value}
+                  onChange={() => updateEntryPoint(option.value)}
+                  disabled={needsMenu && !menuAvailable}
+                />
+                <span>{option.label}</span>
+              </label>
+            );
+          })}
+        </div>
+        {!menuAvailable ? (
+          <p className="syncify-message inline" data-kind="warning">
+            The profile menu isn't available in this Spicetify version, so
+            Syncify stays in the top bar.
+          </p>
+        ) : config.entryPoint === "menu" && !config.shortcut ? (
+          <p className="syncify-message inline" data-kind="warning">
+            If the profile menu breaks after a Spotify update, turn the
+            keyboard shortcut back on so you can still open Syncify.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="syncify-section compact">
+        <h4 className="syncify-section-title">Keyboard shortcut</h4>
+        <div className="syncify-shortcut-row">
+          <kbd
+            className="syncify-shortcut-key"
+            data-recording={isRecordingShortcut ? "true" : "false"}
+          >
+            {isRecordingShortcut
+              ? "Press keys…"
+              : formatShortcut(config.shortcut)}
+          </kbd>
+          <div className="syncify-actions">
+            {isRecordingShortcut ? (
+              <button
+                className="syncify-button secondary"
+                type="button"
+                onClick={() => {
+                  setIsRecordingShortcut(false);
+                  setShortcutError(null);
+                }}
+              >
+                Cancel
+              </button>
+            ) : (
+              <button
+                className="syncify-button secondary"
+                type="button"
+                onClick={startRecordingShortcut}
+              >
+                Change
+              </button>
+            )}
+            <button
+              className="syncify-button secondary"
+              type="button"
+              onClick={() => updateShortcut(DEFAULT_SHORTCUT)}
+              disabled={
+                isRecordingShortcut ||
+                formatShortcut(config.shortcut) ===
+                  formatShortcut(DEFAULT_SHORTCUT)
+              }
+            >
+              Reset
+            </button>
+            <button
+              className="syncify-button secondary"
+              type="button"
+              onClick={() => updateShortcut(null)}
+              disabled={isRecordingShortcut || !config.shortcut}
+            >
+              Turn off
+            </button>
+          </div>
+        </div>
+        {shortcutError ? (
+          <p className="syncify-message inline" data-kind="warning">
+            {shortcutError}
+          </p>
+        ) : null}
+      </section>
+
       <section className="syncify-footer" aria-label="Syncify links">
         <span className="syncify-version">v{projectConfig.version}</span>
         <div className="syncify-footer-actions">
@@ -419,6 +595,12 @@ export function SyncifyModal() {
     </div>
   );
 }
+
+const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [
+  { value: "both", label: "Top bar and profile menu" },
+  { value: "topbar", label: "Top bar only" },
+  { value: "menu", label: "Profile menu only" },
+];
 
 function StatusCard({
   label,

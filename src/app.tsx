@@ -2,6 +2,9 @@ import appStyles from "./styles/app.css";
 import syncifyIcon from "../assets/icon.svg";
 import { runStartupSyncCheck } from "./core/startupSync";
 import { getProjectConfig } from "./core/projectConfig";
+import { loadConfig } from "./core/config";
+import { initShortcut } from "./core/shortcut";
+import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { SyncifyModal } from "./ui/SyncifyModal";
 
 const LOG_PREFIX = "[Syncify]";
@@ -48,7 +51,13 @@ function isSpicetifyReady(): boolean {
 
 function main(): void {
   injectStyles();
-  injectTopbarButton();
+  const config = loadConfig();
+  setEntryPointTargets({
+    topbarButton: injectTopbarButton(),
+    menuItem: createProfileMenuItem(),
+  });
+  applyEntryPoint(config.entryPoint);
+  initShortcut(config.shortcut, openSyncifyModal);
   void runStartupSyncCheck().catch((error) => {
     warn("Startup sync check failed", error);
   });
@@ -64,7 +73,7 @@ function injectStyles(): void {
   document.head.appendChild(style);
 }
 
-function injectTopbarButton(): void {
+function injectTopbarButton(): Spicetify.Topbar.Button {
   const { extensionName } = getProjectConfig();
   const button = new Spicetify.Topbar.Button(
     extensionName,
@@ -78,10 +87,12 @@ function injectTopbarButton(): void {
   );
 
   makeRightTopbarButtonClickable(button);
+  keepTopbarButtonAttached(button);
 
   exposeDebugButton(button);
 
   debug("Topbar button registered", describeTopbarButton(button));
+  return button;
 }
 
 function makeRightTopbarButtonClickable(button: Spicetify.Topbar.Button): void {
@@ -91,6 +102,89 @@ function makeRightTopbarButtonClickable(button: Spicetify.Topbar.Button): void {
 
   button.element.style.setProperty("-webkit-app-region", "no-drag");
   runtimeButton.button?.style.setProperty("-webkit-app-region", "no-drag");
+}
+
+const TOPBAR_CONTAINER_SELECTOR = ".main-actionButtons";
+const TOPBAR_REFERENCE_BUTTON_SELECTOR = [
+  ".main-actionButtons .main-topBar-buddyFeed",
+  ".main-actionButtons .main-globalNav-buddyFeed",
+  ".main-actionButtons .main-actionButtons-button",
+  ".main-actionButtons > button",
+].join(", ");
+
+/**
+ * Spicetify only re-mounts topbar buttons on route changes, so if Spotify
+ * re-renders the action buttons in place (seen on 1.3.3.x) ours is dropped
+ * until the next navigation. Watch the DOM and put it back ourselves.
+ */
+function keepTopbarButtonAttached(button: Spicetify.Topbar.Button): void {
+  if (typeof MutationObserver === "undefined") return;
+
+  let scheduled = false;
+
+  const reattach = () => {
+    scheduled = false;
+    const element = button.element;
+    const container = document.querySelector(TOPBAR_CONTAINER_SELECTOR);
+    if (!element || !container || container.contains(element)) return;
+
+    container.prepend(element);
+    restoreTopbarButtonClass(button);
+    makeRightTopbarButtonClickable(button);
+    debug("Topbar button re-attached", describeTopbarButton(button));
+  };
+
+  new MutationObserver(() => {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(reattach, 250);
+  }).observe(document.body, { childList: true, subtree: true });
+
+  reattach();
+}
+
+function restoreTopbarButtonClass(button: Spicetify.Topbar.Button): void {
+  const inner = getInnerTopbarButton(button);
+  if (!inner || (inner.className && inner.className !== "undefined")) return;
+
+  const reference = Array.from(
+    document.querySelectorAll<HTMLElement>(TOPBAR_REFERENCE_BUTTON_SELECTOR),
+  ).find((candidate) => !button.element.contains(candidate));
+  if (reference?.className) inner.className = reference.className;
+}
+
+function getInnerTopbarButton(
+  button: Spicetify.Topbar.Button,
+): HTMLButtonElement | undefined {
+  return (button as Spicetify.Topbar.Button & { button?: HTMLButtonElement })
+    .button;
+}
+
+/** Profile menu entry point; registered by `applyEntryPoint` when enabled. */
+function createProfileMenuItem(): Spicetify.Menu.Item | null {
+  if (typeof Spicetify.Menu?.Item !== "function") return null;
+
+  try {
+    return new Spicetify.Menu.Item(
+      getProjectConfig().extensionName,
+      false,
+      () => openSyncifyModal(),
+      getMenuIcon(),
+    );
+  } catch (error) {
+    warn("Failed to create profile menu item", error);
+    return null;
+  }
+}
+
+/**
+ * Spicetify renders menu icons inside Spotify's own 16x16 <svg>, so a 24x24
+ * root <svg> overflows and gets clipped. Shrink it to fit that box.
+ */
+function getMenuIcon(): string {
+  return syncifyIcon
+    .replace(/\swidth="\d+"/, ' width="16"')
+    .replace(/\sheight="\d+"/, ' height="16"');
 }
 
 function exposeDebugButton(button: Spicetify.Topbar.Button): void {
