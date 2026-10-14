@@ -1,7 +1,7 @@
 // NAME: Syncify
 // AUTHOR: wsoltani
 // DESCRIPTION: Back up and restore Spicetify extensions and themes.
-"use strict";(()=>{var bt=Object.defineProperty,ht=Object.defineProperties;var kt=Object.getOwnPropertyDescriptors;var Ee=Object.getOwnPropertySymbols;var St=Object.prototype.hasOwnProperty,wt=Object.prototype.propertyIsEnumerable;var Ne=(e,t,n)=>t in e?bt(e,t,{enumerable:!0,configurable:!0,writable:!0,value:n}):e[t]=n,h=(e,t)=>{for(var n in t||(t={}))St.call(t,n)&&Ne(e,n,t[n]);if(Ee)for(var n of Ee(t))wt.call(t,n)&&Ne(e,n,t[n]);return e},k=(e,t)=>ht(e,kt(t));var Pe=`/* Spotify PopupModal shell tweaks scoped to Syncify. Keep these minimal so the
+"use strict";(()=>{var ge=Object.defineProperty,be=Object.defineProperties;var Se=Object.getOwnPropertyDescriptors;var Pt=Object.getOwnPropertySymbols;var ke=Object.prototype.hasOwnProperty,xe=Object.prototype.propertyIsEnumerable;var Nt=(t,e,n)=>e in t?ge(t,e,{enumerable:!0,configurable:!0,writable:!0,value:n}):t[e]=n,m=(t,e)=>{for(var n in e||(e={}))ke.call(e,n)&&Nt(t,n,e[n]);if(Pt)for(var n of Pt(e))xe.call(e,n)&&Nt(t,n,e[n]);return t},h=(t,e)=>be(t,Se(e));var Mt=`/* Spotify PopupModal shell tweaks scoped to Syncify. Keep these minimal so the
    Spotify modal can size naturally instead of being forced/cropped. */
 .syncify-modal-shell .main-trackCreditsModal-header,
 .main-trackCreditsModal-header:has(+ * .syncify-panel),
@@ -71,409 +71,391 @@
     transform: scale(0.96) !important;
 }
 
+/* Colors come from the active Spicetify theme, with Spotify's defaults as
+   fallbacks, so Syncify blends into whatever theme the user runs. */
 .syncify-panel {
+    --syncify-text: var(--spice-text, #fff);
+    --syncify-muted: var(--spice-subtext, #b3b3b3);
+    --syncify-accent: var(--spice-button, #1ed760);
+    --syncify-accent-text: var(--spice-button-text, #000);
+    --syncify-warning: #f6c343;
+    --syncify-error: var(--spice-notification-error, #f15e6c);
+    --syncify-surface: rgba(var(--spice-rgb-text, 255, 255, 255), 0.06);
+    --syncify-surface-hover: rgba(var(--spice-rgb-text, 255, 255, 255), 0.1);
+    --syncify-divider: rgba(var(--spice-rgb-text, 255, 255, 255), 0.1);
+
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 20px;
     width: 100%;
-    max-width: 100%;
     min-width: 0;
+    color: var(--syncify-text);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.syncify-panel *,
+.syncify-panel *::before {
+    box-sizing: border-box;
+}
+
+.syncify-muted {
     margin: 0;
-    padding: 0;
-    color: var(--spice-text);
-}
-
-.syncify-hero {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-}
-
-.syncify-status-row,
-.syncify-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-width: 0;
-}
-
-.syncify-description,
-.syncify-card-label,
-.syncify-backup-details {
-    margin: 0;
-    color: var(--spice-subtext);
-    line-height: 1.5;
-}
-
-.syncify-heading {
-    min-width: 0;
-    margin: 0;
-    font-size: clamp(18px, 4vw, 23px);
-    line-height: 1.2;
-}
-
-.syncify-description {
-    max-width: 64ch;
+    color: var(--syncify-muted);
     font-size: 13px;
 }
 
-.syncify-status-pill,
-.syncify-backup-time {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.35;
-    white-space: nowrap;
+.syncify-muted[data-kind="warning"] {
+    color: var(--syncify-warning);
 }
 
-.syncify-status-pill {
-    padding: 4px 9px;
-    color: var(--spice-subtext);
-    background: rgba(255, 255, 255, 0.08);
-}
+/* Status */
 
-.syncify-backup-time {
-    padding: 4px 9px;
-    color: var(--spice-text);
-    background: rgba(255, 255, 255, 0.09);
-}
-
-.syncify-status-pill[data-kind="success"],
-.syncify-card[data-tone="success"] .syncify-card-value {
-    color: var(--spice-button-active, #1ed760);
-}
-
-.syncify-status-pill[data-kind="warning"],
-.syncify-card[data-tone="warning"] .syncify-card-value {
-    color: #f6c343;
-}
-
-.syncify-status-pill[data-kind="error"] {
-    color: var(--spice-notification-error, #ff6b6b);
-}
-
-.syncify-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    min-width: 0;
-}
-
-.syncify-card,
-.syncify-section {
-    box-sizing: border-box;
-    min-width: 0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.045);
-}
-
-.syncify-card {
-    display: flex;
-    flex: 1 1 calc(50% - 5px);
-    flex-direction: column;
-    gap: 4px;
-    min-width: 180px;
-    padding: 11px 12px;
-}
-
-.syncify-card-label {
-    overflow: hidden;
-    font-size: 11px;
-    text-overflow: ellipsis;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.syncify-card-value {
-    overflow: hidden;
-    color: var(--spice-text);
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.syncify-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-}
-
-.syncify-backup-section {
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.07),
-        rgba(255, 255, 255, 0.035)
-    );
-}
-
-.syncify-section-title {
-    min-width: 0;
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.3;
-}
-
-.syncify-backup-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.syncify-backup-version {
+.syncify-status {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    min-width: 0;
-    padding: 9px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    color: var(--spice-text);
-    background: rgba(255, 255, 255, 0.045);
-    text-align: left;
-    cursor: pointer;
-    transition:
-        border-color 120ms ease,
-        background-color 120ms ease,
-        opacity 120ms ease,
-        transform 120ms ease;
+    gap: 16px;
 }
 
-.syncify-backup-version:hover:not(:disabled),
-.syncify-backup-version[data-selected="true"] {
-    border-color: rgba(30, 215, 96, 0.45);
-    background: rgba(30, 215, 96, 0.1);
-}
-
-.syncify-backup-version:active:not(:disabled) {
-    transform: scale(0.99);
-}
-
-.syncify-backup-version:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-}
-
-.syncify-backup-version-main {
+.syncify-status-text {
     display: flex;
-    flex: 1 1 auto;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
 }
 
-.syncify-backup-version-main strong,
-.syncify-backup-version-main span {
+.syncify-status-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.syncify-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--syncify-warning);
+    border-radius: 4px;
+    background: var(--syncify-surface);
+    font-size: 13px;
+}
+
+.syncify-alert[data-kind="error"] {
+    border-left-color: var(--syncify-error);
+}
+
+/* Sections */
+
+.syncify-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--syncify-divider);
+}
+
+.syncify-section-title {
+    margin: 0 0 4px;
+    color: var(--syncify-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* Backups */
+
+.syncify-backup-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.syncify-backup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.syncify-backup:hover:not(:disabled),
+.syncify-backup[data-selected="true"] {
+    background: var(--syncify-surface);
+}
+
+.syncify-backup:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.syncify-radio {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--syncify-muted);
+    border-radius: 50%;
+}
+
+.syncify-backup[data-selected="true"] .syncify-radio {
+    border: 5px solid var(--syncify-accent);
+}
+
+.syncify-backup-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.syncify-backup-date::first-letter {
+    text-transform: uppercase;
+}
+
+.syncify-backup-text > span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.syncify-backup-version-main span,
-.syncify-backup-details {
-    color: var(--spice-subtext);
-    font-size: 12px;
-}
-
-.syncify-backup-details {
-    display: flex;
-    flex: 0 1 auto;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
-.syncify-backup-details span {
-    display: inline-flex;
-    align-items: center;
-    min-width: 0;
-    padding: 4px 8px;
+.syncify-tag {
+    flex: 0 0 auto;
+    padding: 2px 8px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.07);
+    color: var(--syncify-muted);
+    background: var(--syncify-surface);
+    font-size: 12px;
+    font-weight: 600;
 }
 
-.syncify-actions,
-.syncify-footer,
-.syncify-footer-actions {
+.syncify-confirm {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 6px;
+    background: var(--syncify-surface);
+}
+
+.syncify-confirm p {
+    margin: 0;
 }
 
 .syncify-actions {
-    align-items: center;
-}
-
-.syncify-confirm-restore {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
 }
 
-.syncify-footer {
-    align-items: center;
-    justify-content: space-between;
-}
-
-.syncify-footer-actions {
-    justify-content: flex-end;
-}
-
-.syncify-version {
-    color: var(--spice-subtext);
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-.syncify-button,
-.syncify-link-button {
-    border: 0;
-    border-radius: 999px;
-    font-weight: 700;
-    line-height: 1.25;
-    cursor: pointer;
-    transition:
-        color 120ms ease,
-        background-color 120ms ease,
-        box-shadow 120ms ease,
-        opacity 120ms ease,
-        transform 120ms ease;
-}
+/* Buttons */
 
 .syncify-button {
-    padding: 8px 14px;
-    color: var(--spice-button-text, #000);
-    background: var(--spice-button, #1ed760);
+    flex: 0 0 auto;
+    padding: 8px 18px;
+    border: 0;
+    border-radius: 999px;
+    color: var(--syncify-accent-text);
+    background: var(--syncify-accent);
+    font: inherit;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        transform 100ms ease,
+        filter 100ms ease;
 }
 
 .syncify-button:hover:not(:disabled) {
-    background: var(--spice-button-active, #1fdf64);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    filter: brightness(1.08);
+    transform: scale(1.03);
 }
 
-.syncify-button:active:not(:disabled),
-.syncify-link-button:active:not(:disabled) {
-    transform: scale(0.98);
+.syncify-button.secondary {
+    color: var(--syncify-text);
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--syncify-muted);
 }
 
-.syncify-button.secondary,
-.syncify-link-button {
-    color: var(--spice-text);
-    background: rgba(255, 255, 255, 0.11);
+.syncify-button.secondary:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 1px var(--syncify-text);
 }
 
-.syncify-button.secondary:hover:not(:disabled),
-.syncify-link-button:hover:not(:disabled) {
-    color: var(--spice-text);
-    background: rgba(255, 255, 255, 0.18);
+.syncify-button:disabled {
+    cursor: default;
+    opacity: 0.5;
 }
 
-.syncify-button.danger {
-    color: #fff;
-    background: #c92a2a;
-}
-
-.syncify-button.danger:hover:not(:disabled) {
-    background: #e03131;
-}
-
-.syncify-button:disabled,
-.syncify-link-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-}
-
-.syncify-toggle {
-    display: flex;
-    align-items: flex-start;
-    gap: 7px;
-    color: var(--spice-subtext);
-    font-size: 12px;
-    line-height: 1.45;
+.syncify-text-button {
+    padding: 0;
+    border: 0;
+    color: var(--syncify-muted);
+    background: none;
+    font: inherit;
+    font-size: 13px;
     cursor: pointer;
 }
 
-.syncify-toggle input {
+.syncify-text-button:hover:not(:disabled) {
+    color: var(--syncify-text);
+    text-decoration: underline;
+}
+
+.syncify-alert .syncify-text-button {
     flex: 0 0 auto;
-    margin-top: 2px;
+    color: var(--syncify-text);
+    font-weight: 700;
+}
+
+/* Settings */
+
+.syncify-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 40px;
+}
+
+label.syncify-setting {
     cursor: pointer;
 }
 
-.syncify-toggle:has(input:disabled),
-.syncify-toggle input:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-}
-
-.syncify-link-button {
-    padding: 7px 12px;
-    font-size: 12px;
-}
-
-.syncify-message {
+.syncify-setting-text {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.syncify-switch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 20px;
     margin: 0;
-    padding: 8px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    color: var(--spice-text);
-    background: rgba(255, 255, 255, 0.055);
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-.syncify-message::before {
-    flex: 0 0 auto;
-    width: 7px;
-    height: 7px;
-    margin-top: 5px;
     border-radius: 999px;
-    background: var(--spice-subtext);
+    background: var(--syncify-muted);
+    appearance: none;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+}
+
+.syncify-switch::before {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
     content: "";
+    transition: transform 150ms ease;
 }
 
-.syncify-message[data-kind="success"] {
-    border-color: rgba(30, 215, 96, 0.35);
-    background: rgba(30, 215, 96, 0.1);
+.syncify-switch:checked {
+    background: var(--syncify-accent);
 }
 
-.syncify-message[data-kind="success"]::before {
-    background: var(--spice-button-active, #1ed760);
+.syncify-switch:checked::before {
+    transform: translateX(16px);
 }
 
-.syncify-message[data-kind="warning"] {
-    border-color: rgba(246, 195, 67, 0.38);
-    background: rgba(246, 195, 67, 0.1);
+.syncify-switch:disabled {
+    cursor: default;
+    opacity: 0.5;
 }
 
-.syncify-message[data-kind="warning"]::before {
-    background: #f6c343;
+.syncify-select {
+    flex: 0 0 auto;
+    max-width: 55%;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 4px;
+    color: var(--syncify-text);
+    background: var(--syncify-surface);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
 }
 
-.syncify-message[data-kind="error"] {
-    border-color: rgba(255, 107, 107, 0.4);
-    background: rgba(255, 107, 107, 0.1);
+.syncify-select:hover:not(:disabled) {
+    background: var(--syncify-surface-hover);
 }
 
-.syncify-message[data-kind="error"]::before {
-    background: var(--spice-notification-error, #ff6b6b);
+.syncify-select option {
+    color: #fff;
+    background: #282828;
 }
 
-.syncify-message.inline {
-    padding: 7px 9px;
+.syncify-shortcut {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.syncify-key {
+    min-width: 80px;
+    padding: 5px 10px;
+    border: 0;
+    border-radius: 4px;
+    color: var(--syncify-text);
+    background: var(--syncify-surface);
+    box-shadow: inset 0 -2px 0 var(--syncify-divider);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.syncify-key:hover {
+    background: var(--syncify-surface-hover);
+}
+
+.syncify-key[data-recording="true"] {
+    color: var(--syncify-accent);
+    box-shadow: inset 0 0 0 1px var(--syncify-accent);
+}
+
+.syncify-panel :focus-visible {
+    outline: 2px solid var(--syncify-text);
+    outline-offset: 2px;
+}
+
+/* Footer */
+
+.syncify-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--syncify-divider);
+    color: var(--syncify-muted);
+    font-size: 12px;
+}
+
+.syncify-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.syncify-footer .syncify-text-button {
+    font-size: 12px;
 }
 
 @media (max-width: 560px) {
@@ -485,73 +467,20 @@
         padding: 10px 14px 14px !important;
     }
 
-    .syncify-status-row,
-    .syncify-section-header {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .syncify-card {
-        flex-basis: 100%;
-        min-width: 0;
-    }
-
-    .syncify-backup-version {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .syncify-backup-details {
-        justify-content: flex-start;
-    }
-
-    .syncify-actions,
-    .syncify-footer,
-    .syncify-footer-actions {
-        flex-direction: column;
-    }
-
-    .syncify-footer {
+    .syncify-status,
+    .syncify-setting {
         align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .syncify-button,
-    .syncify-link-button {
-        width: 100%;
+    .syncify-select {
+        max-width: none;
+    }
+
+    .syncify-tag {
+        display: none;
     }
 }
-
-.syncify-shortcut-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.syncify-shortcut-key {
-    min-width: 96px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    color: var(--spice-text);
-    background: rgba(255, 255, 255, 0.07);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    text-align: center;
-}
-
-.syncify-shortcut-key[data-recording="true"] {
-    color: var(--spice-button, #1ed760);
-    box-shadow: 0 0 0 1px var(--spice-button, #1ed760) inset;
-}
-
-.syncify-choice-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 16px;
-}
-`;var ae=`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cloud-sync-icon lucide-cloud-sync"><path d="m17 18-1.535 1.605a5 5 0 0 1-8-1.5"/><path d="M17 22v-4h-4"/><path d="M20.996 15.251A4.5 4.5 0 0 0 17.495 8h-1.79a7 7 0 1 0-12.709 5.607"/><path d="M7 10v4h4"/><path d="m7 14 1.535-1.605a5 5 0 0 1 8 1.5"/></svg>
-`;var Me="x-syncify-user-hash";async function Te(e,t,n){let i=await fetch(e,{method:"POST",headers:{"content-type":"application/json",[Me]:t},body:JSON.stringify(n)});if(!i.ok)throw new Error(`Backup failed with HTTP ${i.status}.`)}async function Be(e,t){var s;let n=await fetch(e,{method:"GET",headers:{[Me]:t}});if(n.status===404)return{exists:!1,payload:null,backups:[]};if(!n.ok)throw new Error(`Restore failed with HTTP ${n.status}.`);let i=await n.json(),r=[i,...(s=i.backup_history)!=null?s:[]].slice(0,3);return{exists:!0,payload:i,backups:r}}var C={extensionName:"Syncify",version:"1.1.2",workerUrl:"https://syncify-worker.wsoltani.com",githubUrl:"https://github.com/wSoltani/Syncify",kofiUrl:"https://ko-fi.com/wsoltani",issueUrl:"https://github.com/wSoltani/Syncify/issues/new"};function d(){var t,n,i,r,s,l;let e=window.SyncifyConfig;return{extensionName:(t=B(e==null?void 0:e.extensionName))!=null?t:C.extensionName,version:(n=_e(e==null?void 0:e.version))!=null?n:C.version,workerUrl:(i=B(e==null?void 0:e.workerUrl))!=null?i:C.workerUrl,githubUrl:(r=B(e==null?void 0:e.githubUrl))!=null?r:C.githubUrl,kofiUrl:(s=B(e==null?void 0:e.kofiUrl))!=null?s:C.kofiUrl,issueUrl:(l=B(e==null?void 0:e.issueUrl))!=null?l:C.issueUrl}}function B(e){return _e(e)}function _e(e){return typeof e=="string"&&e.trim()?e.trim():null}var S={key:"s",ctrl:!0,alt:!0,shift:!1,meta:!1},Ct=/^([a-z0-9]|f([1-9]|1[0-2]))$/,Et=250,Nt=40,se=null,j=null,E=null;function Ie(){return/mac/i.test(navigator.platform||navigator.userAgent)}function Ue(e){if(e===null)return null;if(!e||typeof e!="object")return S;let t=e;return typeof t.key!="string"||!Ct.test(t.key)?S:{key:t.key,ctrl:!!t.ctrl,alt:!!t.alt,shift:!!t.shift,meta:!!t.meta}}function w(e){if(!e)return"Off";let t=e.key.toUpperCase();return Ie()?[e.ctrl?"\u2318":"",e.alt?"\u2325":"",e.shift?"\u21E7":"",t].join(""):[e.ctrl&&"Ctrl",e.meta&&"Win",e.alt&&"Alt",e.shift&&"Shift",t].filter(Boolean).join("+")}function Ae(e){if(e.key==="Escape")return{kind:"cancel"};let t=Pt(e.code);if(!t)return{kind:"ignore"};let n=Ie();if(n&&e.ctrlKey)return{kind:"error",message:"Control isn't supported on macOS. Use \u2318 or \u2325 instead."};let i={key:t,ctrl:n?e.metaKey:e.ctrlKey,alt:e.altKey,shift:e.shiftKey,meta:n?!1:e.metaKey},r=t.startsWith("f")&&t.length>1;return!i.ctrl&&!i.alt&&!i.meta&&!r?{kind:"error",message:`Include ${n?"\u2318 or \u2325":"Ctrl or Alt"} so the shortcut doesn't fire while typing.`}:{kind:"shortcut",shortcut:i}}function Pt(e){var n,i;let t=/^(?:Key([A-Z])|Digit([0-9])|(F(?:[1-9]|1[0-2])))$/.exec(e);return t?((i=(n=t[1])!=null?n:t[2])!=null?i:t[3]).toLowerCase():null}function Oe(e){var t;if(E&&Mt(E,e))return!1;try{let n=Spicetify.Mousetrap,i=(t=n.trigger)==null?void 0:t.call(n)._directMap;if(!i)return!1;let r=ce(e);return Object.keys(i).some(s=>s.startsWith(`${r}:`))}catch(n){return!1}}function le(e,t,n=0){if(se=t,j=e,!De()){if(n>=Nt){console.warn("[Syncify]","Spicetify.Keyboard unavailable; shortcut not registered");return}setTimeout(()=>le(j,t,n+1),Et);return}ye(j)}function ye(e){if(j=e,!De()||!se)return;let t=se;try{if(E&&Spicetify.Keyboard._deregisterShortcut(E),E=null,!e)return;Spicetify.Keyboard.registerShortcut(e,n=>{n.preventDefault(),t()}),E=e,console.debug("[Syncify]","Keyboard shortcut registered",w(e))}catch(n){console.warn("[Syncify]","Failed to register keyboard shortcut",n)}}function De(){var e;return typeof((e=Spicetify.Keyboard)==null?void 0:e.registerShortcut)=="function"}function ce(e){return[e.ctrl&&"mod",e.meta&&"meta",e.alt&&"alt",e.shift&&"shift",e.key].filter(Boolean).join("+")}function Mt(e,t){return ce(e)===ce(t)}var ue="both",Tt=["both","topbar","menu"],_=null,I=null,F=!1;function Le(e){return Tt.includes(e)?e:ue}function Re(){var e;return typeof((e=Spicetify.Menu)==null?void 0:e.Item)=="function"}function je(e){_=e.topbarButton,I=e.menuItem}function K(e){let t=e!=="menu"||!I,n=e!=="topbar";if(_!=null&&_.element&&(_.element.style.display=t?"":"none"),!!I)try{n&&!F?(I.register(),F=!0):!n&&F&&(I.deregister(),F=!1)}catch(i){console.warn("[Syncify]","Failed to update profile menu item",i)}}var Y="syncify:config",H={workerUrl:d().workerUrl,autoBackupEnabled:!1,shortcut:S,entryPoint:ue};function N(){var n,i;let e=d(),t=(i=(n=Spicetify.LocalStorage)==null?void 0:n.get(Y))!=null?i:window.localStorage.getItem(Y);if(!t)return k(h({},H),{workerUrl:e.workerUrl});try{let r=JSON.parse(t);return{workerUrl:e.workerUrl,autoBackupEnabled:r.autoBackupEnabled===void 0?H.autoBackupEnabled:!!r.autoBackupEnabled,shortcut:r.shortcut===void 0?H.shortcut:Ue(r.shortcut),entryPoint:Le(r.entryPoint)}}catch(r){return k(h({},H),{workerUrl:e.workerUrl})}}function z(e){var n;let t=JSON.stringify({workerUrl:d().workerUrl,autoBackupEnabled:e.autoBackupEnabled,shortcut:e.shortcut,entryPoint:e.entryPoint});if((n=Spicetify.LocalStorage)!=null&&n.set){Spicetify.LocalStorage.set(Y,t);return}window.localStorage.setItem(Y,t)}function fe(e){return typeof e.workerUrl=="string"&&e.workerUrl.length>0}async function U(e){let t=new TextEncoder().encode(e),n=await crypto.subtle.digest("SHA-256",t);return[...new Uint8Array(n)].map(i=>i.toString(16).padStart(2,"0")).join("")}function pe(e){return JSON.stringify(de(e))}function de(e){return Array.isArray(e)?e.map(de):e&&typeof e=="object"?Object.keys(e).sort().reduce((t,n)=>(t[n]=de(e[n]),t),{}):e}async function me(){let e=await Bt();return U(e)}async function Bt(){var i,r,s,l,c;let e=(i=Spicetify.Platform)==null?void 0:i.UserAPI;if(!(e!=null&&e.getUser))throw new Error("Spicetify Platform UserAPI is unavailable.");let t=await e.getUser(),n=(c=(l=(s=(r=t==null?void 0:t.username)!=null?r:t==null?void 0:t.canonicalUsername)!=null?s:t==null?void 0:t.id)!=null?l:t==null?void 0:t.uri)!=null?c:t==null?void 0:t.displayName;if(!n)throw new Error("Unable to resolve the active Spotify user.");return n}function Fe(){let e=navigator.userAgent;return/Windows/i.test(e)?"Windows":/Mac OS|Macintosh/i.test(e)?"macOS":/Linux/i.test(e)?"Linux":e}var W="spicetify-marketplace";var A="settings";async function Ke(){let e=await ze();if(e.kind!=="ok")return null;try{let t=await We(e.db,"readonly",i=>i.getAll());if(!t)return null;let n={};for(let i of t)typeof(i==null?void 0:i.key)=="string"&&typeof i.value=="string"&&(n[i.key]=i.value);return n}finally{e.db.close()}}async function He(e){let t=await ze();if(t.kind==="unavailable")return"unavailable";let n=t.kind==="ok"?t.db:await _t();if(!n)return"failed";try{return await We(n,"readwrite",r=>{let s;for(let[l,c]of Object.entries(e))s=r.put({key:l,value:c});return s})===null?"failed":"written"}finally{n.close()}}function Ye(){var e;try{return(e=window.indexedDB)!=null?e:null}catch(t){return null}}async function ze(){let e=Ye();return e?await It(e)?{kind:"missing"}:new Promise(t=>{let n=!1,i=e.open(W);i.onupgradeneeded=()=>{n=!0},i.onerror=()=>{console.warn("Syncify could not open Marketplace storage",i.error),t({kind:"unavailable"})},i.onblocked=()=>t({kind:"unavailable"}),i.onsuccess=()=>{let r=i.result;if(n){r.close(),Ut(e).then(()=>t({kind:"missing"}));return}if(!r.objectStoreNames.contains(A)){r.close(),t({kind:"unavailable"});return}t({kind:"ok",db:r})}}):{kind:"unavailable"}}function _t(){let e=Ye();return e?new Promise(t=>{let n=e.open(W,1);n.onupgradeneeded=()=>{let i=n.result;i.objectStoreNames.contains(A)||i.createObjectStore(A,{keyPath:"key"})},n.onerror=()=>{console.warn("Syncify could not create Marketplace storage",n.error),t(null)},n.onblocked=()=>t(null),n.onsuccess=()=>t(n.result)}):Promise.resolve(null)}async function It(e){if(typeof e.databases!="function")return!1;try{return!(await e.databases()).some(n=>n.name===W)}catch(t){return!1}}function Ut(e){return new Promise(t=>{let n=e.deleteDatabase(W);n.onsuccess=()=>t(),n.onerror=()=>t(),n.onblocked=()=>t()})}function We(e,t,n){return new Promise(i=>{let r;try{r=e.transaction(A,t)}catch(y){console.warn("Syncify could not open a Marketplace transaction",y),i(null);return}let s,l=!1,c=y=>{l||(l=!0,i(y))};r.oncomplete=()=>c(s),r.onerror=()=>{console.warn("Syncify Marketplace transaction failed",r.error),c(null)},r.onabort=()=>{console.warn("Syncify Marketplace transaction aborted",r.error),c(null)};let u;try{u=n(r.objectStore(A))}catch(y){console.warn("Syncify Marketplace request could not be issued",y),c(null);return}u&&(u.onsuccess=()=>{s=u.result},u.onerror=()=>{console.warn("Syncify Marketplace request failed",u.error),c(null)})})}var ge="marketplace:",$e=["marketplace:installed-extensions","marketplace:installed-snippets","marketplace:installed-themes"];async function qe(){let e=Lt(),t=await Ke();if(t)for(let[n,i]of Object.entries(t))n.startsWith(ge)&&(e[n]=i);return e}async function $(){let e=await qe();return{keyCount:Object.keys(e).length,hash:await U(pe(e)),installedItemCount:Ot(e),marketplaceAvailable:Dt(e)}}async function Ve(){let e=await qe();return{schema_version:1,metadata:{last_sync_datetime:new Date().toISOString(),device_info:Fe(),marketplace_key_count:Object.keys(e).length},payload_hash:await U(pe(e)),marketplace_data:{keys:e}}}async function Ge(e){var s,l;let t={},n=(l=(s=e.marketplace_data)==null?void 0:s.keys)!=null?l:{};for(let[c,u]of Object.entries(n))c.startsWith(ge)&&(t[c]=u);let i=Object.keys(t);if(i.length===0)return 0;for(let c of i)window.localStorage.setItem(c,t[c]);if(await He(t)==="failed")throw new Error("Syncify could not write to Marketplace storage. Restart Spotify and try the restore again.");return i.length}function Ot(e){return $e.reduce((t,n)=>t+Rt(e[n]),0)}function Dt(e){return!!(window.Marketplace||$e.some(n=>e[n]!==void 0)||e["marketplace:tabs"]!==void 0)}function Je(e,t){return t===0?!1:e===0?!0:e<Math.max(2,Math.floor(t*.5))}function Lt(){let e={};for(let t=0;t<window.localStorage.length;t+=1){let n=window.localStorage.key(t);if(!(n!=null&&n.startsWith(ge)))continue;let i=window.localStorage.getItem(n);i!==null&&(e[n]=i)}return e}function Rt(e){if(!e)return 0;try{let t=JSON.parse(e);return Array.isArray(t)?t.length:0}catch(t){return 0}}async function q(e){if(!fe(e))throw new Error("Syncify backup service is not configured.");let[t,n]=await Promise.all([me(),Ve()]);if(n.metadata.marketplace_key_count===0)throw new Error("Syncify found no Marketplace data to back up. Open Marketplace once so it loads its state, then try again.");return await Te(e.workerUrl,t,n),n}async function O(e){if(!fe(e))throw new Error("Syncify backup service is not configured.");return Be(e.workerUrl,await me())}async function Xe(e,t){let n=t!=null?t:(await O(e)).payload;if(!n)throw new Error("No Syncify cloud backup was found for this Spotify account.");let i=await Ge(n);return{payload:n,restoredCount:i}}async function Ze(){var t,n,i;let e=N();if(!(!e.workerUrl||!e.autoBackupEnabled))try{let[r,s]=await Promise.all([$(),O(e)]),l=(n=(t=s.payload)==null?void 0:t.metadata.marketplace_key_count)!=null?n:0;if(s.exists&&Je(r.keyCount,l)){Spicetify.showNotification("Syncify found a larger cloud backup. Open Syncify to restore before backing up.",!0,8e3);return}if(((i=s.payload)==null?void 0:i.payload_hash)===r.hash||r.keyCount===0)return;await q(e),Spicetify.showNotification("Syncify auto-backup complete")}catch(r){let s=r instanceof Error?r.message:String(r);console.warn("Syncify startup sync failed:",r),Spicetify.showNotification(`Syncify auto-sync skipped: ${s}`,!0,8e3)}}function et(){var Ce;let e=Spicetify.React,t=e.useEffect,n=e.useMemo,i=e.useState,[r,s]=i(()=>N()),[l,c]=i("idle"),[u,y]=i(null),[nt,it]=i(0),[ot,rt]=i(0),[P,at]=i(null),[be,st]=i(null),[p,Q]=i(null),[he,ke]=i([]),[m,M]=i(null),[D,ee]=i(!1),[ct,T]=i(!1),[g,L]=i(!1),[Se,v]=i(null),R=n(()=>d(),[]),we=n(()=>Re(),[]),b=l==="loading",te=(u==null?void 0:u.kind)==="warning"||(u==null?void 0:u.kind)==="error"?u:null,lt=(Ce=p==null?void 0:p.metadata.marketplace_key_count)!=null?Ce:0,yt=!!(p&&be&&p.payload_hash!==be);t(()=>{ve({silent:!0})},[]),t(()=>{if(!g)return;let o=a=>{a.preventDefault(),a.stopImmediatePropagation();let f=Ae(a);if(f.kind!=="ignore"){if(f.kind==="cancel"){L(!1),v(null);return}if(f.kind==="error"){v(f.message);return}if(Oe(f.shortcut)){v(`${w(f.shortcut)} is already used by Spotify or another extension. Try a different combo.`);return}L(!1),ne(f.shortcut)}};return window.addEventListener("keydown",o,!0),()=>window.removeEventListener("keydown",o,!0)},[g,r]);async function xe(){let o=await $();return it(o.keyCount),st(o.hash),rt(o.installedItemCount),at(o.marketplaceAvailable),o}async function ve(o){try{T(!1),c("loading"),o!=null&&o.silent||y({kind:"info",text:"Checking your Syncify backup\u2026"}),await xe();let a=await O(r);Q(a.payload),ke(a.backups),M(a.payload),ee(!0),c(a.exists?"success":"idle"),o!=null&&o.silent||y(a.exists&&a.payload?{kind:"success",text:`Backup found from ${Qe(a.payload.metadata.last_sync_datetime)}.`}:{kind:"info",text:"No backup exists yet. Create one from this device when you're ready."})}catch(a){oe(a)}}function ut(o){let a=k(h({},r),{autoBackupEnabled:o});s(a),z(a),y({kind:"success",text:o?"Automatic backups are on. Syncify will still protect larger cloud backups from being overwritten.":"Automatic backups are off. You can still back up manually."})}function ne(o){let a=k(h({},r),{shortcut:o});s(a),z(a),ye(o),v(null),y({kind:"success",text:o?`${w(o)} now opens Syncify.`:"Keyboard shortcut turned off."})}function ft(o){let a=k(h({},r),{entryPoint:o});s(a),z(a),K(o)}function dt(){v(null),L(!0)}async function pt(){try{T(!1),c("loading"),y({kind:"info",text:"Backing up your extensions and themes\u2026"});let o=await q(r);Q(o),ke(a=>[o,...a.filter(f=>f.payload_hash!==o.payload_hash)].slice(0,3)),M(o),ee(!0),await xe(),c("success"),y({kind:"success",text:`Backed up ${o.metadata.marketplace_key_count} entries.`}),Spicetify.showNotification("Syncify backup complete")}catch(o){oe(o)}}function mt(o=m){if(P===!1){let a="Spicetify Marketplace is required to restore extensions and themes. Install and enable it, then try again.";y({kind:"error",text:a}),Spicetify.showNotification(a,!0,6e3);return}if(!o){let a="No Syncify cloud backup was found for this Spotify account.";y({kind:"error",text:a}),Spicetify.showNotification(a,!0,6e3);return}M(o),T(!0)}async function gt(){try{T(!1),c("loading"),y({kind:"info",text:"Restoring your extensions and themes\u2026"});let{payload:o,restoredCount:a}=await Xe(r,m!=null?m:void 0);Q(o),M(o),ee(!0),c("success"),y({kind:"success",text:`Restored ${a} entries. Reloading Spotify\u2026`}),Spicetify.showNotification("Syncify restore complete. Reloading\u2026"),setTimeout(()=>window.location.reload(),1e3)}catch(o){oe(o)}}function ie(o){if(o.startsWith("mailto:")){window.location.href=o;return}window.open(o,"_blank","noopener,noreferrer")}function oe(o){let a=o instanceof Error?o.message:String(o);c("error"),y({kind:"error",text:a}),Spicetify.showNotification(a,!0,6e3)}function re(o){o.stopPropagation()}return e.createElement("div",{className:"syncify-panel",onClick:re,onMouseDown:re,onPointerDown:re},e.createElement("section",{className:"syncify-hero","aria-label":"Syncify status"},e.createElement("p",{className:"syncify-description"},"Back up your installed extensions and themes, then restore them whenever Spotify or Spicetify needs a fresh setup."),e.createElement("div",{className:"syncify-status-row"},e.createElement("h3",{className:"syncify-heading"},Ft(l,D)),e.createElement("span",{className:"syncify-status-pill","data-kind":Ht(l)},Kt(l,D))),te?e.createElement("p",{className:"syncify-message","data-kind":te.kind},te.text):null),e.createElement("section",{className:"syncify-grid","aria-label":"Syncify backup details"},e.createElement(V,{label:"Backup entries",value:nt}),e.createElement(V,{label:"Extensions/themes",value:ot}),e.createElement(V,{label:"Backup",value:p?`${lt} entries`:D?"None":"Checking",tone:p?"success":D?"warning":"neutral"}),e.createElement(V,{label:"Restore",value:P===null?"Checking":P?"Ready":"Missing",tone:P===null?"neutral":P?"success":"warning"})),p?e.createElement("section",{className:"syncify-section syncify-backup-section"},e.createElement("div",{className:"syncify-section-header"},e.createElement("h4",{className:"syncify-section-title"},"Version history"),e.createElement("span",{className:"syncify-backup-time"},he.length," saved")),e.createElement("div",{className:"syncify-backup-list"},he.map((o,a)=>{let f=(m==null?void 0:m.payload_hash)===o.payload_hash;return e.createElement("button",{className:"syncify-backup-version","data-selected":f?"true":"false",type:"button",key:`${o.payload_hash}-${o.metadata.last_sync_datetime}`,onClick:()=>M(o),disabled:b},e.createElement("span",{className:"syncify-backup-version-main"},e.createElement("strong",null,a===0?"Latest":`Backup ${a+1}`),e.createElement("span",null,Qe(o.metadata.last_sync_datetime))),e.createElement("span",{className:"syncify-backup-details"},e.createElement("span",null,o.metadata.device_info),e.createElement("span",null,o.metadata.marketplace_key_count," entries")))})),yt?e.createElement("p",{className:"syncify-message inline","data-kind":"warning"},"This device differs from your latest backup. Select any saved version to restore it, or back up to add a new version."):null):null,e.createElement("section",{className:"syncify-section compact"},e.createElement("h4",{className:"syncify-section-title"},"Sync controls"),ct?e.createElement("div",{className:"syncify-confirm-restore"},e.createElement("p",{className:"syncify-message inline","data-kind":"warning"},"Restore will replace this device's saved extensions and themes with the selected backup, then reload Spotify."),e.createElement("div",{className:"syncify-actions"},e.createElement("button",{className:"syncify-button secondary",type:"button",onClick:()=>T(!1),disabled:b},"Cancel"),e.createElement("button",{className:"syncify-button danger",type:"button",onClick:gt,disabled:b},"Confirm restore"))):e.createElement("div",{className:"syncify-actions"},e.createElement("button",{className:"syncify-button",type:"button",onClick:pt,disabled:b},"Back up"),e.createElement("button",{className:"syncify-button danger",type:"button",onClick:()=>mt(),disabled:b||!m},"Restore selected"),e.createElement("button",{className:"syncify-button secondary",type:"button",onClick:()=>{ve()},disabled:b},"Refresh status")),e.createElement("label",{className:"syncify-toggle"},e.createElement("input",{type:"checkbox",checked:r.autoBackupEnabled,onChange:o=>ut(o.currentTarget.checked),disabled:b}),e.createElement("span",null,"Auto-backup extensions and themes after startup safety checks"))),e.createElement("section",{className:"syncify-section compact"},e.createElement("h4",{className:"syncify-section-title"},"Show Syncify in"),e.createElement("div",{className:"syncify-choice-group",role:"radiogroup","aria-label":"Where Syncify appears"},jt.map(o=>{let a=o.value!=="topbar";return e.createElement("label",{className:"syncify-toggle",key:o.value},e.createElement("input",{type:"radio",name:"syncify-entry-point",value:o.value,checked:r.entryPoint===o.value,onChange:()=>ft(o.value),disabled:a&&!we}),e.createElement("span",null,o.label))})),we?r.entryPoint==="menu"&&!r.shortcut?e.createElement("p",{className:"syncify-message inline","data-kind":"warning"},"If the profile menu breaks after a Spotify update, turn the keyboard shortcut back on so you can still open Syncify."):null:e.createElement("p",{className:"syncify-message inline","data-kind":"warning"},"The profile menu isn't available in this Spicetify version, so Syncify stays in the top bar.")),e.createElement("section",{className:"syncify-section compact"},e.createElement("h4",{className:"syncify-section-title"},"Keyboard shortcut"),e.createElement("div",{className:"syncify-shortcut-row"},e.createElement("kbd",{className:"syncify-shortcut-key","data-recording":g?"true":"false"},g?"Press keys\u2026":w(r.shortcut)),e.createElement("div",{className:"syncify-actions"},g?e.createElement("button",{className:"syncify-button secondary",type:"button",onClick:()=>{L(!1),v(null)}},"Cancel"):e.createElement("button",{className:"syncify-button secondary",type:"button",onClick:dt},"Change"),e.createElement("button",{className:"syncify-button secondary",type:"button",onClick:()=>ne(S),disabled:g||w(r.shortcut)===w(S)},"Reset"),e.createElement("button",{className:"syncify-button secondary",type:"button",onClick:()=>ne(null),disabled:g||!r.shortcut},"Turn off"))),Se?e.createElement("p",{className:"syncify-message inline","data-kind":"warning"},Se):null),e.createElement("section",{className:"syncify-footer","aria-label":"Syncify links"},e.createElement("span",{className:"syncify-version"},"v",R.version),e.createElement("div",{className:"syncify-footer-actions"},e.createElement("button",{className:"syncify-link-button",type:"button",onClick:()=>ie(R.issueUrl)},"Report an issue"),e.createElement("button",{className:"syncify-link-button",type:"button",onClick:()=>ie(R.githubUrl)},"GitHub"),e.createElement("button",{className:"syncify-link-button",type:"button",onClick:()=>ie(R.kofiUrl)},"Ko-fi"))))}var jt=[{value:"both",label:"Top bar and profile menu"},{value:"topbar",label:"Top bar only"},{value:"menu",label:"Profile menu only"}];function V({label:e,value:t,tone:n="neutral"}){let i=Spicetify.React;return i.createElement("div",{className:"syncify-card","data-tone":n},i.createElement("span",{className:"syncify-card-label"},e),i.createElement("strong",{className:"syncify-card-value"},t))}function Ft(e,t){return e==="loading"?"Checking status\u2026":e==="error"?"Sync needs attention":e==="success"?"Backup available":e==="needs-restore"?"Restore recommended":t?"Ready to back up":"Loading Syncify"}function Kt(e,t){return e==="loading"?"Checking":e==="error"?"Error":e==="success"?"Synced":e==="needs-restore"?"Restore":t?"Ready":"Starting"}function Ht(e){return e==="success"?"success":e==="error"?"error":e==="needs-restore"?"warning":"neutral"}function Qe(e){let t=new Date(e);if(Number.isNaN(t.getTime()))return e;let n=t.toLocaleDateString(void 0,{month:"short",day:"numeric"}),i=t.toLocaleTimeString(void 0,{hour:"2-digit",minute:"2-digit"});return`${n}, ${i}`}var G="[Syncify]";function x(e,t){if(t===void 0){console.debug(G,e);return}console.debug(G,e,t)}function X(e,t){if(t===void 0){console.warn(G,e);return}console.warn(G,e,t)}(function e(){if(!Yt()){setTimeout(e,100);return}x("Spicetify APIs ready"),zt()})();function Yt(){var e;return!!(Spicetify!=null&&Spicetify.Platform&&(Spicetify!=null&&Spicetify.LocalStorage)&&((e=Spicetify==null?void 0:Spicetify.Topbar)!=null&&e.Button)&&(Spicetify!=null&&Spicetify.PopupModal)&&(Spicetify!=null&&Spicetify.React)&&(Spicetify!=null&&Spicetify.ReactDOM)&&(Spicetify!=null&&Spicetify.showNotification))}function zt(){Wt();let e=N();je({topbarButton:$t(),menuItem:Zt()}),K(e.entryPoint),le(e.shortcut,Z),Ze().catch(t=>{X("Startup sync check failed",t)})}function Wt(){let e="syncify-styles";if(document.getElementById(e))return;let t=document.createElement("style");t.id=e,t.textContent=Pe,document.head.appendChild(t)}function $t(){let{extensionName:e}=d(),t=new Spicetify.Topbar.Button(e,ae,n=>{x("Topbar button clicked",J(n)),Z()},!1,!0);return tt(t),Gt(t),en(t),x("Topbar button registered",J(t)),t}function tt(e){var n;let t=e;e.element.style.setProperty("-webkit-app-region","no-drag"),(n=t.button)==null||n.style.setProperty("-webkit-app-region","no-drag")}var qt=".main-actionButtons",Vt=[".main-actionButtons .main-topBar-buddyFeed",".main-actionButtons .main-globalNav-buddyFeed",".main-actionButtons .main-actionButtons-button",".main-actionButtons > button"].join(", ");function Gt(e){if(typeof MutationObserver=="undefined")return;let t=!1,n=()=>{t=!1;let i=e.element,r=document.querySelector(qt);!i||!r||r.contains(i)||(r.prepend(i),Jt(e),tt(e),x("Topbar button re-attached",J(e)))};new MutationObserver(()=>{t||(t=!0,setTimeout(n,250))}).observe(document.body,{childList:!0,subtree:!0}),n()}function Jt(e){let t=Xt(e);if(!t||t.className&&t.className!=="undefined")return;let n=Array.from(document.querySelectorAll(Vt)).find(i=>!e.element.contains(i));n!=null&&n.className&&(t.className=n.className)}function Xt(e){return e.button}function Zt(){var e;if(typeof((e=Spicetify.Menu)==null?void 0:e.Item)!="function")return null;try{return new Spicetify.Menu.Item(d().extensionName,!1,()=>Z(),Qt())}catch(t){return X("Failed to create profile menu item",t),null}}function Qt(){return ae.replace(/\swidth="\d+"/,' width="16"').replace(/\sheight="\d+"/,' height="16"')}function en(e){Object.assign(window,{SyncifyDebug:{button:e,element:e.element,openModal:Z,inspect:()=>J(e),clickElement:()=>{var t;return(t=e.element)==null?void 0:t.click()},clickInnerButton:()=>{var t;return(t=e.button)==null?void 0:t.click()},clickCallback:()=>e.onClick(e)}})}function J(e){var t,n,i,r,s;return{label:e.label,disabled:e.disabled,isRight:e.isRight,hasElement:!!e.element,elementConnected:(t=e.element)==null?void 0:t.isConnected,elementDisabled:(n=e.element)==null?void 0:n.disabled,elementAriaDisabled:(i=e.element)==null?void 0:i.getAttribute("aria-disabled"),elementClass:(r=e.element)==null?void 0:r.className,appRegion:e.element?getComputedStyle(e.element).getPropertyValue("-webkit-app-region"):null,innerButtonAppRegion:e.button?getComputedStyle(e.button).getPropertyValue("-webkit-app-region"):null,pointerEvents:e.element?getComputedStyle(e.element).pointerEvents:null,visibility:e.element?getComputedStyle(e.element).visibility:null,display:e.element?getComputedStyle(e.element).display:null,rect:(s=e.element)==null?void 0:s.getBoundingClientRect().toJSON()}}function Z(){x("Opening modal");let e=document.createElement("div");try{Spicetify.PopupModal.display({title:d().extensionName,content:e,isLarge:!1})}catch(t){throw X("Failed to open PopupModal",t),t}tn(e),on(e)}function tn(e){requestAnimationFrame(()=>{let t=nn(e);t==null||t.classList.add("syncify-modal-shell");let n=t==null?void 0:t.querySelector('button[aria-label*="close" i], button[title*="close" i], .main-trackCreditsModal-header button:last-of-type');n&&(n.classList.add("syncify-modal-close"),n.setAttribute("aria-label",`Close ${d().extensionName}`),n.title="Close",n.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>')})}function nn(e){let t=e.parentElement;for(;t&&t!==document.body;){if(t.querySelector(".main-trackCreditsModal-header"))return t;t=t.parentElement}return e.closest('[class*="trackCreditsModal"]')}function on(e){try{let t=Spicetify.React.createElement(et);if(typeof Spicetify.ReactDOM.createRoot=="function"){Spicetify.ReactDOM.createRoot(e).render(t),x("Modal rendered",{renderer:"createRoot"});return}Spicetify.ReactDOM.render(t,e),x("Modal rendered",{renderer:"render"})}catch(t){throw X("Failed to render modal",t),t}}})();
+`;var st=`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cloud-sync-icon lucide-cloud-sync"><path d="m17 18-1.535 1.605a5 5 0 0 1-8-1.5"/><path d="M17 22v-4h-4"/><path d="M20.996 15.251A4.5 4.5 0 0 0 17.495 8h-1.79a7 7 0 1 0-12.709 5.607"/><path d="M7 10v4h4"/><path d="m7 14 1.535-1.605a5 5 0 0 1 8 1.5"/></svg>
+`;var Tt="x-syncify-user-hash";async function Bt(t,e,n){let o=await fetch(t,{method:"POST",headers:{"content-type":"application/json",[Tt]:e},body:JSON.stringify(n)});if(!o.ok)throw new Error(`Backup failed with HTTP ${o.status}.`)}async function _t(t,e){var s;let n=await fetch(t,{method:"GET",headers:{[Tt]:e}});if(n.status===404)return{exists:!1,payload:null,backups:[]};if(!n.ok)throw new Error(`Restore failed with HTTP ${n.status}.`);let o=await n.json(),r=[o,...(s=o.backup_history)!=null?s:[]].slice(0,3);return{exists:!0,payload:o,backups:r}}var x={extensionName:"Syncify",version:"1.1.2",workerUrl:"https://syncify-worker.wsoltani.com",githubUrl:"https://github.com/wSoltani/Syncify",kofiUrl:"https://ko-fi.com/wsoltani",issueUrl:"https://github.com/wSoltani/Syncify/issues/new"};function p(){var e,n,o,r,s,l;let t=window.SyncifyConfig;return{extensionName:(e=M(t==null?void 0:t.extensionName))!=null?e:x.extensionName,version:(n=It(t==null?void 0:t.version))!=null?n:x.version,workerUrl:(o=M(t==null?void 0:t.workerUrl))!=null?o:x.workerUrl,githubUrl:(r=M(t==null?void 0:t.githubUrl))!=null?r:x.githubUrl,kofiUrl:(s=M(t==null?void 0:t.kofiUrl))!=null?s:x.kofiUrl,issueUrl:(l=M(t==null?void 0:t.issueUrl))!=null?l:x.issueUrl}}function M(t){return It(t)}function It(t){return typeof t=="string"&&t.trim()?t.trim():null}var v={key:"s",ctrl:!0,alt:!0,shift:!1,meta:!1},Ee=/^([a-z0-9]|f([1-9]|1[0-2]))$/,Ce=250,Pe=40,ct=null,L=null,w=null;function Ut(){return/mac/i.test(navigator.platform||navigator.userAgent)}function At(t){if(t===null)return null;if(!t||typeof t!="object")return v;let e=t;return typeof e.key!="string"||!Ee.test(e.key)?v:{key:e.key,ctrl:!!e.ctrl,alt:!!e.alt,shift:!!e.shift,meta:!!e.meta}}function T(t){if(!t)return"Off";let e=t.key.toUpperCase();return Ut()?[t.ctrl?"\u2318":"",t.alt?"\u2325":"",t.shift?"\u21E7":"",e].join(""):[t.ctrl&&"Ctrl",t.meta&&"Win",t.alt&&"Alt",t.shift&&"Shift",e].filter(Boolean).join("+")}function Dt(t){if(t.key==="Escape")return{kind:"cancel"};let e=Ne(t.code);if(!e)return{kind:"ignore"};let n=Ut();if(n&&t.ctrlKey)return{kind:"error",message:"Control isn't supported on macOS. Use \u2318 or \u2325 instead."};let o={key:e,ctrl:n?t.metaKey:t.ctrlKey,alt:t.altKey,shift:t.shiftKey,meta:n?!1:t.metaKey},r=e.startsWith("f")&&e.length>1;return!o.ctrl&&!o.alt&&!o.meta&&!r?{kind:"error",message:`Include ${n?"\u2318 or \u2325":"Ctrl or Alt"} so the shortcut doesn't fire while typing.`}:{kind:"shortcut",shortcut:o}}function Ne(t){var n,o;let e=/^(?:Key([A-Z])|Digit([0-9])|(F(?:[1-9]|1[0-2])))$/.exec(t);return e?((o=(n=e[1])!=null?n:e[2])!=null?o:e[3]).toLowerCase():null}function Ot(t){var e;if(w&&Me(w,t))return!1;try{let n=Spicetify.Mousetrap,o=(e=n.trigger)==null?void 0:e.call(n)._directMap;if(!o)return!1;let r=lt(t);return Object.keys(o).some(s=>s.startsWith(`${r}:`))}catch(n){return!1}}function yt(t,e,n=0){if(ct=e,L=t,!Rt()){if(n>=Pe){console.warn("[Syncify]","Spicetify.Keyboard unavailable; shortcut not registered");return}setTimeout(()=>yt(L,e,n+1),Ce);return}ut(L)}function ut(t){if(L=t,!Rt()||!ct)return;let e=ct;try{if(w&&Spicetify.Keyboard._deregisterShortcut(w),w=null,!t)return;Spicetify.Keyboard.registerShortcut(t,n=>{n.preventDefault(),e()}),w=t,console.debug("[Syncify]","Keyboard shortcut registered",T(t))}catch(n){console.warn("[Syncify]","Failed to register keyboard shortcut",n)}}function Rt(){var t;return typeof((t=Spicetify.Keyboard)==null?void 0:t.registerShortcut)=="function"}function lt(t){return[t.ctrl&&"mod",t.meta&&"meta",t.alt&&"alt",t.shift&&"shift",t.key].filter(Boolean).join("+")}function Me(t,e){return lt(t)===lt(e)}var ft="both",Te=["both","topbar","menu"],B=null,_=null,j=!1;function Lt(t){return Te.includes(t)?t:ft}function jt(){var t;return typeof((t=Spicetify.Menu)==null?void 0:t.Item)=="function"}function Ft(t){B=t.topbarButton,_=t.menuItem}function F(t){let e=t!=="menu"||!_,n=t!=="topbar";if(B!=null&&B.element&&(B.element.style.display=e?"":"none"),!!_)try{n&&!j?(_.register(),j=!0):!n&&j&&(_.deregister(),j=!1)}catch(o){console.warn("[Syncify]","Failed to update profile menu item",o)}}var H="syncify:config",K={workerUrl:p().workerUrl,autoBackupEnabled:!1,shortcut:v,entryPoint:ft};function E(){var n,o;let t=p(),e=(o=(n=Spicetify.LocalStorage)==null?void 0:n.get(H))!=null?o:window.localStorage.getItem(H);if(!e)return h(m({},K),{workerUrl:t.workerUrl});try{let r=JSON.parse(e);return{workerUrl:t.workerUrl,autoBackupEnabled:r.autoBackupEnabled===void 0?K.autoBackupEnabled:!!r.autoBackupEnabled,shortcut:r.shortcut===void 0?K.shortcut:At(r.shortcut),entryPoint:Lt(r.entryPoint)}}catch(r){return h(m({},K),{workerUrl:t.workerUrl})}}function Y(t){var n;let e=JSON.stringify({workerUrl:p().workerUrl,autoBackupEnabled:t.autoBackupEnabled,shortcut:t.shortcut,entryPoint:t.entryPoint});if((n=Spicetify.LocalStorage)!=null&&n.set){Spicetify.LocalStorage.set(H,e);return}window.localStorage.setItem(H,e)}function dt(t){return typeof t.workerUrl=="string"&&t.workerUrl.length>0}async function z(t){let e=new TextEncoder().encode(t),n=await crypto.subtle.digest("SHA-256",e);return[...new Uint8Array(n)].map(o=>o.toString(16).padStart(2,"0")).join("")}function Kt(t){return JSON.stringify(pt(t))}function pt(t){return Array.isArray(t)?t.map(pt):t&&typeof t=="object"?Object.keys(t).sort().reduce((e,n)=>(e[n]=pt(t[n]),e),{}):t}async function mt(){let t=await Be();return z(t)}async function Be(){var o,r,s,l,c;let t=(o=Spicetify.Platform)==null?void 0:o.UserAPI;if(!(t!=null&&t.getUser))throw new Error("Spicetify Platform UserAPI is unavailable.");let e=await t.getUser(),n=(c=(l=(s=(r=e==null?void 0:e.username)!=null?r:e==null?void 0:e.canonicalUsername)!=null?s:e==null?void 0:e.id)!=null?l:e==null?void 0:e.uri)!=null?c:e==null?void 0:e.displayName;if(!n)throw new Error("Unable to resolve the active Spotify user.");return n}function Ht(){let t=navigator.userAgent;return/Windows/i.test(t)?"Windows":/Mac OS|Macintosh/i.test(t)?"macOS":/Linux/i.test(t)?"Linux":t}var W="spicetify-marketplace";var I="settings";async function Yt(){let t=await $t();if(t.kind!=="ok")return null;try{let e=await qt(t.db,"readonly",o=>o.getAll());if(!e)return null;let n={};for(let o of e)typeof(o==null?void 0:o.key)=="string"&&typeof o.value=="string"&&(n[o.key]=o.value);return n}finally{t.db.close()}}async function zt(t){let e=await $t();if(e.kind==="unavailable")return"unavailable";let n=e.kind==="ok"?e.db:await _e();if(!n)return"failed";try{return await qt(n,"readwrite",r=>{let s;for(let[l,c]of Object.entries(t))s=r.put({key:l,value:c});return s})===null?"failed":"written"}finally{n.close()}}function Wt(){var t;try{return(t=window.indexedDB)!=null?t:null}catch(e){return null}}async function $t(){let t=Wt();return t?await Ie(t)?{kind:"missing"}:new Promise(e=>{let n=!1,o=t.open(W);o.onupgradeneeded=()=>{n=!0},o.onerror=()=>{console.warn("Syncify could not open Marketplace storage",o.error),e({kind:"unavailable"})},o.onblocked=()=>e({kind:"unavailable"}),o.onsuccess=()=>{let r=o.result;if(n){r.close(),Ue(t).then(()=>e({kind:"missing"}));return}if(!r.objectStoreNames.contains(I)){r.close(),e({kind:"unavailable"});return}e({kind:"ok",db:r})}}):{kind:"unavailable"}}function _e(){let t=Wt();return t?new Promise(e=>{let n=t.open(W,1);n.onupgradeneeded=()=>{let o=n.result;o.objectStoreNames.contains(I)||o.createObjectStore(I,{keyPath:"key"})},n.onerror=()=>{console.warn("Syncify could not create Marketplace storage",n.error),e(null)},n.onblocked=()=>e(null),n.onsuccess=()=>e(n.result)}):Promise.resolve(null)}async function Ie(t){if(typeof t.databases!="function")return!1;try{return!(await t.databases()).some(n=>n.name===W)}catch(e){return!1}}function Ue(t){return new Promise(e=>{let n=t.deleteDatabase(W);n.onsuccess=()=>e(),n.onerror=()=>e(),n.onblocked=()=>e()})}function qt(t,e,n){return new Promise(o=>{let r;try{r=t.transaction(I,e)}catch(y){console.warn("Syncify could not open a Marketplace transaction",y),o(null);return}let s,l=!1,c=y=>{l||(l=!0,o(y))};r.oncomplete=()=>c(s),r.onerror=()=>{console.warn("Syncify Marketplace transaction failed",r.error),c(null)},r.onabort=()=>{console.warn("Syncify Marketplace transaction aborted",r.error),c(null)};let u;try{u=n(r.objectStore(I))}catch(y){console.warn("Syncify Marketplace request could not be issued",y),c(null);return}u&&(u.onsuccess=()=>{s=u.result},u.onerror=()=>{console.warn("Syncify Marketplace request failed",u.error),c(null)})})}var ht="marketplace:",Vt=["marketplace:installed-extensions","marketplace:installed-snippets","marketplace:installed-themes"];async function Gt(){let t=Fe(),e=await Yt();if(e)for(let[n,o]of Object.entries(e))n.startsWith(ht)&&(t[n]=o);return t}var De=new Set(["marketplace:active-tab","marketplace:sort"]),Oe="marketplace:installed:",Re=["stars","tags","lastUpdated","created"];async function $(t){let e={};for(let[n,o]of Object.entries(t))De.has(n)||(e[n]=n.startsWith(Oe)?Le(o):o);return z(Kt(e))}function Le(t){try{let e=JSON.parse(t);if(!e||typeof e!="object"||Array.isArray(e))return t;for(let n of Re)delete e[n];return e}catch(e){return t}}async function q(){let t=await Gt();return{keyCount:Object.keys(t).length,hash:await $(t),installedItemCount:gt(t),marketplaceAvailable:je(t)}}async function Jt(){let t=await Gt();return{schema_version:1,metadata:{last_sync_datetime:new Date().toISOString(),device_info:Ht(),marketplace_key_count:Object.keys(t).length},payload_hash:await $(t),marketplace_data:{keys:t}}}async function Xt(t){var s,l;let e={},n=(l=(s=t.marketplace_data)==null?void 0:s.keys)!=null?l:{};for(let[c,u]of Object.entries(n))c.startsWith(ht)&&(e[c]=u);let o=Object.keys(e);if(o.length===0)return 0;for(let c of o)window.localStorage.setItem(c,e[c]);if(await zt(e)==="failed")throw new Error("Syncify could not write to Marketplace storage. Restart Spotify and try the restore again.");return o.length}function gt(t){return Vt.reduce((e,n)=>e+Ke(t[n]),0)}function je(t){return!!(window.Marketplace||Vt.some(n=>t[n]!==void 0)||t["marketplace:tabs"]!==void 0)}function Zt(t,e){return e===0?!1:t===0?!0:t<Math.max(2,Math.floor(e*.5))}function Fe(){let t={};for(let e=0;e<window.localStorage.length;e+=1){let n=window.localStorage.key(e);if(!(n!=null&&n.startsWith(ht)))continue;let o=window.localStorage.getItem(n);o!==null&&(t[n]=o)}return t}function Ke(t){if(!t)return 0;try{let e=JSON.parse(t);return Array.isArray(e)?e.length:0}catch(e){return 0}}async function V(t){if(!dt(t))throw new Error("Syncify backup service is not configured.");let[e,n]=await Promise.all([mt(),Jt()]);if(n.metadata.marketplace_key_count===0)throw new Error("Syncify found no Marketplace data to back up. Open Marketplace once so it loads its state, then try again.");return await Bt(t.workerUrl,e,n),n}async function U(t){var o;if(!dt(t))throw new Error("Syncify backup service is not configured.");let e=await _t(t.workerUrl,await mt()),n=await Promise.all(e.backups.map(He));return h(m({},e),{payload:(o=n[0])!=null?o:null,backups:n})}async function He(t){var n,o;let e=(o=(n=t.marketplace_data)==null?void 0:n.keys)!=null?o:{};return h(m({},t),{payload_hash:await $(e)})}async function Qt(t,e){let n=e!=null?e:(await U(t)).payload;if(!n)throw new Error("No Syncify cloud backup was found for this Spotify account.");let o=await Xt(n);return{payload:n,restoredCount:o}}async function te(){var e,n,o;let t=E();if(!(!t.workerUrl||!t.autoBackupEnabled))try{let[r,s]=await Promise.all([q(),U(t)]),l=(n=(e=s.payload)==null?void 0:e.metadata.marketplace_key_count)!=null?n:0;if(s.exists&&Zt(r.keyCount,l)){Spicetify.showNotification("Syncify found a larger cloud backup. Open Syncify to restore before backing up.",!0,8e3);return}if(((o=s.payload)==null?void 0:o.payload_hash)===r.hash||r.keyCount===0)return;await V(t),Spicetify.showNotification("Syncify auto-backup complete")}catch(r){let s=r instanceof Error?r.message:String(r);console.warn("Syncify startup sync failed:",r),Spicetify.showNotification(`Syncify auto-sync skipped: ${s}`,!0,8e3)}}function ne(){let t=Spicetify.React,e=t.useEffect,n=t.useMemo,o=t.useState,[r,s]=o(()=>E()),[l,c]=o("idle"),[u,y]=o(null),[re,ie]=o(0),[bt,ae]=o(null),[A,se]=o(null),[C,tt]=o(null),[St,kt]=o([]),[f,P]=o(null),[xt,et]=o(!1),[ce,k]=o(!1),[g,D]=o(!1),[wt,N]=o(null),O=n(()=>p(),[]),nt=n(()=>jt(),[]),b=l==="loading",R=(u==null?void 0:u.kind)==="warning"||(u==null?void 0:u.kind)==="error"?u:null,le=!!(C&&A&&C.payload_hash!==A);e(()=>{Et({silent:!0})},[]),e(()=>{if(!g)return;let i=a=>{a.preventDefault(),a.stopImmediatePropagation();let d=Dt(a);if(d.kind!=="ignore"){if(d.kind==="cancel"){D(!1),N(null);return}if(d.kind==="error"){N(d.message);return}if(Ot(d.shortcut)){N(`${T(d.shortcut)} is already used by Spotify or another extension. Try a different combo.`);return}D(!1),ot(d.shortcut)}};return window.addEventListener("keydown",i,!0),()=>window.removeEventListener("keydown",i,!0)},[g,r]);async function vt(){let i=await q();return se(i.hash),ie(i.installedItemCount),ae(i.marketplaceAvailable),i}async function Et(i){try{k(!1),c("loading"),i!=null&&i.silent||y({kind:"info",text:"Checking your Syncify backup\u2026"}),await vt();let a=await U(r);tt(a.payload),kt(a.backups),P(a.payload),et(!0),c(a.exists?"success":"idle"),i!=null&&i.silent||y(a.exists&&a.payload?{kind:"success",text:`Backup found from ${G(a.payload.metadata.last_sync_datetime)}.`}:{kind:"info",text:"No backup exists yet. Create one from this device when you're ready."})}catch(a){it(a)}}function ye(i){let a=h(m({},r),{autoBackupEnabled:i});s(a),Y(a),y({kind:"success",text:i?"Automatic backups are on. Syncify will still protect larger cloud backups from being overwritten.":"Automatic backups are off. You can still back up manually."})}function ot(i){let a=h(m({},r),{shortcut:i});s(a),Y(a),ut(i),N(null),y({kind:"success",text:i?`${T(i)} now opens Syncify.`:"Keyboard shortcut turned off."})}function ue(i){let a=h(m({},r),{entryPoint:i});s(a),Y(a),F(i)}function fe(){N(null),D(!0)}async function de(){try{k(!1),c("loading"),y({kind:"info",text:"Backing up your extensions and themes\u2026"});let i=await V(r);tt(i),kt(a=>[i,...a.filter(d=>d.payload_hash!==i.payload_hash)].slice(0,3)),P(i),et(!0),await vt(),c("success"),y({kind:"success",text:`Backed up ${i.metadata.marketplace_key_count} entries.`}),Spicetify.showNotification("Syncify backup complete")}catch(i){it(i)}}function pe(i=f){if(bt===!1){let a="Spicetify Marketplace is required to restore extensions and themes. Install and enable it, then try again.";y({kind:"error",text:a}),Spicetify.showNotification(a,!0,6e3);return}if(!i){let a="No Syncify cloud backup was found for this Spotify account.";y({kind:"error",text:a}),Spicetify.showNotification(a,!0,6e3);return}P(i),k(!0)}async function me(){try{k(!1),c("loading"),y({kind:"info",text:"Restoring your extensions and themes\u2026"});let{payload:i,restoredCount:a}=await Qt(r,f!=null?f:void 0);tt(i),P(i),et(!0),c("success"),y({kind:"success",text:`Restored ${a} entries. Reloading Spotify\u2026`}),Spicetify.showNotification("Syncify restore complete. Reloading\u2026"),setTimeout(()=>window.location.reload(),1e3)}catch(i){it(i)}}function rt(i){if(i.startsWith("mailto:")){window.location.href=i;return}window.open(i,"_blank","noopener,noreferrer")}function it(i){let a=i instanceof Error?i.message:String(i);c("error"),y({kind:"error",text:a}),Spicetify.showNotification(a,!0,6e3)}function at(i){i.stopPropagation()}let he=xt?C?le?"Changes since your last backup":"Everything is backed up":"No backup yet":l==="error"?"Couldn't check your backup":"Checking your backup\u2026",Ct=xt?C?`Last backup ${G(C.metadata.last_sync_datetime)}`:"Save your extensions and themes so you can restore them after a reinstall or on another computer.":null;return t.createElement("div",{className:"syncify-panel",onClick:at,onMouseDown:at,onPointerDown:at},t.createElement("section",{className:"syncify-status","aria-live":"polite"},t.createElement("div",{className:"syncify-status-text"},t.createElement("h3",{className:"syncify-status-title"},he),t.createElement("p",{className:"syncify-muted"},Ct?`${Ct} \xB7 `:"",ee(re)," on this device")),t.createElement("button",{className:"syncify-button",type:"button",onClick:de,disabled:b},b?"Working\u2026":"Back up now")),R?t.createElement("div",{className:"syncify-alert","data-kind":R.kind},t.createElement("span",null,R.text),R.kind==="error"?t.createElement("button",{className:"syncify-text-button",type:"button",onClick:()=>{Et()},disabled:b},"Try again"):null):null,St.length>0?t.createElement("section",{className:"syncify-section","aria-label":"Backups"},t.createElement("h4",{className:"syncify-section-title"},"Backups"),t.createElement("div",{className:"syncify-backup-list",role:"radiogroup"},St.map(i=>{let a=(f==null?void 0:f.payload_hash)===i.payload_hash,d=i.payload_hash===A;return t.createElement("button",{className:"syncify-backup",role:"radio","aria-checked":a,"data-selected":a?"true":"false",type:"button",key:`${i.payload_hash}-${i.metadata.last_sync_datetime}`,onClick:()=>{P(i),k(!1)},disabled:b},t.createElement("span",{className:"syncify-radio","aria-hidden":"true"}),t.createElement("span",{className:"syncify-backup-text"},t.createElement("span",{className:"syncify-backup-date"},G(i.metadata.last_sync_datetime)),t.createElement("span",{className:"syncify-muted"},ee(gt(i.marketplace_data.keys))," ","\xB7 ",i.metadata.device_info)),d?t.createElement("span",{className:"syncify-tag"},"On this device"):null)})),bt===!1?t.createElement("p",{className:"syncify-muted"},"Install Spicetify Marketplace to restore a backup."):ce?t.createElement("div",{className:"syncify-confirm"},t.createElement("p",null,"Replace this device's extensions and themes with the backup from"," ",f?G(f.metadata.last_sync_datetime):"the cloud","? Spotify will reload."),t.createElement("div",{className:"syncify-actions"},t.createElement("button",{className:"syncify-button secondary",type:"button",onClick:()=>k(!1),disabled:b},"Cancel"),t.createElement("button",{className:"syncify-button",type:"button",onClick:me,disabled:b},"Restore"))):t.createElement("div",{className:"syncify-actions"},t.createElement("button",{className:"syncify-button secondary",type:"button",onClick:()=>pe(),disabled:b||!f||f.payload_hash===A},"Restore selected backup"))):null,t.createElement("section",{className:"syncify-section","aria-label":"Settings"},t.createElement("h4",{className:"syncify-section-title"},"Settings"),t.createElement("label",{className:"syncify-setting"},t.createElement("span",{className:"syncify-setting-text"},t.createElement("span",null,"Back up automatically"),t.createElement("span",{className:"syncify-muted"},"When Spotify starts and something has changed")),t.createElement("input",{className:"syncify-switch",type:"checkbox",role:"switch",checked:r.autoBackupEnabled,onChange:i=>ye(i.currentTarget.checked),disabled:b})),t.createElement("label",{className:"syncify-setting"},t.createElement("span",{className:"syncify-setting-text"},t.createElement("span",null,"Open Syncify from"),nt?r.entryPoint==="menu"&&!r.shortcut?t.createElement("span",{className:"syncify-muted"},"Keep a shortcut in case a Spotify update breaks the menu"):null:t.createElement("span",{className:"syncify-muted"},"The profile menu isn't available in this Spicetify version")),t.createElement("select",{className:"syncify-select",value:nt?r.entryPoint:"topbar",onChange:i=>ue(i.currentTarget.value),disabled:!nt},Ye.map(i=>t.createElement("option",{key:i.value,value:i.value},i.label)))),t.createElement("div",{className:"syncify-setting"},t.createElement("span",{className:"syncify-setting-text"},t.createElement("span",null,"Keyboard shortcut"),wt?t.createElement("span",{className:"syncify-muted","data-kind":"warning"},wt):g?t.createElement("span",{className:"syncify-muted"},"Press a key combination, or Esc to cancel"):null),t.createElement("span",{className:"syncify-shortcut"},r.shortcut&&!g?t.createElement("button",{className:"syncify-text-button",type:"button",onClick:()=>ot(null)},"Turn off"):null,!r.shortcut&&!g?t.createElement("button",{className:"syncify-text-button",type:"button",onClick:()=>ot(v)},"Use default"):null,t.createElement("button",{className:"syncify-key",type:"button","data-recording":g?"true":"false",onClick:()=>g?D(!1):fe(),title:"Click to change"},g?"Press keys\u2026":r.shortcut?T(r.shortcut):"Off")))),t.createElement("footer",{className:"syncify-footer"},t.createElement("span",null,"Syncify ",O.version),t.createElement("span",{className:"syncify-footer-links"},t.createElement("button",{className:"syncify-text-button",type:"button",onClick:()=>rt(O.issueUrl)},"Report an issue"),t.createElement("button",{className:"syncify-text-button",type:"button",onClick:()=>rt(O.githubUrl)},"GitHub"),t.createElement("button",{className:"syncify-text-button",type:"button",onClick:()=>rt(O.kofiUrl)},"Support on Ko-fi"))))}var Ye=[{value:"both",label:"Top bar and profile menu"},{value:"topbar",label:"Top bar"},{value:"menu",label:"Profile menu"}];function ee(t){return t===1?"1 extension or theme":`${t} extensions and themes`}function G(t){let e=new Date(t);if(Number.isNaN(e.getTime()))return t;let n=e.toLocaleTimeString(void 0,{hour:"2-digit",minute:"2-digit"}),o=new Date,r=new Date(o);return r.setDate(o.getDate()-1),e.toDateString()===o.toDateString()?`today, ${n}`:e.toDateString()===r.toDateString()?`yesterday, ${n}`:`${e.toLocaleDateString(void 0,{month:"short",day:"numeric",year:e.getFullYear()===o.getFullYear()?void 0:"numeric"})}, ${n}`}var J="[Syncify]";function S(t,e){if(e===void 0){console.debug(J,t);return}console.debug(J,t,e)}function Z(t,e){if(e===void 0){console.warn(J,t);return}console.warn(J,t,e)}(function t(){if(!ze()){setTimeout(t,100);return}S("Spicetify APIs ready"),We()})();function ze(){var t;return!!(Spicetify!=null&&Spicetify.Platform&&(Spicetify!=null&&Spicetify.LocalStorage)&&((t=Spicetify==null?void 0:Spicetify.Topbar)!=null&&t.Button)&&(Spicetify!=null&&Spicetify.PopupModal)&&(Spicetify!=null&&Spicetify.React)&&(Spicetify!=null&&Spicetify.ReactDOM)&&(Spicetify!=null&&Spicetify.showNotification))}function We(){$e();let t=E();Ft({topbarButton:qe(),menuItem:Qe()}),F(t.entryPoint),yt(t.shortcut,Q),te().catch(e=>{Z("Startup sync check failed",e)})}function $e(){let t="syncify-styles";if(document.getElementById(t))return;let e=document.createElement("style");e.id=t,e.textContent=Mt,document.head.appendChild(e)}function qe(){let{extensionName:t}=p(),e=new Spicetify.Topbar.Button(t,st,n=>{S("Topbar button clicked",X(n)),Q()},!1,!0);return oe(e),Je(e),en(e),S("Topbar button registered",X(e)),e}function oe(t){var n;let e=t;t.element.style.setProperty("-webkit-app-region","no-drag"),(n=e.button)==null||n.style.setProperty("-webkit-app-region","no-drag")}var Ve=".main-actionButtons",Ge=[".main-actionButtons .main-topBar-buddyFeed",".main-actionButtons .main-globalNav-buddyFeed",".main-actionButtons .main-actionButtons-button",".main-actionButtons > button"].join(", ");function Je(t){if(typeof MutationObserver=="undefined")return;let e=!1,n=()=>{e=!1;let o=t.element,r=document.querySelector(Ve);!o||!r||r.contains(o)||(r.prepend(o),Xe(t),oe(t),S("Topbar button re-attached",X(t)))};new MutationObserver(()=>{e||(e=!0,setTimeout(n,250))}).observe(document.body,{childList:!0,subtree:!0}),n()}function Xe(t){let e=Ze(t);if(!e||e.className&&e.className!=="undefined")return;let n=Array.from(document.querySelectorAll(Ge)).find(o=>!t.element.contains(o));n!=null&&n.className&&(e.className=n.className)}function Ze(t){return t.button}function Qe(){var t;if(typeof((t=Spicetify.Menu)==null?void 0:t.Item)!="function")return null;try{return new Spicetify.Menu.Item(p().extensionName,!1,()=>Q(),tn())}catch(e){return Z("Failed to create profile menu item",e),null}}function tn(){return st.replace(/\swidth="\d+"/,' width="16"').replace(/\sheight="\d+"/,' height="16"')}function en(t){Object.assign(window,{SyncifyDebug:{button:t,element:t.element,openModal:Q,inspect:()=>X(t),clickElement:()=>{var e;return(e=t.element)==null?void 0:e.click()},clickInnerButton:()=>{var e;return(e=t.button)==null?void 0:e.click()},clickCallback:()=>t.onClick(t)}})}function X(t){var e,n,o,r,s;return{label:t.label,disabled:t.disabled,isRight:t.isRight,hasElement:!!t.element,elementConnected:(e=t.element)==null?void 0:e.isConnected,elementDisabled:(n=t.element)==null?void 0:n.disabled,elementAriaDisabled:(o=t.element)==null?void 0:o.getAttribute("aria-disabled"),elementClass:(r=t.element)==null?void 0:r.className,appRegion:t.element?getComputedStyle(t.element).getPropertyValue("-webkit-app-region"):null,innerButtonAppRegion:t.button?getComputedStyle(t.button).getPropertyValue("-webkit-app-region"):null,pointerEvents:t.element?getComputedStyle(t.element).pointerEvents:null,visibility:t.element?getComputedStyle(t.element).visibility:null,display:t.element?getComputedStyle(t.element).display:null,rect:(s=t.element)==null?void 0:s.getBoundingClientRect().toJSON()}}function Q(){S("Opening modal");let t=document.createElement("div");try{Spicetify.PopupModal.display({title:p().extensionName,content:t,isLarge:!1})}catch(e){throw Z("Failed to open PopupModal",e),e}nn(t),rn(t)}function nn(t){requestAnimationFrame(()=>{let e=on(t);e==null||e.classList.add("syncify-modal-shell");let n=e==null?void 0:e.querySelector('button[aria-label*="close" i], button[title*="close" i], .main-trackCreditsModal-header button:last-of-type');n&&(n.classList.add("syncify-modal-close"),n.setAttribute("aria-label",`Close ${p().extensionName}`),n.title="Close",n.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>')})}function on(t){let e=t.parentElement;for(;e&&e!==document.body;){if(e.querySelector(".main-trackCreditsModal-header"))return e;e=e.parentElement}return t.closest('[class*="trackCreditsModal"]')}function rn(t){try{let e=Spicetify.React.createElement(ne);if(typeof Spicetify.ReactDOM.createRoot=="function"){Spicetify.ReactDOM.createRoot(t).render(e),S("Modal rendered",{renderer:"createRoot"});return}Spicetify.ReactDOM.render(e,t),S("Modal rendered",{renderer:"render"})}catch(e){throw Z("Failed to render modal",e),e}}})();

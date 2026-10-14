@@ -6,7 +6,11 @@ import type {
 } from "../types/syncify";
 import { hasWorkerUrl } from "./config";
 import { getUserHash } from "./user";
-import { createPayload, restoreMarketplaceKeys } from "./marketplace";
+import {
+  createPayload,
+  hashMarketplaceKeys,
+  restoreMarketplaceKeys,
+} from "./marketplace";
 
 export async function backupNow(
   config: SyncifyConfig,
@@ -37,7 +41,20 @@ export async function fetchRemoteState(
     throw new Error("Syncify backup service is not configured.");
   }
 
-  return downloadPayload(config.workerUrl, await getUserHash());
+  const remote = await downloadPayload(config.workerUrl, await getUserHash());
+
+  // Backups made by older versions carry a hash computed over every key, so
+  // recompute it with the current rules. Otherwise updating Syncify alone would
+  // make every unchanged install look different and re-upload.
+  const backups = await Promise.all(remote.backups.map(withCurrentHash));
+  return { ...remote, payload: backups[0] ?? null, backups };
+}
+
+async function withCurrentHash(
+  payload: SyncifyPayload,
+): Promise<SyncifyPayload> {
+  const keys = payload.marketplace_data?.keys ?? {};
+  return { ...payload, payload_hash: await hashMarketplaceKeys(keys) };
 }
 
 export async function restoreNow(

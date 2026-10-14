@@ -35,12 +35,48 @@ export async function collectMarketplaceKeys(): Promise<
   return keys;
 }
 
+// Marketplace rewrites these while you browse it, without anything you have
+// installed changing. They are still backed up, but leaving them out of the
+// hash stops them from triggering a new upload on their own.
+const UI_STATE_KEYS = new Set(["marketplace:active-tab", "marketplace:sort"]);
+const INSTALLED_ITEM_PREFIX = "marketplace:installed:";
+const REFRESHED_ITEM_FIELDS = ["stars", "tags", "lastUpdated", "created"];
+
+export async function hashMarketplaceKeys(
+  keys: Record<string, string>,
+): Promise<string> {
+  const significant: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(keys)) {
+    if (UI_STATE_KEYS.has(key)) continue;
+    significant[key] = key.startsWith(INSTALLED_ITEM_PREFIX)
+      ? withoutRefreshedFields(value)
+      : value;
+  }
+
+  return sha256Hex(stableStringify(significant));
+}
+
+function withoutRefreshedFields(raw: string): unknown {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return raw;
+    }
+
+    for (const field of REFRESHED_ITEM_FIELDS) delete parsed[field];
+    return parsed;
+  } catch {
+    return raw;
+  }
+}
+
 export async function summarizeMarketplaceState(): Promise<SyncifySnapshotSummary> {
   const keys = await collectMarketplaceKeys();
 
   return {
     keyCount: Object.keys(keys).length,
-    hash: await sha256Hex(stableStringify(keys)),
+    hash: await hashMarketplaceKeys(keys),
     installedItemCount: countInstalledItems(keys),
     marketplaceAvailable: isMarketplaceAvailable(keys),
   };
@@ -56,7 +92,7 @@ export async function createPayload(): Promise<SyncifyPayload> {
       device_info: getDeviceInfo(),
       marketplace_key_count: Object.keys(keys).length,
     },
-    payload_hash: await sha256Hex(stableStringify(keys)),
+    payload_hash: await hashMarketplaceKeys(keys),
     marketplace_data: { keys },
   };
 }
@@ -91,7 +127,7 @@ export async function restoreMarketplaceKeys(
   return restoredKeys.length;
 }
 
-function countInstalledItems(keys: Record<string, string>): number {
+export function countInstalledItems(keys: Record<string, string>): number {
   return INSTALLED_LIST_KEYS.reduce(
     (count, key) => count + parseStoredArrayLength(keys[key]),
     0,
