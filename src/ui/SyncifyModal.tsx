@@ -1,6 +1,9 @@
 import { loadConfig, saveConfig } from "../core/config";
 import { getProjectConfig } from "../core/projectConfig";
-import { summarizeMarketplaceState } from "../core/marketplace";
+import {
+  countInstalledItems,
+  summarizeMarketplaceState,
+} from "../core/marketplace";
 import { backupNow, fetchRemoteState, restoreNow } from "../core/syncService";
 import {
   applyShortcut,
@@ -40,7 +43,6 @@ export function SyncifyModal() {
   const [config, setConfig] = useState<SyncifyConfig>(() => loadConfig());
   const [status, setStatus] = useState<SyncifyStatus>("idle");
   const [message, setMessage] = useState<MessageState | null>(null);
-  const [localKeyCount, setLocalKeyCount] = useState(0);
   const [installedItemCount, setInstalledItemCount] = useState(0);
   const [marketplaceAvailable, setMarketplaceAvailable] = useState<
     boolean | null
@@ -62,8 +64,7 @@ export function SyncifyModal() {
   const isBusy = status === "loading";
   const alertMessage =
     message?.kind === "warning" || message?.kind === "error" ? message : null;
-  const cloudKeyCount = remotePayload?.metadata.marketplace_key_count ?? 0;
-  const cloudNewerThanLocal = Boolean(
+  const localDiffersFromBackup = Boolean(
     remotePayload && localHash && remotePayload.payload_hash !== localHash,
   );
 
@@ -109,7 +110,6 @@ export function SyncifyModal() {
 
   async function refreshLocalSummary() {
     const summary = await summarizeMarketplaceState();
-    setLocalKeyCount(summary.keyCount);
     setLocalHash(summary.hash);
     setInstalledItemCount(summary.installedItemCount);
     setMarketplaceAvailable(summary.marketplaceAvailable);
@@ -137,7 +137,7 @@ export function SyncifyModal() {
           remote.exists && remote.payload
             ? {
                 kind: "success",
-                text: `Backup found from ${formatBackupDateTime(remote.payload.metadata.last_sync_datetime)}.`,
+                text: `Backup found from ${formatBackupDate(remote.payload.metadata.last_sync_datetime)}.`,
               }
             : {
                 kind: "info",
@@ -288,6 +288,22 @@ export function SyncifyModal() {
     event.stopPropagation();
   }
 
+  const statusTitle = !remoteChecked
+    ? status === "error"
+      ? "Couldn't check your backup"
+      : "Checking your backup…"
+    : !remotePayload
+      ? "No backup yet"
+      : localDiffersFromBackup
+        ? "Changes since your last backup"
+        : "Everything is backed up";
+
+  const statusDetail = !remoteChecked
+    ? null
+    : remotePayload
+      ? `Last backup ${formatBackupDate(remotePayload.metadata.last_sync_datetime)}`
+      : "Save your extensions and themes so you can restore them after a reinstall or on another computer.";
+
   return (
     <div
       className="syncify-panel"
@@ -295,368 +311,301 @@ export function SyncifyModal() {
       onMouseDown={keepModalOpen}
       onPointerDown={keepModalOpen}
     >
-      <section className="syncify-hero" aria-label="Syncify status">
-        <p className="syncify-description">
-          Back up your installed extensions and themes, then restore them
-          whenever Spotify or Spicetify needs a fresh setup.
-        </p>
-        <div className="syncify-status-row">
-          <h3 className="syncify-heading">
-            {getStatusTitle(status, remoteChecked)}
-          </h3>
-          <span
-            className="syncify-status-pill"
-            data-kind={getStatusKind(status)}
-          >
-            {getStatusLabel(status, remoteChecked)}
-          </span>
-        </div>
-        {alertMessage ? (
-          <p className="syncify-message" data-kind={alertMessage.kind}>
-            {alertMessage.text}
+      <section className="syncify-status" aria-live="polite">
+        <div className="syncify-status-text">
+          <h3 className="syncify-status-title">{statusTitle}</h3>
+          <p className="syncify-muted">
+            {statusDetail ? `${statusDetail} · ` : ""}
+            {formatItemCount(installedItemCount)} on this device
           </p>
-        ) : null}
+        </div>
+        <button
+          className="syncify-button"
+          type="button"
+          onClick={runBackup}
+          disabled={isBusy}
+        >
+          {isBusy ? "Working…" : "Back up now"}
+        </button>
       </section>
 
-      <section className="syncify-grid" aria-label="Syncify backup details">
-        <StatusCard label="Backup entries" value={localKeyCount} />
-        <StatusCard label="Extensions/themes" value={installedItemCount} />
-        <StatusCard
-          label="Backup"
-          value={
-            remotePayload
-              ? `${cloudKeyCount} entries`
-              : remoteChecked
-                ? "None"
-                : "Checking"
-          }
-          tone={
-            remotePayload ? "success" : remoteChecked ? "warning" : "neutral"
-          }
-        />
-        <StatusCard
-          label="Restore"
-          value={
-            marketplaceAvailable === null
-              ? "Checking"
-              : marketplaceAvailable
-                ? "Ready"
-                : "Missing"
-          }
-          tone={
-            marketplaceAvailable === null
-              ? "neutral"
-              : marketplaceAvailable
-                ? "success"
-                : "warning"
-          }
-        />
-      </section>
-
-      {remotePayload ? (
-        <section className="syncify-section syncify-backup-section">
-          <div className="syncify-section-header">
-            <h4 className="syncify-section-title">Version history</h4>
-            <span className="syncify-backup-time">
-              {remoteBackups.length} saved
-            </span>
-          </div>
-          <div className="syncify-backup-list">
-            {remoteBackups.map((backup, index) => {
-              const isSelected =
-                selectedRestorePayload?.payload_hash === backup.payload_hash;
-
-              return (
-                <button
-                  className="syncify-backup-version"
-                  data-selected={isSelected ? "true" : "false"}
-                  type="button"
-                  key={`${backup.payload_hash}-${backup.metadata.last_sync_datetime}`}
-                  onClick={() => setSelectedRestorePayload(backup)}
-                  disabled={isBusy}
-                >
-                  <span className="syncify-backup-version-main">
-                    <strong>
-                      {index === 0 ? "Latest" : `Backup ${index + 1}`}
-                    </strong>
-                    <span>
-                      {formatBackupDateTime(backup.metadata.last_sync_datetime)}
-                    </span>
-                  </span>
-                  <span className="syncify-backup-details">
-                    <span>{backup.metadata.device_info}</span>
-                    <span>{backup.metadata.marketplace_key_count} entries</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {cloudNewerThanLocal ? (
-            <p className="syncify-message inline" data-kind="warning">
-              This device differs from your latest backup. Select any saved
-              version to restore it, or back up to add a new version.
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      <section className="syncify-section compact">
-        <h4 className="syncify-section-title">Sync controls</h4>
-        {isConfirmingRestore ? (
-          <div className="syncify-confirm-restore">
-            <p className="syncify-message inline" data-kind="warning">
-              Restore will replace this device's saved extensions and themes
-              with the selected backup, then reload Spotify.
-            </p>
-            <div className="syncify-actions">
-              <button
-                className="syncify-button secondary"
-                type="button"
-                onClick={() => setIsConfirmingRestore(false)}
-                disabled={isBusy}
-              >
-                Cancel
-              </button>
-              <button
-                className="syncify-button danger"
-                type="button"
-                onClick={runRestore}
-                disabled={isBusy}
-              >
-                Confirm restore
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="syncify-actions">
+      {alertMessage ? (
+        <div className="syncify-alert" data-kind={alertMessage.kind}>
+          <span>{alertMessage.text}</span>
+          {alertMessage.kind === "error" ? (
             <button
-              className="syncify-button"
-              type="button"
-              onClick={runBackup}
-              disabled={isBusy}
-            >
-              Back up
-            </button>
-            <button
-              className="syncify-button danger"
-              type="button"
-              onClick={() => requestRestoreConfirmation()}
-              disabled={isBusy || !selectedRestorePayload}
-            >
-              Restore selected
-            </button>
-            <button
-              className="syncify-button secondary"
+              className="syncify-text-button"
               type="button"
               onClick={() => void refreshStatus()}
               disabled={isBusy}
             >
-              Refresh status
+              Try again
             </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {remoteBackups.length > 0 ? (
+        <section className="syncify-section" aria-label="Backups">
+          <h4 className="syncify-section-title">Backups</h4>
+          <div className="syncify-backup-list" role="radiogroup">
+            {remoteBackups.map((backup) => {
+              const isSelected =
+                selectedRestorePayload?.payload_hash === backup.payload_hash;
+              const isOnDevice = backup.payload_hash === localHash;
+
+              return (
+                <button
+                  className="syncify-backup"
+                  role="radio"
+                  aria-checked={isSelected}
+                  data-selected={isSelected ? "true" : "false"}
+                  type="button"
+                  key={`${backup.payload_hash}-${backup.metadata.last_sync_datetime}`}
+                  onClick={() => {
+                    setSelectedRestorePayload(backup);
+                    setIsConfirmingRestore(false);
+                  }}
+                  disabled={isBusy}
+                >
+                  <span className="syncify-radio" aria-hidden="true" />
+                  <span className="syncify-backup-text">
+                    <span className="syncify-backup-date">
+                      {formatBackupDate(backup.metadata.last_sync_datetime)}
+                    </span>
+                    <span className="syncify-muted">
+                      {formatItemCount(
+                        countInstalledItems(backup.marketplace_data.keys),
+                      )}{" "}
+                      · {backup.metadata.device_info}
+                    </span>
+                  </span>
+                  {isOnDevice ? (
+                    <span className="syncify-tag">On this device</span>
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
-        )}
-        <label className="syncify-toggle">
+
+          {marketplaceAvailable === false ? (
+            <p className="syncify-muted">
+              Install Spicetify Marketplace to restore a backup.
+            </p>
+          ) : isConfirmingRestore ? (
+            <div className="syncify-confirm">
+              <p>
+                Replace this device's extensions and themes with the backup
+                from{" "}
+                {selectedRestorePayload
+                  ? formatBackupDate(
+                      selectedRestorePayload.metadata.last_sync_datetime,
+                    )
+                  : "the cloud"}
+                ? Spotify will reload.
+              </p>
+              <div className="syncify-actions">
+                <button
+                  className="syncify-button secondary"
+                  type="button"
+                  onClick={() => setIsConfirmingRestore(false)}
+                  disabled={isBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="syncify-button"
+                  type="button"
+                  onClick={runRestore}
+                  disabled={isBusy}
+                >
+                  Restore
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="syncify-actions">
+              <button
+                className="syncify-button secondary"
+                type="button"
+                onClick={() => requestRestoreConfirmation()}
+                disabled={
+                  isBusy ||
+                  !selectedRestorePayload ||
+                  selectedRestorePayload.payload_hash === localHash
+                }
+              >
+                Restore selected backup
+              </button>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      <section className="syncify-section" aria-label="Settings">
+        <h4 className="syncify-section-title">Settings</h4>
+
+        <label className="syncify-setting">
+          <span className="syncify-setting-text">
+            <span>Back up automatically</span>
+            <span className="syncify-muted">
+              When Spotify starts and something has changed
+            </span>
+          </span>
           <input
+            className="syncify-switch"
             type="checkbox"
+            role="switch"
             checked={config.autoBackupEnabled}
             onChange={(event) => updateAutoBackup(event.currentTarget.checked)}
             disabled={isBusy}
           />
-          <span>
-            Auto-backup extensions and themes after startup safety checks
-          </span>
         </label>
-      </section>
 
-      <section className="syncify-section compact">
-        <h4 className="syncify-section-title">Show Syncify in</h4>
-        <div
-          className="syncify-choice-group"
-          role="radiogroup"
-          aria-label="Where Syncify appears"
-        >
-          {ENTRY_POINT_OPTIONS.map((option) => {
-            const needsMenu = option.value !== "topbar";
-            return (
-              <label className="syncify-toggle" key={option.value}>
-                <input
-                  type="radio"
-                  name="syncify-entry-point"
-                  value={option.value}
-                  checked={config.entryPoint === option.value}
-                  onChange={() => updateEntryPoint(option.value)}
-                  disabled={needsMenu && !menuAvailable}
-                />
-                <span>{option.label}</span>
-              </label>
-            );
-          })}
-        </div>
-        {!menuAvailable ? (
-          <p className="syncify-message inline" data-kind="warning">
-            The profile menu isn't available in this Spicetify version, so
-            Syncify stays in the top bar.
-          </p>
-        ) : config.entryPoint === "menu" && !config.shortcut ? (
-          <p className="syncify-message inline" data-kind="warning">
-            If the profile menu breaks after a Spotify update, turn the
-            keyboard shortcut back on so you can still open Syncify.
-          </p>
-        ) : null}
-      </section>
-
-      <section className="syncify-section compact">
-        <h4 className="syncify-section-title">Keyboard shortcut</h4>
-        <div className="syncify-shortcut-row">
-          <kbd
-            className="syncify-shortcut-key"
-            data-recording={isRecordingShortcut ? "true" : "false"}
+        <label className="syncify-setting">
+          <span className="syncify-setting-text">
+            <span>Open Syncify from</span>
+            {!menuAvailable ? (
+              <span className="syncify-muted">
+                The profile menu isn't available in this Spicetify version
+              </span>
+            ) : config.entryPoint === "menu" && !config.shortcut ? (
+              <span className="syncify-muted">
+                Keep a shortcut in case a Spotify update breaks the menu
+              </span>
+            ) : null}
+          </span>
+          <select
+            className="syncify-select"
+            value={menuAvailable ? config.entryPoint : "topbar"}
+            onChange={(event) =>
+              updateEntryPoint(event.currentTarget.value as SyncifyEntryPoint)
+            }
+            disabled={!menuAvailable}
           >
-            {isRecordingShortcut
-              ? "Press keys…"
-              : formatShortcut(config.shortcut)}
-          </kbd>
-          <div className="syncify-actions">
-            {isRecordingShortcut ? (
+            {ENTRY_POINT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="syncify-setting">
+          <span className="syncify-setting-text">
+            <span>Keyboard shortcut</span>
+            {shortcutError ? (
+              <span className="syncify-muted" data-kind="warning">
+                {shortcutError}
+              </span>
+            ) : isRecordingShortcut ? (
+              <span className="syncify-muted">
+                Press a key combination, or Esc to cancel
+              </span>
+            ) : null}
+          </span>
+          <span className="syncify-shortcut">
+            {config.shortcut && !isRecordingShortcut ? (
               <button
-                className="syncify-button secondary"
+                className="syncify-text-button"
                 type="button"
-                onClick={() => {
-                  setIsRecordingShortcut(false);
-                  setShortcutError(null);
-                }}
+                onClick={() => updateShortcut(null)}
               >
-                Cancel
+                Turn off
               </button>
-            ) : (
+            ) : null}
+            {!config.shortcut && !isRecordingShortcut ? (
               <button
-                className="syncify-button secondary"
+                className="syncify-text-button"
                 type="button"
-                onClick={startRecordingShortcut}
+                onClick={() => updateShortcut(DEFAULT_SHORTCUT)}
               >
-                Change
+                Use default
               </button>
-            )}
+            ) : null}
             <button
-              className="syncify-button secondary"
+              className="syncify-key"
               type="button"
-              onClick={() => updateShortcut(DEFAULT_SHORTCUT)}
-              disabled={
-                isRecordingShortcut ||
-                formatShortcut(config.shortcut) ===
-                  formatShortcut(DEFAULT_SHORTCUT)
+              data-recording={isRecordingShortcut ? "true" : "false"}
+              onClick={() =>
+                isRecordingShortcut
+                  ? setIsRecordingShortcut(false)
+                  : startRecordingShortcut()
               }
+              title="Click to change"
             >
-              Reset
+              {isRecordingShortcut
+                ? "Press keys…"
+                : config.shortcut
+                  ? formatShortcut(config.shortcut)
+                  : "Off"}
             </button>
-            <button
-              className="syncify-button secondary"
-              type="button"
-              onClick={() => updateShortcut(null)}
-              disabled={isRecordingShortcut || !config.shortcut}
-            >
-              Turn off
-            </button>
-          </div>
+          </span>
         </div>
-        {shortcutError ? (
-          <p className="syncify-message inline" data-kind="warning">
-            {shortcutError}
-          </p>
-        ) : null}
       </section>
 
-      <section className="syncify-footer" aria-label="Syncify links">
-        <span className="syncify-version">v{projectConfig.version}</span>
-        <div className="syncify-footer-actions">
+      <footer className="syncify-footer">
+        <span>Syncify {projectConfig.version}</span>
+        <span className="syncify-footer-links">
           <button
-            className="syncify-link-button"
+            className="syncify-text-button"
             type="button"
             onClick={() => openExternal(projectConfig.issueUrl)}
           >
             Report an issue
           </button>
           <button
-            className="syncify-link-button"
+            className="syncify-text-button"
             type="button"
             onClick={() => openExternal(projectConfig.githubUrl)}
           >
             GitHub
           </button>
           <button
-            className="syncify-link-button"
+            className="syncify-text-button"
             type="button"
             onClick={() => openExternal(projectConfig.kofiUrl)}
           >
-            Ko-fi
+            Support on Ko-fi
           </button>
-        </div>
-      </section>
+        </span>
+      </footer>
     </div>
   );
 }
 
 const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [
   { value: "both", label: "Top bar and profile menu" },
-  { value: "topbar", label: "Top bar only" },
-  { value: "menu", label: "Profile menu only" },
+  { value: "topbar", label: "Top bar" },
+  { value: "menu", label: "Profile menu" },
 ];
 
-function StatusCard({
-  label,
-  value,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string | number;
-  tone?: "neutral" | "success" | "warning";
-}) {
-  const React = Spicetify.React;
-
-  return (
-    <div className="syncify-card" data-tone={tone}>
-      <span className="syncify-card-label">{label}</span>
-      <strong className="syncify-card-value">{value}</strong>
-    </div>
-  );
+function formatItemCount(count: number): string {
+  return count === 1 ? "1 extension or theme" : `${count} extensions and themes`;
 }
 
-function getStatusTitle(status: SyncifyStatus, remoteChecked: boolean): string {
-  if (status === "loading") return "Checking status…";
-  if (status === "error") return "Sync needs attention";
-  if (status === "success") return "Backup available";
-  if (status === "needs-restore") return "Restore recommended";
-  return remoteChecked ? "Ready to back up" : "Loading Syncify";
-}
-
-function getStatusLabel(status: SyncifyStatus, remoteChecked: boolean): string {
-  if (status === "loading") return "Checking";
-  if (status === "error") return "Error";
-  if (status === "success") return "Synced";
-  if (status === "needs-restore") return "Restore";
-  return remoteChecked ? "Ready" : "Starting";
-}
-
-function getStatusKind(
-  status: SyncifyStatus,
-): "neutral" | "success" | "error" | "warning" {
-  if (status === "success") return "success";
-  if (status === "error") return "error";
-  if (status === "needs-restore") return "warning";
-  return "neutral";
-}
-
-function formatBackupDateTime(value: string): string {
+function formatBackupDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
+
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) return `today, ${time}`;
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `yesterday, ${time}`;
+  }
 
   const day = date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
-  });
-  const time = date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
+    year:
+      date.getFullYear() === today.getFullYear() ? undefined : "numeric",
   });
 
   return `${day}, ${time}`;
