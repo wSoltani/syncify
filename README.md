@@ -2,23 +2,6 @@
   <img src="assets/SYNCIFY-BANNER.png" alt="Syncify banner">
 </p>
 
-<h1 align="center">
-  Syncify
-</h1>
-
-<p align="center">
-  <a href="https://github.com/wSoltani/Syncify"><img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Syncify-181717?logo=github"></a>
-  <a href="https://github.com/spicetify/marketplace"><img alt="Spicetify Marketplace" src="https://img.shields.io/badge/Spicetify-Marketplace-1DB954?logo=spotify&logoColor=white"></a>
-  <a href="https://ko-fi.com/wsoltani"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-Ko--fi-ff5f5f?logo=ko-fi"></a>
-</p>
-
-<p align="center">
-  <strong>Your Spicetify setup needs a savepoint.</strong><br>
-  Back up your Marketplace extensions, themes, snippets, and preferences, then restore them when Spotify or Spicetify breaks.
-</p>
-
----
-
 ## Using Syncify
 
 Syncify saves the extensions, themes and snippets you installed from Spicetify Marketplace to the cloud. When a Spotify update breaks things, or you reinstall, or you move to a new computer, you can get all of it back in one click.
