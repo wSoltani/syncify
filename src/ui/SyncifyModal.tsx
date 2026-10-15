@@ -67,6 +67,21 @@ export function SyncifyModal() {
   const localDiffersFromBackup = Boolean(
     remotePayload && localHash && remotePayload.payload_hash !== localHash,
   );
+  const isBackedUp = Boolean(
+    remotePayload && localHash && remotePayload.payload_hash === localHash,
+  );
+  const selectedIsOnDevice = Boolean(
+    selectedRestorePayload &&
+      localHash &&
+      selectedRestorePayload.payload_hash === localHash,
+  );
+  // Restoring overwrites this device, so warn when what's here now can't be
+  // brought back from any backup.
+  const localIsUnsaved = Boolean(
+    localHash &&
+      installedItemCount > 0 &&
+      !remoteBackups.some((backup) => backup.payload_hash === localHash),
+  );
 
   useEffect(() => {
     void refreshStatus({ silent: true });
@@ -196,7 +211,19 @@ export function SyncifyModal() {
         kind: "info",
         text: "Backing up your extensions and themes…",
       });
-      const payload = await backupNow(config);
+      const { payload, unchanged } = await backupNow(config);
+      await refreshLocalSummary();
+
+      // Nothing was stored, so keep showing the existing backup and its
+      // original time instead of a new entry that won't be there on reopen.
+      if (unchanged) {
+        setRemoteChecked(true);
+        setStatus("success");
+        setMessage({ kind: "success", text: "Everything is already backed up." });
+        Spicetify.showNotification("Syncify: everything is already backed up");
+        return;
+      }
+
       setRemotePayload(payload);
       setRemoteBackups((backups) =>
         [
@@ -204,11 +231,10 @@ export function SyncifyModal() {
           ...backups.filter(
             (backup) => backup.payload_hash !== payload.payload_hash,
           ),
-        ].slice(0, 3),
+        ].slice(0, MAX_BACKUPS),
       );
       setSelectedRestorePayload(payload);
       setRemoteChecked(true);
-      await refreshLocalSummary();
       setStatus("success");
       setMessage({
         kind: "success",
@@ -253,9 +279,7 @@ export function SyncifyModal() {
         config,
         selectedRestorePayload ?? undefined,
       );
-      setRemotePayload(payload);
       setSelectedRestorePayload(payload);
-      setRemoteChecked(true);
       setStatus("success");
       setMessage({
         kind: "success",
@@ -323,9 +347,10 @@ export function SyncifyModal() {
           className="syncify-button"
           type="button"
           onClick={runBackup}
-          disabled={isBusy}
+          disabled={isBusy || isBackedUp}
+          title={isBackedUp ? "No changes since your last backup" : undefined}
         >
-          {isBusy ? "Working…" : "Back up now"}
+          {isBusy ? "Working…" : isBackedUp ? "Backed up" : "Back up now"}
         </button>
       </section>
 
@@ -348,7 +373,11 @@ export function SyncifyModal() {
       {remoteBackups.length > 0 ? (
         <section className="syncify-section" aria-label="Backups">
           <h4 className="syncify-section-title">Backups</h4>
-          <div className="syncify-backup-list" role="radiogroup">
+          <div
+            className="syncify-backup-list"
+            role="radiogroup"
+            aria-label="Choose a backup to restore"
+          >
             {remoteBackups.map((backup) => {
               const isSelected =
                 selectedRestorePayload?.payload_hash === backup.payload_hash;
@@ -377,11 +406,16 @@ export function SyncifyModal() {
                       {formatItemCount(
                         countInstalledItems(backup.marketplace_data.keys),
                       )}{" "}
-                      · {backup.metadata.device_info}
+                      · from {backup.metadata.device_info}
                     </span>
                   </span>
                   {isOnDevice ? (
-                    <span className="syncify-tag">On this device</span>
+                    <span
+                      className="syncify-tag"
+                      title="What's on this device now"
+                    >
+                      Current
+                    </span>
                   ) : null}
                 </button>
               );
@@ -395,15 +429,18 @@ export function SyncifyModal() {
           ) : isConfirmingRestore ? (
             <div className="syncify-confirm">
               <p>
-                Replace this device's extensions and themes with the backup
-                from{" "}
+                Replace this device's{" "}
+                {formatItemCount(installedItemCount)} with the{" "}
                 {selectedRestorePayload
-                  ? formatBackupDate(
-                      selectedRestorePayload.metadata.last_sync_datetime,
-                    )
-                  : "the cloud"}
+                  ? `${formatItemCount(countInstalledItems(selectedRestorePayload.marketplace_data.keys))} from ${formatBackupDate(selectedRestorePayload.metadata.last_sync_datetime)}`
+                  : "selected backup"}
                 ? Spotify will reload.
               </p>
+              {localIsUnsaved ? (
+                <p className="syncify-muted" data-kind="warning">
+                  Your current setup isn't backed up.
+                </p>
+              ) : null}
               <div className="syncify-actions">
                 <button
                   className="syncify-button secondary"
@@ -425,17 +462,18 @@ export function SyncifyModal() {
             </div>
           ) : (
             <div className="syncify-actions">
+              {selectedIsOnDevice ? (
+                <span className="syncify-muted syncify-actions-hint">
+                  This backup is already current.
+                </span>
+              ) : null}
               <button
                 className="syncify-button secondary"
                 type="button"
                 onClick={() => requestRestoreConfirmation()}
-                disabled={
-                  isBusy ||
-                  !selectedRestorePayload ||
-                  selectedRestorePayload.payload_hash === localHash
-                }
+                disabled={isBusy || !selectedRestorePayload || selectedIsOnDevice}
               >
-                Restore selected backup
+                Restore backup
               </button>
             </div>
           )}
@@ -573,6 +611,9 @@ export function SyncifyModal() {
     </div>
   );
 }
+
+// Mirrors the worker's MAX_BACKUP_HISTORY.
+const MAX_BACKUPS = 3;
 
 const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [
   { value: "both", label: "Top bar and profile menu" },

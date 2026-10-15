@@ -253,8 +253,13 @@
 .syncify-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
     gap: 8px;
+}
+
+.syncify-actions-hint {
+    flex: 1 1 200px;
 }
 
 /* Buttons */
@@ -473,9 +478,5 @@ label.syncify-setting {
 
     .syncify-select {
         max-width: none;
-    }
-
-    .syncify-tag {
-        display: none;
     }
 }

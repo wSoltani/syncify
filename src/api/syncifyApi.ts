@@ -6,7 +6,7 @@ export async function uploadPayload(
   workerUrl: string,
   userHash: string,
   payload: SyncifyPayload,
-): Promise<void> {
+): Promise<{ unchanged: boolean }> {
   const response = await fetch(workerUrl, {
     method: "POST",
     headers: {
@@ -19,6 +19,13 @@ export async function uploadPayload(
   if (!response.ok) {
     throw new Error(`Backup failed with HTTP ${response.status}.`);
   }
+
+  // The worker skips the write when the data matches its latest backup, so
+  // nothing new was stored and the cloud copy keeps its original timestamp.
+  const result = (await response.json().catch(() => null)) as {
+    unchanged?: boolean;
+  } | null;
+  return { unchanged: result?.unchanged === true };
 }
 
 export async function downloadPayload(

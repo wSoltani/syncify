@@ -14,7 +14,7 @@ import {
 
 export async function backupNow(
   config: SyncifyConfig,
-): Promise<SyncifyPayload> {
+): Promise<{ payload: SyncifyPayload; unchanged: boolean }> {
   if (!hasWorkerUrl(config)) {
     throw new Error("Syncify backup service is not configured.");
   }
@@ -30,8 +30,12 @@ export async function backupNow(
     );
   }
 
-  await uploadPayload(config.workerUrl, userHash, payload);
-  return payload;
+  const { unchanged } = await uploadPayload(
+    config.workerUrl,
+    userHash,
+    payload,
+  );
+  return { payload, unchanged };
 }
 
 export async function fetchRemoteState(
@@ -46,7 +50,14 @@ export async function fetchRemoteState(
   // Backups made by older versions carry a hash computed over every key, so
   // recompute it with the current rules. Otherwise updating Syncify alone would
   // make every unchanged install look different and re-upload.
-  const backups = await Promise.all(remote.backups.map(withCurrentHash));
+  // Recomputing can also make older backups identical to each other, so keep
+  // only the newest backup for each distinct set of data.
+  const rehashed = await Promise.all(remote.backups.map(withCurrentHash));
+  const backups = rehashed.filter(
+    (backup, index) =>
+      rehashed.findIndex((other) => other.payload_hash === backup.payload_hash) ===
+      index,
+  );
   return { ...remote, payload: backups[0] ?? null, backups };
 }
 
