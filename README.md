@@ -47,7 +47,7 @@ Old versions stop backing up after a grace period, and Syncify then says it's no
 ### Good to know
 
 - Syncify needs [Spicetify Marketplace](https://github.com/spicetify/marketplace) to be installed. It saves Marketplace's list of what you installed, and Marketplace downloads the actual files again after a restore.
-- If something shows as installed but doesn't load after a restore, reload Spotify once more or reinstall that item from Marketplace.
+- After a restore, Syncify tells you how much loaded and gives you the commands for anything you'd set up manually. If something still doesn't load, reload Spotify once more or reinstall that item from Marketplace.
 - Backups also list the extensions, custom apps and theme you set up manually in Spicetify's config, but Syncify can only restore what came from Marketplace.
 - **Privacy:** Syncify never sends your Spotify username. It sends a one-way hash of it, which identifies your backups without revealing who you are. Each request also carries Syncify's version, a random ID for this install, your time zone and which Spotify account field was hashed, so the server knows which versions are in use and can count backups and restores in your local time. Backups are not encrypted on the server, so don't count on them to keep anything secret.
 

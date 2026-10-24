@@ -1,6 +1,7 @@
 import appStyles from "./styles/app.css";
 import syncifyIcon from "../assets/icon.svg";
 import { runStartupSyncCheck } from "./core/startupSync";
+import { checkRestore, watchScriptsIfRestored } from "./core/restoreSummary";
 import { getProjectConfig } from "./core/projectConfig";
 import { loadConfig } from "./core/config";
 import { initShortcut } from "./core/shortcut";
@@ -59,6 +60,9 @@ function main(): void {
   initShortcut(config.shortcut, openSyncifyModal);
   void runStartupSyncCheck().catch((error) => {
     warn("Startup sync check failed", error);
+  });
+  void checkRestore().catch((error) => {
+    warn("Restore check failed", error);
   });
 }
 
@@ -350,6 +354,9 @@ function renderReact(container: Element): void {
     throw error;
   }
 }
+
+// Before waiting for Spicetify, so no script that loads after a restore is missed.
+watchScriptsIfRestored();
 
 // Last, so every constant above is set even when Spicetify is already ready.
 (function init() {

@@ -10,6 +10,14 @@ import {
   type ItemType,
 } from "../core/restorePreview";
 import {
+  dismissManualItems,
+  getRestoreResult,
+  manualCommands,
+  onRestoreResult,
+  reloadAndCheck,
+  savePendingRestore,
+} from "../core/restoreSummary";
+import {
   checkCatalog,
   checkSources,
   isWarning,
@@ -97,6 +105,9 @@ export function SyncifyModal() {
     null,
   );
   const [showAllBackups, setShowAllBackups] = useState(false);
+  // What loaded after the last restore, until Spotify restarts.
+  const [restoreResult, setRestoreResult] = useState(() => getRestoreResult());
+  const [copied, setCopied] = useState(false);
   // The backup service refused this version (HTTP 426).
   const [isUnsupported, setIsUnsupported] = useState(false);
   const [newerVersion, setNewerVersion] = useState<string | null>(null);
@@ -189,6 +200,7 @@ export function SyncifyModal() {
   useEffect(() => {
     void refreshStatus({ silent: true });
     void checkForUpdate();
+    return onRestoreResult(setRestoreResult);
   }, []);
 
   // Any warning opens the list, so the item can't be missed.
@@ -414,6 +426,16 @@ export function SyncifyModal() {
   }
 
   async function runRestore() {
+    // What to add manually is shown after the reload, with the commands.
+    const manual = selectedRestorePayload
+      ? previewRestore(
+          getBackupItemDetails(selectedRestorePayload),
+          selectedRestorePayload.spicetify_config,
+          localItemDetails,
+          localConfig,
+        ).manual
+      : [];
+
     try {
       setIsConfirmingRestore(false);
       setStatus("loading");
@@ -432,10 +454,25 @@ export function SyncifyModal() {
         text: `Restored ${restoredCount} entries. Reloading Spotify…`,
       });
       Spicetify.showNotification("Syncify restore complete. Reloading…");
+      savePendingRestore(manual);
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       handleError(error);
     }
+  }
+
+  async function copyCommands(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const clipboard = Spicetify.Platform?.ClipboardAPI as
+        | { copy?: (text: string) => unknown }
+        | undefined;
+      if (!clipboard?.copy) return;
+      await clipboard.copy(text);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   function openExternal(url: string) {
@@ -552,6 +589,17 @@ export function SyncifyModal() {
             )
           : `Last backup ${formatBackupDate(remotePayload.metadata.last_sync_datetime)}`;
 
+  // The result of a restore stands in for the status for a while after it.
+  const showResult = Boolean(
+    restoreResult &&
+      !isUnsupported &&
+      Date.now() - restoreResult.at < RESULT_SHOWN_MS,
+  );
+  const allLoaded = Boolean(
+    restoreResult && restoreResult.loaded === restoreResult.total,
+  );
+  const commands = manualCommands(restoreResult?.manual ?? []);
+
   return (
     <div
       className="syncify-panel"
@@ -570,6 +618,37 @@ export function SyncifyModal() {
           >
             How to update
           </button>
+        </div>
+      ) : null}
+
+      {commands.length > 0 ? (
+        <div className="syncify-alert syncify-manual" role="status">
+          <span className="syncify-manual-header">
+            <span>
+              {restoreResult!.manual.length === 1
+                ? "1 isn't from Marketplace. Add it in a terminal:"
+                : `${restoreResult!.manual.length} aren't from Marketplace. Add them in a terminal:`}
+            </span>
+            <button
+              className="syncify-icon-button"
+              type="button"
+              aria-label="Dismiss"
+              title="Dismiss"
+              onClick={dismissManualItems}
+            >
+              <CloseIcon />
+            </button>
+          </span>
+          <span className="syncify-code">
+            <code>{commands.join("\n")}</code>
+            <button
+              className="syncify-text-button"
+              type="button"
+              onClick={() => void copyCommands(commands.join("\n"))}
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </span>
         </div>
       ) : null}
 
@@ -601,22 +680,61 @@ export function SyncifyModal() {
       ) : null}
 
       <section className="syncify-status" aria-live="polite">
-        <div className="syncify-status-text">
-          <h3 className="syncify-status-title">{statusTitle}</h3>
-          <p className="syncify-muted">
-            {statusDetail ? `${statusDetail} · ` : ""}
-            {formatItemCount(installedItemCount)} on this device
-          </p>
-        </div>
-        <button
-          className="syncify-button"
-          type="button"
-          onClick={runBackup}
-          disabled={isBusy || isBackedUp || isUnsupported}
-          title={isBackedUp ? "No changes since your last backup" : undefined}
-        >
-          {isBusy ? "Working…" : isBackedUp ? "Backed up" : "Back up now"}
-        </button>
+        {showResult && restoreResult ? (
+          <div className="syncify-status-text">
+            <h3 className="syncify-status-title">
+              {allLoaded
+                ? "Backup restored"
+                : `Restored ${restoreResult.loaded} of ${restoreResult.total}`}
+            </h3>
+            <p className="syncify-muted">
+              {!allLoaded
+                ? "Missing something? Reload Spotify once more."
+                : restoreResult.total === 0
+                  ? "Nothing from Marketplace to load"
+                  : `${restoreResult.loaded} of ${restoreResult.total} loaded`}
+            </p>
+            {allLoaded ? (
+              <p className="syncify-muted">
+                Syncify saved your setup?{" "}
+                <button
+                  className="syncify-text-button syncify-inline-button"
+                  type="button"
+                  onClick={() => openExternal(projectConfig.kofiUrl)}
+                >
+                  Support it on Ko-fi
+                </button>
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="syncify-status-text">
+            <h3 className="syncify-status-title">{statusTitle}</h3>
+            <p className="syncify-muted">
+              {statusDetail ? `${statusDetail} · ` : ""}
+              {formatItemCount(installedItemCount)} on this device
+            </p>
+          </div>
+        )}
+        {showResult && !allLoaded ? (
+          <button
+            className="syncify-button secondary"
+            type="button"
+            onClick={reloadAndCheck}
+          >
+            Reload
+          </button>
+        ) : (
+          <button
+            className="syncify-button"
+            type="button"
+            onClick={runBackup}
+            disabled={isBusy || isBackedUp || isUnsupported}
+            title={isBackedUp ? "No changes since your last backup" : undefined}
+          >
+            {isBusy ? "Working…" : isBackedUp ? "Backed up" : "Back up now"}
+          </button>
+        )}
       </section>
 
       {remoteBackups.length > 0 ? (
@@ -1140,6 +1258,9 @@ function CloseIcon() {
     </svg>
   );
 }
+
+// How long after a restore its result replaces the status.
+const RESULT_SHOWN_MS = 10 * 60 * 1000;
 
 // Mirrors the worker's MAX_BACKUP_HISTORY.
 const MAX_BACKUPS = 3;

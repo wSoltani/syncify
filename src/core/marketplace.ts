@@ -1,6 +1,6 @@
 import { sha256Hex, stableStringify } from "./crypto";
 import { getDeviceInfo } from "./device";
-import { listItems } from "./restorePreview";
+import { keepsSyncify, listItems } from "./restorePreview";
 import {
   normalizeSpicetifyConfig,
   readSpicetifyConfig,
@@ -127,8 +127,9 @@ export async function restoreMarketplaceKeys(
     if (key.startsWith(MARKETPLACE_PREFIX)) restored[key] = value;
   }
 
+  if (Object.keys(restored).length === 0) return 0;
+  await keepOwnEntry(restored);
   const restoredKeys = Object.keys(restored);
-  if (restoredKeys.length === 0) return 0;
 
   // Write both stores: IndexedDB is what Marketplace >= 1.0.9 reads, and
   // localStorage is the only store older versions know about.
@@ -145,6 +146,25 @@ export async function restoreMarketplaceKeys(
   }
 
   return restoredKeys.length;
+}
+
+// Restoring replaces Marketplace's list of installed extensions, so a backup
+// made where Syncify wasn't installed from Marketplace would remove it.
+async function keepOwnEntry(restored: Record<string, string>): Promise<void> {
+  const local = await collectMarketplaceKeys();
+  const backupItems = listItems(restored);
+  const kept = listItems(local).filter((item) =>
+    keepsSyncify(item, backupItems),
+  );
+  if (kept.length === 0) return;
+
+  const listKey = "marketplace:installed-extensions";
+  const list = parseStoredArray(restored[listKey]).map(String);
+  for (const item of kept) {
+    if (!list.includes(item.key)) list.push(item.key);
+    restored[item.key] = local[item.key];
+  }
+  restored[listKey] = JSON.stringify(list);
 }
 
 export function countInstalledItems(keys: Record<string, string>): number {
