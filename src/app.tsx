@@ -258,9 +258,24 @@ function describeTopbarButton(
   };
 }
 
+// The window currently shown, if any.
+let openModal: {
+  container: Element;
+  root: { unmount(): void } | null;
+} | null = null;
+
 function openSyncifyModal(): void {
+  // The shortcut works as a toggle: pressed again, it closes Syncify.
+  if (openModal?.container.isConnected) {
+    debug("Closing modal");
+    Spicetify.PopupModal.hide();
+    return;
+  }
+
   debug("Opening modal");
+  openModal?.root?.unmount();
   const container = document.createElement("div");
+  openModal = { container, root: null };
 
   try {
     Spicetify.PopupModal.display({
@@ -315,7 +330,9 @@ function renderReact(container: Element): void {
     const element = Spicetify.React.createElement(SyncifyModal);
 
     if (typeof Spicetify.ReactDOM.createRoot === "function") {
-      Spicetify.ReactDOM.createRoot(container).render(element);
+      const root = Spicetify.ReactDOM.createRoot(container);
+      root.render(element);
+      if (openModal?.container === container) openModal.root = root;
       debug("Modal rendered", { renderer: "createRoot" });
       return;
     }
