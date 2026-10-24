@@ -149,6 +149,46 @@
     gap: 12px;
 }
 
+.syncify-manual {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.syncify-manual-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.syncify-code {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.syncify-code code {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.syncify-alert .syncify-code .syncify-text-button {
+    font-weight: 700;
+}
+
+.syncify-inline-button {
+    font-size: inherit;
+    text-decoration: underline;
+}
+
 /* Sections */
 
 .syncify-section {
