@@ -1,7 +1,51 @@
+// Shared by the loader (dist/syncify.js) and the bundle it loads.
+
+// Set from Spotify's DevTools to follow the beta channel:
+// localStorage.setItem("syncify:beta", "true"). Nothing in the UI shows it.
+const BETA_FLAG_KEY = "syncify:beta";
+
 // Release versions: 1.4.0 or 1.4.0-beta.1, nothing else. Mirrors the
 // backup service's check of x-syncify-version.
 const VERSION_PATTERN = /^(\d{1,4})\.(\d{1,4})\.(\d{1,4})(?:-beta\.(\d{1,4}))?$/;
 const POINTER_TIMEOUT_MS = 3000;
+
+/** What the loader left on the page for the bundle it started. */
+export interface LoaderInfo {
+  channel: "stable" | "beta";
+  /** The release it loaded, or null for the fallback build on master. */
+  version: string | null;
+}
+
+export function getLoaderInfo(): LoaderInfo | null {
+  return (window as Window & { SyncifyLoader?: LoaderInfo }).SyncifyLoader ?? null;
+}
+
+export function isBetaChannel(): boolean {
+  try {
+    return window.localStorage.getItem(BETA_FLAG_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The newest release for this install's channel: latest-beta.json on the
+ * beta channel, falling back to latest.json. Null if neither can be read.
+ */
+export async function fetchLatestVersion(
+  releasesUrl: string,
+): Promise<string | null> {
+  const pointers = isBetaChannel()
+    ? ["latest-beta.json", "latest.json"]
+    : ["latest.json"];
+
+  for (const pointer of pointers) {
+    const version = await fetchPointerVersion(`${releasesUrl}/${pointer}`);
+    if (version) return version;
+  }
+
+  return null;
+}
 
 export function isReleaseVersion(value: unknown): value is string {
   return typeof value === "string" && VERSION_PATTERN.test(value);

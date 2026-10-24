@@ -39,7 +39,16 @@ function isSpicetifyReady(): boolean {
   );
 }
 
+const STYLE_ID = "syncify-styles";
+
 function main(): void {
+  // Another copy already runs: the Marketplace version next to a manual one,
+  // or an old copy (1.2.x and earlier add the same style element).
+  if (document.getElementById(STYLE_ID)) {
+    debug("Another copy of Syncify is running; stopping this one");
+    return;
+  }
+
   injectStyles();
   const config = loadConfig();
   setEntryPointTargets({
@@ -54,11 +63,8 @@ function main(): void {
 }
 
 function injectStyles(): void {
-  const styleId = "syncify-styles";
-  if (document.getElementById(styleId)) return;
-
   const style = document.createElement("style");
-  style.id = styleId;
+  style.id = STYLE_ID;
   style.textContent = appStyles;
   document.head.appendChild(style);
 }

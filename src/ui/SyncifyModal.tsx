@@ -7,7 +7,8 @@ import {
 import { UnsupportedVersionError } from "../api/syncifyApi";
 import {
   compareVersions,
-  fetchPointerVersion,
+  fetchLatestVersion,
+  getLoaderInfo,
   isReleaseVersion,
 } from "../core/releases";
 import { backupNow, fetchRemoteState, restoreNow } from "../core/syncService";
@@ -100,6 +101,9 @@ export function SyncifyModal() {
   const countBackupItems = (backup: SyncifyPayload) =>
     getBackupItems(backup).length;
   const menuAvailable = useMemo(() => isMenuEntryPointAvailable(), []);
+  // Only the loader fetches the latest release on reload. Older manual
+  // copies and dev builds have to be replaced instead.
+  const loadedByLoader = useMemo(() => getLoaderInfo() !== null, []);
   const isBusy = status === "loading";
   const alertMessage =
     message?.kind === "warning" || message?.kind === "error" ? message : null;
@@ -225,9 +229,7 @@ export function SyncifyModal() {
     const running = projectConfig.version;
     if (!isReleaseVersion(running)) return;
 
-    const latest = await fetchPointerVersion(
-      `${projectConfig.releasesUrl}/latest.json`,
-    );
+    const latest = await fetchLatestVersion(projectConfig.releasesUrl);
     if (latest && compareVersions(latest, running) > 0) setNewerVersion(latest);
   }
 
@@ -758,9 +760,13 @@ export function SyncifyModal() {
             <button
               className="syncify-text-button syncify-update"
               type="button"
-              onClick={() => window.location.reload()}
+              onClick={() =>
+                loadedByLoader
+                  ? window.location.reload()
+                  : openExternal(`${projectConfig.githubUrl}#updating`)
+              }
             >
-              {newerVersion} is out · Reload
+              {newerVersion} is out · {loadedByLoader ? "Reload" : "How to update"}
             </button>
           ) : null}
         </span>

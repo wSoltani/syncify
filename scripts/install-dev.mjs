@@ -26,7 +26,7 @@ await copyFile(join(rootDir, tempOutfile), targetFile);
 await rm(join(rootDir, "temp"), { recursive: true, force: true });
 
 console.log(`Installed dev build to ${targetFile}`);
-console.log("dist/syncify.js was not modified by this script.");
+console.log("dist was not modified by this script.");
 
 function run(command, args, env) {
   return new Promise((resolve, reject) => {
