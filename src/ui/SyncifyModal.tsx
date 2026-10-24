@@ -541,7 +541,11 @@ export function SyncifyModal() {
           id="settings"
           title="Settings"
           openSection={openSection}
-          onToggle={setOpenSection}
+          onToggle={(section) => {
+            setOpenSection(section);
+            // Recording keeps swallowing keys, so don't leave it running hidden.
+            if (section !== "settings") setIsRecordingShortcut(false);
+          }}
         >
 
           <label className="syncify-setting">
