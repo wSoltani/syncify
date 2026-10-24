@@ -30,14 +30,14 @@ Open Syncify from the button in Spotify's top bar, from your profile menu, or wi
 
 - **Back up now** saves what you have installed. If nothing has changed since your last backup, there's nothing to save and the button says so.
 - **Backups** lists your 3 most recent backups, plus a **safety copy**: an older backup kept aside and updated about once a week, so a burst of new backups can't replace it. The one tagged **Current** matches what's on this device right now. When everything is backed up, only the latest shows; **Show all** lists the rest.
-- **Restore** puts a backup back on this device. Spotify then reloads with your setup.
+- **Restore** puts a backup back on this device, after showing what it adds and removes. Spotify then reloads with your setup.
 - **Back up automatically** (off by default) backs up when Spotify starts, but only if something changed. It won't overwrite a bigger cloud backup with a smaller or empty setup, so a fresh install can't wipe out your saved one.
 
 You can change the shortcut and where the Syncify button appears under **Settings**, at the bottom of the window.
 
 ### Updating
 
-Syncify updates itself. Like other extensions that update themselves, it loads its latest release each time Spotify starts, whether you installed it from Marketplace or by hand. When a new version comes out while Spotify is open, the bottom of Syncify's window says so; click **Reload** to switch to it.
+Syncify updates itself. Like other extensions that update themselves, it loads its latest release each time Spotify starts, whether you installed it from Marketplace or manually. When a new version comes out while Spotify is open, the bottom of Syncify's window says so; click **Reload** to switch to it.
 
 Old versions stop backing up after a grace period, and Syncify then says it's no longer supported. If you see that:
 
@@ -48,7 +48,7 @@ Old versions stop backing up after a grace period, and Syncify then says it's no
 
 - Syncify needs [Spicetify Marketplace](https://github.com/spicetify/marketplace) to be installed. It saves Marketplace's list of what you installed, and Marketplace downloads the actual files again after a restore.
 - If something shows as installed but doesn't load after a restore, reload Spotify once more or reinstall that item from Marketplace.
-- Backups also list the extensions, custom apps and theme you set up by hand in Spicetify's config, but Syncify can only restore what came from Marketplace.
+- Backups also list the extensions, custom apps and theme you set up manually in Spicetify's config, but Syncify can only restore what came from Marketplace.
 - **Privacy:** Syncify never sends your Spotify username. It sends a one-way hash of it, which identifies your backups without revealing who you are. Each request also carries Syncify's version, a random ID for this install, your time zone and which Spotify account field was hashed, so the server knows which versions are in use and can count backups and restores in your local time. Backups are not encrypted on the server, so don't count on them to keep anything secret.
 
 ### Support
