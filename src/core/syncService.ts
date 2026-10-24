@@ -10,6 +10,7 @@ import type {
 } from "../types/syncify";
 import { hasWorkerUrl } from "./config";
 import { getUserIdentity } from "./user";
+import { cleanSpicetifyConfig } from "./spicetifyConfig";
 import {
   createPayload,
   hashSnapshot,
@@ -85,21 +86,28 @@ export async function fetchRemoteState(
 // hashed once per session rather than every time Syncify's window opens.
 const currentHashes = new Map<string, Promise<string>>();
 
+// The saved config is cleaned with the current rules too, so backups saved
+// before a rule changed still match the same setup.
 async function withCurrentHash(
   payload: SyncifyPayload,
 ): Promise<SyncifyPayload> {
+  const keys = payload.marketplace_data?.keys ?? {};
+  const spicetifyConfig = payload.spicetify_config
+    ? cleanSpicetifyConfig(payload.spicetify_config, keys)
+    : undefined;
   const id = `${payload.payload_hash} ${payload.metadata?.last_sync_datetime}`;
   let hash = currentHashes.get(id);
   if (!hash) {
-    hash = hashSnapshot(
-      payload.marketplace_data?.keys ?? {},
-      payload.spicetify_config,
-    );
+    hash = hashSnapshot(keys, spicetifyConfig);
     currentHashes.set(id, hash);
     hash.catch(() => currentHashes.delete(id));
   }
 
-  return { ...payload, payload_hash: await hash };
+  return {
+    ...payload,
+    ...(spicetifyConfig ? { spicetify_config: spicetifyConfig } : {}),
+    payload_hash: await hash,
+  };
 }
 
 export async function restoreNow(
