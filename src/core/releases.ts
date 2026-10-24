@@ -29,8 +29,9 @@ export function isBetaChannel(): boolean {
 }
 
 /**
- * The newest release for this install's channel: latest-beta.json on the
- * beta channel, falling back to latest.json. Null if neither can be read.
+ * The newest release for this install's channel: latest.json, or on the beta
+ * channel the newer of latest-beta.json and latest.json, so beta never lags
+ * behind stable. Null if nothing can be read.
  */
 export async function fetchLatestVersion(
   releasesUrl: string,
@@ -38,13 +39,17 @@ export async function fetchLatestVersion(
   const pointers = isBetaChannel()
     ? ["latest-beta.json", "latest.json"]
     : ["latest.json"];
+  const versions = await Promise.all(
+    pointers.map((pointer) => fetchPointerVersion(`${releasesUrl}/${pointer}`)),
+  );
 
-  for (const pointer of pointers) {
-    const version = await fetchPointerVersion(`${releasesUrl}/${pointer}`);
-    if (version) return version;
-  }
-
-  return null;
+  return versions.reduce<string | null>(
+    (newest, version) =>
+      version && (!newest || compareVersions(version, newest) > 0)
+        ? version
+        : newest,
+    null,
+  );
 }
 
 export function isReleaseVersion(value: unknown): value is string {

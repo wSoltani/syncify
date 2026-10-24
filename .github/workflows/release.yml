@@ -49,6 +49,18 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     environment: releases
+    # One pointer write at a time, so two tags pushed together can't race.
+    concurrency:
+      group: release-pointers
+      cancel-in-progress: false
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,20 +75,18 @@ jobs:
           done
           echo "::error::$url isn't reachable"
           exit 1
+      # Read from the bucket, not the public address, which is cached.
       - name: Write latest-beta.json
         run: |
+          if ! aws s3api get-object --endpoint-url "$R2_ENDPOINT" \
+              --bucket syncify-releases --key latest-beta.json current-beta.json \
+              > /dev/null 2> get-error.txt; then
+            grep -q NoSuchKey get-error.txt || { cat get-error.txt; exit 1; }
+          fi
           node scripts/release-pointer.mjs latest-beta.json "${GITHUB_REF_NAME#v}" \
-            --newer-than https://syncify-releases.wsoltani.com/latest-beta.json
+            --newer-than current-beta.json
       - name: Upload latest-beta.json
         if: hashFiles('latest-beta.json') != ''
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
-          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
-          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         run: |
           aws s3api put-object \
             --endpoint-url "$R2_ENDPOINT" \

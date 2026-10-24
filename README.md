@@ -108,7 +108,7 @@ SYNCIFY_WORKER_URL=http://localhost:8787 npm run build
 localStorage.setItem("syncify:beta", "true")
 ```
 
-The loader then reads `latest-beta.json` first. `localStorage.removeItem("syncify:beta")` goes back to stable releases.
+The loader then loads the newer of `latest-beta.json` and `latest.json`. `localStorage.removeItem("syncify:beta")` goes back to stable releases.
 
 ### Releasing
 

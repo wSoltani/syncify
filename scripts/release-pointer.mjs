@@ -1,12 +1,13 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 // Writes a version pointer (latest.json or latest-beta.json) for the release
 // workflows: node scripts/release-pointer.mjs <file> <version> [--stable]
-// [--newer-than <url>]. The loader accepts only these versions, so anything
-// else fails here first.
+// [--newer-than <current file>]. The loader accepts only these versions, so
+// anything else fails here first.
 // --stable refuses betas (latest.json reaches everyone).
-// --newer-than skips the write when the pointer at <url> is already at this
-// version or a newer one, so an older tag never moves the beta channel back.
+// --newer-than skips the write when the current pointer (downloaded from the
+// bucket; a missing file means none yet) is already at this version or a
+// newer one, so an older tag never moves the beta channel back.
 const VERSION_PATTERN = /^(\d{1,4})\.(\d{1,4})\.(\d{1,4})(?:-beta\.(\d{1,4}))?$/;
 
 const [file, version, ...flags] = process.argv.slice(2);
@@ -33,11 +34,12 @@ if (newerThan) {
 await writeFile(file, `${JSON.stringify({ version })}\n`);
 console.log(`${file} -> ${version}`);
 
-async function readPointer(url) {
-  const response = await fetch(url, { cache: "no-store" });
-  if (response.status === 404) return null;
-  if (!response.ok) fail(`Could not read ${url}: HTTP ${response.status}`);
-  const { version: current } = await response.json();
+async function readPointer(path) {
+  const text = await readFile(path, "utf8").catch((error) =>
+    error.code === "ENOENT" ? null : fail(`Could not read ${path}: ${error}`),
+  );
+  if (text === null) return null;
+  const { version: current } = JSON.parse(text);
   return VERSION_PATTERN.test(current ?? "") ? current : null;
 }
 
