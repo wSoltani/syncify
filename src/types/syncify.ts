@@ -1,4 +1,6 @@
 // 2 adds spicetify_config. Older backups are version 1.
+import type { InstalledItem } from "../core/restorePreview";
+
 export const SYNCIFY_SCHEMA_VERSION = 2;
 
 export type SyncifyStatus =
@@ -90,6 +92,8 @@ export interface SyncifySnapshotSummary {
   installedItemCount: number;
   /** Keys of the installed extensions, themes and snippets. */
   installedItems: string[];
+  /** The same items, with their names and repos. */
+  items: InstalledItem[];
   /** Null when this Spicetify has no config to read. */
   spicetifyConfig: SyncifySpicetifyConfig | null;
   marketplaceAvailable: boolean;

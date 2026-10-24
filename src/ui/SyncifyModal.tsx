@@ -1,9 +1,14 @@
 import { loadConfig, saveConfig } from "../core/config";
 import { getProjectConfig } from "../core/projectConfig";
+import { summarizeMarketplaceState } from "../core/marketplace";
 import {
-  listInstalledItems,
-  summarizeMarketplaceState,
-} from "../core/marketplace";
+  listItems,
+  previewRestore,
+  type ByHandItem,
+  type InstalledItem,
+  type ItemChange,
+  type ItemType,
+} from "../core/restorePreview";
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
 import { UnsupportedVersionError } from "../api/syncifyApi";
 import {
@@ -57,6 +62,9 @@ export function SyncifyModal() {
   const [message, setMessage] = useState<MessageState | null>(null);
   const [installedItemCount, setInstalledItemCount] = useState(0);
   const [localItems, setLocalItems] = useState<string[]>([]);
+  const [localItemDetails, setLocalItemDetails] = useState<InstalledItem[]>(
+    [],
+  );
   const [localConfig, setLocalConfig] =
     useState<SyncifySpicetifyConfig | null>(null);
   const [marketplaceAvailable, setMarketplaceAvailable] = useState<
@@ -72,6 +80,7 @@ export function SyncifyModal() {
     useState<SyncifyPayload | null>(null);
   const [remoteChecked, setRemoteChecked] = useState(false);
   const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
+  const [showChanges, setShowChanges] = useState(false);
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<AccordionSectionId | null>(
@@ -95,15 +104,35 @@ export function SyncifyModal() {
       new Map(
         allBackups.map((backup) => [
           backup,
-          listInstalledItems(backup.marketplace_data.keys),
+          listItems(backup.marketplace_data.keys),
         ]),
       ),
     [allBackups],
   );
+  const getBackupItemDetails = (backup: SyncifyPayload) =>
+    backupItems.get(backup) ?? listItems(backup.marketplace_data.keys);
   const getBackupItems = (backup: SyncifyPayload) =>
-    backupItems.get(backup) ?? listInstalledItems(backup.marketplace_data.keys);
+    getBackupItemDetails(backup).map((item) => item.key);
   const countBackupItems = (backup: SyncifyPayload) =>
-    getBackupItems(backup).length;
+    getBackupItemDetails(backup).length;
+  const restorePreview = useMemo(
+    () =>
+      isConfirmingRestore && selectedRestorePayload
+        ? previewRestore(
+            getBackupItemDetails(selectedRestorePayload),
+            selectedRestorePayload.spicetify_config,
+            localItemDetails,
+            localConfig,
+          )
+        : null,
+    [
+      isConfirmingRestore,
+      selectedRestorePayload,
+      backupItems,
+      localItemDetails,
+      localConfig,
+    ],
+  );
   const menuAvailable = useMemo(() => isMenuEntryPointAvailable(), []);
   // Only the loader fetches the latest release on reload. Older manual
   // copies and dev builds have to be replaced instead.
@@ -190,6 +219,7 @@ export function SyncifyModal() {
     setLocalHash(summary.hash);
     setInstalledItemCount(summary.installedItemCount);
     setLocalItems(summary.installedItems);
+    setLocalItemDetails(summary.items);
     setLocalConfig(summary.spicetifyConfig);
     setMarketplaceAvailable(summary.marketplaceAvailable);
     return summary;
@@ -342,6 +372,7 @@ export function SyncifyModal() {
     }
 
     setSelectedRestorePayload(payload);
+    setShowChanges(false);
     setIsConfirmingRestore(true);
   }
 
@@ -594,14 +625,22 @@ export function SyncifyModal() {
             </p>
           ) : isConfirmingRestore ? (
             <div className="syncify-confirm">
-              <p>
-                Replace this device's{" "}
-                {formatItemCount(installedItemCount)} with the{" "}
+              <p className="syncify-confirm-title">
+                Restore{" "}
                 {selectedRestorePayload
-                  ? `${formatItemCount(countBackupItems(selectedRestorePayload))} from ${formatBackupDate(selectedRestorePayload.metadata.last_sync_datetime)}`
-                  : "selected backup"}
-                ? Spotify will reload.
+                  ? formatBackupDate(
+                      selectedRestorePayload.metadata.last_sync_datetime,
+                    )
+                  : "this backup"}
+                ?
               </p>
+              {restorePreview ? (
+                <RestoreChanges
+                  preview={restorePreview}
+                  expanded={showChanges}
+                  onToggle={() => setShowChanges(!showChanges)}
+                />
+              ) : null}
               {localIsUnsaved ? (
                 <div className="syncify-alert">
                   Your current setup isn't backed up.
@@ -801,6 +840,129 @@ export function SyncifyModal() {
         </span>
       </footer>
     </div>
+  );
+}
+
+const CHANGE_MARKS: Record<ItemChange, { mark: string; label: string }> = {
+  added: { mark: "+", label: "Added" },
+  removed: { mark: "−", label: "Removed" },
+  unchanged: { mark: "=", label: "Unchanged" },
+};
+const ITEM_GROUPS: [ItemType, string][] = [
+  ["extension", "Extensions"],
+  ["theme", "Themes"],
+  ["snippet", "Snippets"],
+];
+const BY_HAND_LABELS: Record<ByHandItem["type"], string> = {
+  extension: "extension",
+  custom_app: "custom app",
+  theme: "theme",
+};
+
+/**
+ * What a restore changes on this device: count chips, then the items grouped
+ * by type behind "Show changes".
+ */
+function RestoreChanges(props: {
+  preview: ReturnType<typeof previewRestore>;
+  expanded: boolean;
+  onToggle(): void;
+}) {
+  const React = Spicetify.React;
+  const { items, counts, byHand } = props.preview;
+
+  return (
+    <>
+      <div className="syncify-chips" aria-label="What changes on this device">
+        {counts.added ? (
+          <span className="syncify-chip" data-change="added">
+            +{counts.added} added
+          </span>
+        ) : null}
+        {counts.removed ? (
+          <span className="syncify-chip" data-change="removed">
+            −{counts.removed} removed
+          </span>
+        ) : null}
+        {counts.unchanged ? (
+          <span className="syncify-chip">{counts.unchanged} unchanged</span>
+        ) : null}
+        {byHand.length ? (
+          <span className="syncify-chip">{byHand.length} to add by hand</span>
+        ) : null}
+      </div>
+
+      {items.length || byHand.length ? (
+        <button
+          className="syncify-text-button syncify-disclosure"
+          type="button"
+          aria-expanded={props.expanded}
+          aria-controls="syncify-restore-changes"
+          onClick={props.onToggle}
+        >
+          {props.expanded ? "Hide changes" : "Show changes"}
+          <ChevronIcon />
+        </button>
+      ) : null}
+
+      {props.expanded ? (
+        <div className="syncify-changes" id="syncify-restore-changes">
+          {ITEM_GROUPS.map(([type, title]) => {
+            const group = items.filter((item) => item.type === type);
+            if (group.length === 0) return null;
+
+            return (
+              <section key={type} aria-label={title}>
+                <h5 className="syncify-change-group">{title}</h5>
+                <ul className="syncify-change-list">
+                  {group.map((item) => (
+                    <li className="syncify-change" key={item.key}>
+                      <span
+                        className="syncify-mark"
+                        data-change={item.change}
+                        role="img"
+                        aria-label={CHANGE_MARKS[item.change].label}
+                      >
+                        {CHANGE_MARKS[item.change].mark}
+                      </span>
+                      <span className="syncify-change-name">
+                        {item.name}
+                        {item.repo ? (
+                          <span className="syncify-change-detail">
+                            {" "}
+                            · {item.repo}
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+          {byHand.length ? (
+            <section aria-label="Add by hand">
+              <h5 className="syncify-change-group">Add by hand</h5>
+              <ul className="syncify-change-list">
+                {byHand.map((item) => (
+                  <li className="syncify-change" key={`${item.type}:${item.name}`}>
+                    <span className="syncify-mark" aria-hidden="true" />
+                    <span className="syncify-change-name">
+                      {item.name}
+                      <span className="syncify-change-detail">
+                        {" "}
+                        · {BY_HAND_LABELS[item.type]}
+                        {item.scheme ? `, ${item.scheme}` : ""}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
+    </>
   );
 }
 

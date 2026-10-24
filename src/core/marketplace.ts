@@ -1,5 +1,6 @@
 import { sha256Hex, stableStringify } from "./crypto";
 import { getDeviceInfo } from "./device";
+import { listItems } from "./restorePreview";
 import {
   normalizeSpicetifyConfig,
   readSpicetifyConfig,
@@ -93,6 +94,7 @@ export async function summarizeMarketplaceState(): Promise<SyncifySnapshotSummar
     hash: await hashSnapshot(keys, spicetifyConfig),
     installedItemCount: countInstalledItems(keys),
     installedItems: listInstalledItems(keys),
+    items: listItems(keys),
     spicetifyConfig,
     marketplaceAvailable: isMarketplaceAvailable(keys),
   };
