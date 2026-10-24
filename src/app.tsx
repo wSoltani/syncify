@@ -108,9 +108,10 @@ const TOPBAR_REFERENCE_BUTTON_SELECTOR = [
  * re-renders the action buttons in place (seen on 1.3.3.x) ours is dropped
  * until the next navigation. Watch the top bar and put it back ourselves.
  *
- * Only the top bar is watched, plus its parent's direct children in case the
- * whole bar is re-mounted. The rest of Spotify's page changes constantly
- * (playback, lyrics, lists), so watching all of it ran this on every change.
+ * Only the top bar is watched, plus the direct children of each element above
+ * it, in case the whole bar is re-mounted. The rest of Spotify's page changes
+ * constantly (playback, lyrics, lists), so watching all of it ran this on
+ * every change.
  * Until the top bar exists, the page is watched just to find it.
  */
 function keepTopbarButtonAttached(button: Spicetify.Topbar.Button): void {
@@ -154,8 +155,8 @@ function keepTopbarButtonAttached(button: Spicetify.Topbar.Button): void {
     }
 
     observer.observe(root, { childList: true, subtree: true });
-    if (root.parentElement) {
-      observer.observe(root.parentElement, { childList: true });
+    for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+      observer.observe(parent, { childList: true });
     }
   };
 
