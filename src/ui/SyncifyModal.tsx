@@ -60,6 +60,21 @@ export function SyncifyModal() {
   const [shortcutError, setShortcutError] = useState<string | null>(null);
 
   const projectConfig = useMemo(() => getProjectConfig(), []);
+  // Parsing a backup's item lists is the costly part of a row, so count each
+  // backup once when the list loads instead of on every render.
+  const backupItemCounts = useMemo(
+    () =>
+      new Map(
+        remoteBackups.map((backup) => [
+          backup,
+          countInstalledItems(backup.marketplace_data.keys),
+        ]),
+      ),
+    [remoteBackups],
+  );
+  const countBackupItems = (backup: SyncifyPayload) =>
+    backupItemCounts.get(backup) ??
+    countInstalledItems(backup.marketplace_data.keys);
   const menuAvailable = useMemo(() => isMenuEntryPointAvailable(), []);
   const isBusy = status === "loading";
   const alertMessage =
@@ -403,9 +418,7 @@ export function SyncifyModal() {
                       {formatBackupDate(backup.metadata.last_sync_datetime)}
                     </span>
                     <span className="syncify-muted">
-                      {formatItemCount(
-                        countInstalledItems(backup.marketplace_data.keys),
-                      )}{" "}
+                      {formatItemCount(countBackupItems(backup))}{" "}
                       · from {backup.metadata.device_info}
                     </span>
                   </span>
@@ -432,7 +445,7 @@ export function SyncifyModal() {
                 Replace this device's{" "}
                 {formatItemCount(installedItemCount)} with the{" "}
                 {selectedRestorePayload
-                  ? `${formatItemCount(countInstalledItems(selectedRestorePayload.marketplace_data.keys))} from ${formatBackupDate(selectedRestorePayload.metadata.last_sync_datetime)}`
+                  ? `${formatItemCount(countBackupItems(selectedRestorePayload))} from ${formatBackupDate(selectedRestorePayload.metadata.last_sync_datetime)}`
                   : "selected backup"}
                 ? Spotify will reload.
               </p>

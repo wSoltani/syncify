@@ -61,11 +61,22 @@ export async function fetchRemoteState(
   return { ...remote, payload: backups[0] ?? null, backups };
 }
 
+// Current hashes by backup (its stored hash and time), so each backup is
+// hashed once per session rather than every time Syncify's window opens.
+const currentHashes = new Map<string, Promise<string>>();
+
 async function withCurrentHash(
   payload: SyncifyPayload,
 ): Promise<SyncifyPayload> {
-  const keys = payload.marketplace_data?.keys ?? {};
-  return { ...payload, payload_hash: await hashMarketplaceKeys(keys) };
+  const id = `${payload.payload_hash} ${payload.metadata?.last_sync_datetime}`;
+  let hash = currentHashes.get(id);
+  if (!hash) {
+    hash = hashMarketplaceKeys(payload.marketplace_data?.keys ?? {});
+    currentHashes.set(id, hash);
+    hash.catch(() => currentHashes.delete(id));
+  }
+
+  return { ...payload, payload_hash: await hash };
 }
 
 export async function restoreNow(
