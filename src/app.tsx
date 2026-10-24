@@ -27,16 +27,6 @@ function warn(message: string, data?: unknown): void {
   console.warn(LOG_PREFIX, message, data);
 }
 
-(function init() {
-  if (!isSpicetifyReady()) {
-    setTimeout(init, 100);
-    return;
-  }
-
-  debug("Spicetify APIs ready");
-  main();
-})();
-
 function isSpicetifyReady(): boolean {
   return Boolean(
     Spicetify?.Platform &&
@@ -105,6 +95,7 @@ function makeRightTopbarButtonClickable(button: Spicetify.Topbar.Button): void {
 }
 
 const TOPBAR_CONTAINER_SELECTOR = ".main-actionButtons";
+const TOPBAR_ROOT_SELECTOR = ".Root__globalNav, .Root__top-bar";
 const TOPBAR_REFERENCE_BUTTON_SELECTOR = [
   ".main-actionButtons .main-topBar-buddyFeed",
   ".main-actionButtons .main-globalNav-buddyFeed",
@@ -115,15 +106,23 @@ const TOPBAR_REFERENCE_BUTTON_SELECTOR = [
 /**
  * Spicetify only re-mounts topbar buttons on route changes, so if Spotify
  * re-renders the action buttons in place (seen on 1.3.3.x) ours is dropped
- * until the next navigation. Watch the DOM and put it back ourselves.
+ * until the next navigation. Watch the top bar and put it back ourselves.
+ *
+ * Only the top bar is watched, plus the direct children of each element above
+ * it, in case the whole bar is re-mounted. The rest of Spotify's page changes
+ * constantly (playback, lyrics, lists), so watching all of it ran this on
+ * every change.
+ * Until the top bar exists, the page is watched just to find it.
  */
 function keepTopbarButtonAttached(button: Spicetify.Topbar.Button): void {
   if (typeof MutationObserver === "undefined") return;
 
   let scheduled = false;
+  let watchedRoot: Element | null = null;
 
   const reattach = () => {
     scheduled = false;
+    watchTopbar();
     const element = button.element;
     const container = document.querySelector(TOPBAR_CONTAINER_SELECTOR);
     if (!element || !container || container.contains(element)) return;
@@ -134,11 +133,32 @@ function keepTopbarButtonAttached(button: Spicetify.Topbar.Button): void {
     debug("Topbar button re-attached", describeTopbarButton(button));
   };
 
-  new MutationObserver(() => {
+  const observer = new MutationObserver(() => {
     if (scheduled) return;
     scheduled = true;
     setTimeout(reattach, 250);
-  }).observe(document.body, { childList: true, subtree: true });
+  });
+
+  const watchTopbar = () => {
+    if (watchedRoot?.isConnected) return;
+
+    const container = document.querySelector(TOPBAR_CONTAINER_SELECTOR);
+    const root =
+      container?.closest(TOPBAR_ROOT_SELECTOR) ?? container?.parentElement;
+
+    observer.disconnect();
+    watchedRoot = root ?? null;
+
+    if (!root) {
+      observer.observe(document.body, { childList: true, subtree: true });
+      return;
+    }
+
+    observer.observe(root, { childList: true, subtree: true });
+    for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+      observer.observe(parent, { childList: true });
+    }
+  };
 
   reattach();
 }
@@ -307,3 +327,14 @@ function renderReact(container: Element): void {
     throw error;
   }
 }
+
+// Last, so every constant above is set even when Spicetify is already ready.
+(function init() {
+  if (!isSpicetifyReady()) {
+    setTimeout(init, 100);
+    return;
+  }
+
+  debug("Spicetify APIs ready");
+  main();
+})();
