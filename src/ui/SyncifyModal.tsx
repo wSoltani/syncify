@@ -418,18 +418,15 @@ export function SyncifyModal() {
       >
         <span className="syncify-radio" aria-hidden="true" />
         {options?.isSafetyCopy ? (
-          <>
-            <ShieldIcon />
-            <span className="syncify-backup-text">
-              <span>
-                Safety copy{" "}
-                <span className="syncify-backup-note">· updated weekly</span>
-              </span>
-              <span className="syncify-muted">
-                {date} · {items}
-              </span>
+          <span className="syncify-backup-text">
+            <span>
+              Safety copy{" "}
+              <span className="syncify-backup-note">· updated weekly</span>
             </span>
-          </>
+            <span className="syncify-muted">
+              {date} · {items}
+            </span>
+          </span>
         ) : (
           <span className="syncify-backup-text">
             <span className="syncify-backup-date">{date}</span>
@@ -443,6 +440,8 @@ export function SyncifyModal() {
             Current
           </span>
         ) : null}
+        {/* At the far end, across from the radio. */}
+        {options?.isSafetyCopy ? <ShieldIcon /> : null}
       </button>
     );
   }
