@@ -30,7 +30,7 @@ Open Syncify from the button in Spotify's top bar, from your profile menu, or wi
 
 - **Back up now** saves what you have installed. If nothing has changed since your last backup, there's nothing to save and the button says so.
 - **Backups** lists your 3 most recent backups, plus a **safety copy**: an older backup kept aside and updated about once a week, so a burst of new backups can't replace it. The one tagged **Current** matches what's on this device right now. When everything is backed up, only the latest shows; **Show all** lists the rest.
-- **Restore** puts a backup back on this device, after showing what it adds and removes. Spotify then reloads with your setup.
+- **Restore** puts a backup back on this device, after showing what it adds and removes and flagging anything that isn't from Marketplace. Spotify then reloads with your setup.
 - **Back up automatically** (off by default) backs up when Spotify starts, but only if something changed. It won't overwrite a bigger cloud backup with a smaller or empty setup, so a fresh install can't wipe out your saved one.
 
 You can change the shortcut and where the Syncify button appears under **Settings**, at the bottom of the window.

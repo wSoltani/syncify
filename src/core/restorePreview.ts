@@ -10,6 +10,10 @@ export interface InstalledItem {
   name: string;
   /** "owner/repo", or null for snippets and entries without one. */
   repo: string | null;
+  /** The addresses Marketplace loads it from: the script, or a theme's CSS, color schemes and scripts. */
+  sources: string[];
+  /** A snippet made in Marketplace on a device, not from its list. */
+  custom: boolean;
 }
 
 /** What restoring a backup does to this device's Marketplace items. */
@@ -17,6 +21,8 @@ export type ItemChange = "added" | "removed" | "unchanged";
 
 export interface PreviewItem extends InstalledItem {
   change: ItemChange;
+  /** Added, or its sources differ from this device's copy. */
+  isNew: boolean;
 }
 
 /** An item from Spicetify's config that only a terminal command can add. */
@@ -73,17 +79,25 @@ export function previewRestore(
   localConfig: SyncifySpicetifyConfig | null,
 ): RestorePreview {
   const inBackup = new Set(backupItems.map((item) => item.key));
-  const onDevice = new Set(localItems.map((item) => item.key));
+  const onDevice = new Map(localItems.map((item) => [item.key, item]));
   const items: PreviewItem[] = [
-    ...backupItems.map((item) => ({
-      ...item,
-      change: onDevice.has(item.key)
-        ? ("unchanged" as const)
-        : ("added" as const),
-    })),
+    ...backupItems.map((item) => {
+      const local = onDevice.get(item.key);
+      return {
+        ...item,
+        change: local ? ("unchanged" as const) : ("added" as const),
+        // The restore writes the backup's copy, so a known key can still
+        // bring code from somewhere new.
+        isNew: !local || local.sources.join(" ") !== item.sources.join(" "),
+      };
+    }),
     ...localItems
       .filter((item) => !inBackup.has(item.key))
-      .map((item) => ({ ...item, change: "removed" as const })),
+      .map((item) => ({
+        ...item,
+        change: "removed" as const,
+        isNew: false,
+      })),
   ].sort(
     (a, b) =>
       CHANGE_ORDER[a.change] - CHANGE_ORDER[b.change] ||
@@ -150,7 +164,31 @@ function describeItem(
     type,
     name,
     repo: type !== "snippet" && user && repo ? `${user}/${repo}` : null,
+    sources: listSources(type, entry),
+    custom: type === "snippet" && entry?.custom === true,
   };
+}
+
+// Marketplace loads an extension from `extensionURL`, and a theme from its
+// CSS, color schemes and included scripts. Snippets are stored as CSS.
+function listSources(
+  type: ItemType,
+  entry: Record<string, unknown> | null,
+): string[] {
+  if (!entry) return [];
+  const values =
+    type === "extension"
+      ? [entry.extensionURL]
+      : type === "theme"
+        ? [
+            entry.cssURL,
+            entry.schemesURL,
+            ...(Array.isArray(entry.include) ? entry.include : []),
+          ]
+        : [];
+  return values.filter(
+    (value): value is string => typeof value === "string" && value !== "",
+  );
 }
 
 function text(value: unknown): string | null {

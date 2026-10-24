@@ -435,6 +435,28 @@
     color: var(--syncify-muted);
 }
 
+.syncify-source {
+    display: inline-flex;
+    flex: 0 1 auto;
+    align-items: center;
+    max-width: 50%;
+    overflow-wrap: anywhere;
+    gap: 4px;
+    color: var(--syncify-muted);
+    font-size: 12px;
+}
+
+.syncify-warning-icon {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: var(--syncify-warning);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .syncify-actions {
     display: flex;
     flex-wrap: wrap;
