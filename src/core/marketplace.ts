@@ -1,6 +1,10 @@
 import { sha256Hex, stableStringify } from "./crypto";
 import { getDeviceInfo } from "./device";
 import {
+  normalizeSpicetifyConfig,
+  readSpicetifyConfig,
+} from "./spicetifyConfig";
+import {
   readMarketplaceStore,
   writeMarketplaceStore,
 } from "./marketplaceStorage";
@@ -8,6 +12,7 @@ import {
   SYNCIFY_SCHEMA_VERSION,
   type SyncifyPayload,
   type SyncifySnapshotSummary,
+  type SyncifySpicetifyConfig,
 } from "../types/syncify";
 
 const MARKETPLACE_PREFIX = "marketplace:";
@@ -42,8 +47,11 @@ const UI_STATE_KEYS = new Set(["marketplace:active-tab", "marketplace:sort"]);
 const INSTALLED_ITEM_PREFIX = "marketplace:installed:";
 const REFRESHED_ITEM_FIELDS = ["stars", "tags", "lastUpdated", "created"];
 
-export async function hashMarketplaceKeys(
+// The Spicetify config counts too, when there is one. Backups from before it
+// was saved hash the same as they always did.
+export async function hashSnapshot(
   keys: Record<string, string>,
+  spicetifyConfig?: SyncifySpicetifyConfig | null,
 ): Promise<string> {
   const significant: Record<string, unknown> = {};
 
@@ -52,6 +60,11 @@ export async function hashMarketplaceKeys(
     significant[key] = key.startsWith(INSTALLED_ITEM_PREFIX)
       ? withoutRefreshedFields(value)
       : value;
+  }
+
+  // Not a marketplace: key, so it can't clash with one.
+  if (spicetifyConfig) {
+    significant["spicetify_config"] = normalizeSpicetifyConfig(spicetifyConfig);
   }
 
   return sha256Hex(stableStringify(significant));
@@ -73,18 +86,21 @@ function withoutRefreshedFields(raw: string): unknown {
 
 export async function summarizeMarketplaceState(): Promise<SyncifySnapshotSummary> {
   const keys = await collectMarketplaceKeys();
+  const spicetifyConfig = readSpicetifyConfig(keys);
 
   return {
     keyCount: Object.keys(keys).length,
-    hash: await hashMarketplaceKeys(keys),
+    hash: await hashSnapshot(keys, spicetifyConfig),
     installedItemCount: countInstalledItems(keys),
     installedItems: listInstalledItems(keys),
+    spicetifyConfig,
     marketplaceAvailable: isMarketplaceAvailable(keys),
   };
 }
 
 export async function createPayload(): Promise<SyncifyPayload> {
   const keys = await collectMarketplaceKeys();
+  const spicetifyConfig = readSpicetifyConfig(keys);
 
   return {
     schema_version: SYNCIFY_SCHEMA_VERSION,
@@ -93,8 +109,9 @@ export async function createPayload(): Promise<SyncifyPayload> {
       device_info: getDeviceInfo(),
       marketplace_key_count: Object.keys(keys).length,
     },
-    payload_hash: await hashMarketplaceKeys(keys),
+    payload_hash: await hashSnapshot(keys, spicetifyConfig),
     marketplace_data: { keys },
+    ...(spicetifyConfig ? { spicetify_config: spicetifyConfig } : {}),
   };
 }
 

@@ -12,7 +12,7 @@ import { hasWorkerUrl } from "./config";
 import { getUserIdentity } from "./user";
 import {
   createPayload,
-  hashMarketplaceKeys,
+  hashSnapshot,
   restoreMarketplaceKeys,
 } from "./marketplace";
 
@@ -91,7 +91,10 @@ async function withCurrentHash(
   const id = `${payload.payload_hash} ${payload.metadata?.last_sync_datetime}`;
   let hash = currentHashes.get(id);
   if (!hash) {
-    hash = hashMarketplaceKeys(payload.marketplace_data?.keys ?? {});
+    hash = hashSnapshot(
+      payload.marketplace_data?.keys ?? {},
+      payload.spicetify_config,
+    );
     currentHashes.set(id, hash);
     hash.catch(() => currentHashes.delete(id));
   }
