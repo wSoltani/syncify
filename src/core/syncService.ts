@@ -51,14 +51,27 @@ export async function fetchRemoteState(
   // recompute it with the current rules. Otherwise updating Syncify alone would
   // make every unchanged install look different and re-upload.
   // Recomputing can also make older backups identical to each other, so keep
-  // only the newest backup for each distinct set of data.
-  const rehashed = await Promise.all(remote.backups.map(withCurrentHash));
+  // only the newest backup for each distinct set of data. The safety copy is
+  // left out when it holds the same data as a recent backup.
+  const [rehashed, safetyCopy] = await Promise.all([
+    Promise.all(remote.backups.map(withCurrentHash)),
+    remote.safetyCopy ? withCurrentHash(remote.safetyCopy) : null,
+  ]);
   const backups = rehashed.filter(
     (backup, index) =>
       rehashed.findIndex((other) => other.payload_hash === backup.payload_hash) ===
       index,
   );
-  return { ...remote, payload: backups[0] ?? null, backups };
+  return {
+    ...remote,
+    payload: backups[0] ?? null,
+    backups,
+    safetyCopy:
+      safetyCopy &&
+      !backups.some((backup) => backup.payload_hash === safetyCopy.payload_hash)
+        ? safetyCopy
+        : null,
+  };
 }
 
 // Current hashes by backup (its stored hash and time), so each backup is

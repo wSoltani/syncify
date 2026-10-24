@@ -11,6 +11,8 @@ const DEFAULT_PROJECT_CONFIG: SyncifyProjectConfig = {
   issueUrl:
     process.env.SYNCIFY_ISSUE_URL ??
     "https://github.com/wSoltani/Syncify/issues/new",
+  releasesUrl:
+    process.env.SYNCIFY_RELEASES_URL ?? "https://syncify-releases.wsoltani.com",
 };
 
 export function getProjectConfig(): SyncifyProjectConfig {
@@ -36,6 +38,9 @@ export function getProjectConfig(): SyncifyProjectConfig {
       normalizeUrl(runtimeConfig?.kofiUrl) ?? DEFAULT_PROJECT_CONFIG.kofiUrl,
     issueUrl:
       normalizeUrl(runtimeConfig?.issueUrl) ?? DEFAULT_PROJECT_CONFIG.issueUrl,
+    releasesUrl:
+      normalizeUrl(runtimeConfig?.releasesUrl) ??
+      DEFAULT_PROJECT_CONFIG.releasesUrl,
   };
 }
 

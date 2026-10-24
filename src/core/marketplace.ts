@@ -78,6 +78,7 @@ export async function summarizeMarketplaceState(): Promise<SyncifySnapshotSummar
     keyCount: Object.keys(keys).length,
     hash: await hashMarketplaceKeys(keys),
     installedItemCount: countInstalledItems(keys),
+    installedItems: listInstalledItems(keys),
     marketplaceAvailable: isMarketplaceAvailable(keys),
   };
 }
@@ -128,9 +129,13 @@ export async function restoreMarketplaceKeys(
 }
 
 export function countInstalledItems(keys: Record<string, string>): number {
-  return INSTALLED_LIST_KEYS.reduce(
-    (count, key) => count + parseStoredArrayLength(keys[key]),
-    0,
+  return listInstalledItems(keys).length;
+}
+
+/** Keys of the installed extensions, themes and snippets. */
+export function listInstalledItems(keys: Record<string, string>): string[] {
+  return INSTALLED_LIST_KEYS.flatMap((key) =>
+    parseStoredArray(keys[key]).map(String),
   );
 }
 
@@ -168,13 +173,13 @@ function collectLocalStorageKeys(): Record<string, string> {
   return keys;
 }
 
-function parseStoredArrayLength(raw: string | undefined): number {
-  if (!raw) return 0;
+function parseStoredArray(raw: string | undefined): unknown[] {
+  if (!raw) return [];
 
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.length : 0;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return 0;
+    return [];
   }
 }

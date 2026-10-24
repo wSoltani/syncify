@@ -1,9 +1,15 @@
 import { loadConfig, saveConfig } from "../core/config";
 import { getProjectConfig } from "../core/projectConfig";
 import {
-  countInstalledItems,
+  listInstalledItems,
   summarizeMarketplaceState,
 } from "../core/marketplace";
+import { UnsupportedVersionError } from "../api/syncifyApi";
+import {
+  compareVersions,
+  fetchPointerVersion,
+  isReleaseVersion,
+} from "../core/releases";
 import { backupNow, fetchRemoteState, restoreNow } from "../core/syncService";
 import {
   applyShortcut,
@@ -47,6 +53,7 @@ export function SyncifyModal() {
   const [status, setStatus] = useState<SyncifyStatus>("idle");
   const [message, setMessage] = useState<MessageState | null>(null);
   const [installedItemCount, setInstalledItemCount] = useState(0);
+  const [localItems, setLocalItems] = useState<string[]>([]);
   const [marketplaceAvailable, setMarketplaceAvailable] = useState<
     boolean | null
   >(null);
@@ -55,6 +62,7 @@ export function SyncifyModal() {
     null,
   );
   const [remoteBackups, setRemoteBackups] = useState<SyncifyPayload[]>([]);
+  const [safetyCopy, setSafetyCopy] = useState<SyncifyPayload | null>(null);
   const [selectedRestorePayload, setSelectedRestorePayload] =
     useState<SyncifyPayload | null>(null);
   const [remoteChecked, setRemoteChecked] = useState(false);
@@ -65,24 +73,32 @@ export function SyncifyModal() {
     null,
   );
   const [showAllBackups, setShowAllBackups] = useState(false);
+  // The backup service refused this version (HTTP 426).
+  const [isUnsupported, setIsUnsupported] = useState(false);
+  const [newerVersion, setNewerVersion] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const projectConfig = useMemo(() => getProjectConfig(), []);
-  // Parsing a backup's item lists is the costly part of a row, so count each
-  // backup once when the list loads instead of on every render.
-  const backupItemCounts = useMemo(
+  const allBackups = useMemo(
+    () => (safetyCopy ? [...remoteBackups, safetyCopy] : remoteBackups),
+    [remoteBackups, safetyCopy],
+  );
+  // Parsing a backup's item lists is the costly part of a row, so list each
+  // backup's items once when the backups load instead of on every render.
+  const backupItems = useMemo(
     () =>
       new Map(
-        remoteBackups.map((backup) => [
+        allBackups.map((backup) => [
           backup,
-          countInstalledItems(backup.marketplace_data.keys),
+          listInstalledItems(backup.marketplace_data.keys),
         ]),
       ),
-    [remoteBackups],
+    [allBackups],
   );
+  const getBackupItems = (backup: SyncifyPayload) =>
+    backupItems.get(backup) ?? listInstalledItems(backup.marketplace_data.keys);
   const countBackupItems = (backup: SyncifyPayload) =>
-    backupItemCounts.get(backup) ??
-    countInstalledItems(backup.marketplace_data.keys);
+    getBackupItems(backup).length;
   const menuAvailable = useMemo(() => isMenuEntryPointAvailable(), []);
   const isBusy = status === "loading";
   const alertMessage =
@@ -101,7 +117,7 @@ export function SyncifyModal() {
   // With everything backed up, only the latest backup is shown until asked.
   // Otherwise the list stays open, so someone who came to restore sees it.
   const backupsExpanded =
-    showAllBackups || !isBackedUp || remoteBackups.length < 2;
+    showAllBackups || !isBackedUp || allBackups.length < 2;
   const visibleBackups = backupsExpanded
     ? remoteBackups
     : remoteBackups.slice(0, 1);
@@ -110,11 +126,12 @@ export function SyncifyModal() {
   const localIsUnsaved = Boolean(
     localHash &&
       installedItemCount > 0 &&
-      !remoteBackups.some((backup) => backup.payload_hash === localHash),
+      !allBackups.some((backup) => backup.payload_hash === localHash),
   );
 
   useEffect(() => {
     void refreshStatus({ silent: true });
+    void checkForUpdate();
   }, []);
 
   // Capture phase on window runs before Mousetrap (bubble phase on document),
@@ -164,6 +181,7 @@ export function SyncifyModal() {
     const summary = await summarizeMarketplaceState();
     setLocalHash(summary.hash);
     setInstalledItemCount(summary.installedItemCount);
+    setLocalItems(summary.installedItems);
     setMarketplaceAvailable(summary.marketplaceAvailable);
     return summary;
   }
@@ -180,6 +198,7 @@ export function SyncifyModal() {
       const remote = await fetchRemoteState(config);
       setRemotePayload(remote.payload);
       setRemoteBackups(remote.backups);
+      setSafetyCopy(remote.safetyCopy);
       setSelectedRestorePayload(remote.payload);
       setRemoteChecked(true);
       setStatus(remote.exists ? "success" : "idle");
@@ -200,6 +219,16 @@ export function SyncifyModal() {
     } catch (error) {
       handleError(error);
     }
+  }
+
+  async function checkForUpdate() {
+    const running = projectConfig.version;
+    if (!isReleaseVersion(running)) return;
+
+    const latest = await fetchPointerVersion(
+      `${projectConfig.releasesUrl}/latest.json`,
+    );
+    if (latest && compareVersions(latest, running) > 0) setNewerVersion(latest);
   }
 
   function updateAutoBackup(enabled: boolean) {
@@ -270,6 +299,11 @@ export function SyncifyModal() {
           ),
         ].slice(0, MAX_BACKUPS),
       );
+      // Same data as the safety copy: show it once, as the new backup. The
+      // Worker may also move the safety copy; the next refresh shows that.
+      setSafetyCopy((copy) =>
+        copy?.payload_hash === payload.payload_hash ? null : copy,
+      );
       setSelectedRestorePayload(payload);
       setRemoteChecked(true);
       setStatus("success");
@@ -339,31 +373,108 @@ export function SyncifyModal() {
   }
 
   function handleError(error: unknown) {
-    const text = error instanceof Error ? error.message : String(error);
     setStatus("error");
+
+    // Shown as its own alert, which stays until Syncify is updated.
+    if (error instanceof UnsupportedVersionError) {
+      setIsUnsupported(true);
+      setMessage(null);
+      return;
+    }
+
+    const text = error instanceof Error ? error.message : String(error);
     setMessage({ kind: "error", text });
     Spicetify.showNotification(text, true, 6000);
+  }
+
+  function renderBackup(
+    backup: SyncifyPayload,
+    options?: { isSafetyCopy?: boolean },
+  ) {
+    const isSelected =
+      selectedRestorePayload?.payload_hash === backup.payload_hash;
+    const isOnDevice = backup.payload_hash === localHash;
+    const date = formatBackupDate(backup.metadata.last_sync_datetime);
+    const items = formatItemCount(countBackupItems(backup));
+
+    return (
+      <button
+        className="syncify-backup"
+        role="radio"
+        aria-checked={isSelected}
+        data-selected={isSelected ? "true" : "false"}
+        type="button"
+        key={`${backup.payload_hash}-${backup.metadata.last_sync_datetime}`}
+        title={
+          options?.isSafetyCopy
+            ? "Kept aside and updated about once a week, so a burst of new backups can't replace it"
+            : undefined
+        }
+        onClick={() => {
+          setSelectedRestorePayload(backup);
+          setIsConfirmingRestore(false);
+        }}
+        disabled={isBusy}
+      >
+        <span className="syncify-radio" aria-hidden="true" />
+        {options?.isSafetyCopy ? (
+          <span className="syncify-backup-text">
+            <span>
+              Safety copy{" "}
+              <span className="syncify-backup-note">· updated weekly</span>
+            </span>
+            <span className="syncify-muted">
+              {date} · {items}
+            </span>
+          </span>
+        ) : (
+          <span className="syncify-backup-text">
+            <span className="syncify-backup-date">{date}</span>
+            <span className="syncify-muted">
+              {items} · from {backup.metadata.device_info}
+            </span>
+          </span>
+        )}
+        {isOnDevice ? (
+          <span className="syncify-tag" title="What's on this device now">
+            Current
+          </span>
+        ) : null}
+        {/* At the far end, across from the radio. */}
+        {options?.isSafetyCopy ? <ShieldIcon /> : null}
+      </button>
+    );
   }
 
   function keepModalOpen(event: { stopPropagation(): void }) {
     event.stopPropagation();
   }
 
-  const statusTitle = !remoteChecked
-    ? status === "error"
-      ? "Couldn't check your backup"
-      : "Checking your backup…"
-    : !remotePayload
-      ? "No backup yet"
-      : localDiffersFromBackup
-        ? "Changes since your last backup"
-        : "Everything is backed up";
+  const statusTitle = isUnsupported
+    ? "Update Syncify to keep backing up"
+    : !remoteChecked
+      ? status === "error"
+        ? "Couldn't check your backup"
+        : "Checking your backup…"
+      : !remotePayload
+        ? "No backup yet"
+        : localDiffersFromBackup
+          ? "Changes since your last backup"
+          : "Everything is backed up";
 
-  const statusDetail = !remoteChecked
-    ? null
-    : remotePayload
-      ? `Last backup ${formatBackupDate(remotePayload.metadata.last_sync_datetime)}`
-      : "Save your extensions and themes so you can restore them after a reinstall or on another computer.";
+  const statusDetail = isUnsupported
+    ? "Your backups are safe"
+    : !remoteChecked
+      ? null
+      : !remotePayload
+        ? "Save your extensions and themes so you can restore them after a reinstall or on another computer."
+        : localDiffersFromBackup
+          ? describeChanges(
+              getBackupItems(remotePayload),
+              localItems,
+              remotePayload.metadata.last_sync_datetime,
+            )
+          : `Last backup ${formatBackupDate(remotePayload.metadata.last_sync_datetime)}`;
 
   return (
     <div
@@ -373,6 +484,19 @@ export function SyncifyModal() {
       onMouseDown={keepModalOpen}
       onPointerDown={keepModalOpen}
     >
+      {isUnsupported ? (
+        <div className="syncify-alert" data-kind="error" role="alert">
+          <span>This version of Syncify is no longer supported.</span>
+          <button
+            className="syncify-text-button"
+            type="button"
+            onClick={() => openExternal(`${projectConfig.githubUrl}#updating`)}
+          >
+            How to update
+          </button>
+        </div>
+      ) : null}
+
       {alertMessage ? (
         <div className="syncify-alert" data-kind={alertMessage.kind}>
           <span>{alertMessage.text}</span>
@@ -412,7 +536,7 @@ export function SyncifyModal() {
           className="syncify-button"
           type="button"
           onClick={runBackup}
-          disabled={isBusy || isBackedUp}
+          disabled={isBusy || isBackedUp || isUnsupported}
           title={isBackedUp ? "No changes since your last backup" : undefined}
         >
           {isBusy ? "Working…" : isBackedUp ? "Backed up" : "Back up now"}
@@ -423,7 +547,7 @@ export function SyncifyModal() {
         <section className="syncify-section" aria-label="Backups">
           <div className="syncify-section-header">
             <h4 className="syncify-section-title">Backups</h4>
-            {isBackedUp && remoteBackups.length > 1 ? (
+            {isBackedUp && allBackups.length > 1 ? (
               <button
                 className="syncify-text-button syncify-disclosure"
                 type="button"
@@ -436,7 +560,7 @@ export function SyncifyModal() {
               >
                 {showAllBackups
                   ? "Show less"
-                  : `Show all ${remoteBackups.length}`}
+                  : `Show all ${allBackups.length}`}
                 <ChevronIcon />
               </button>
             ) : null}
@@ -447,46 +571,13 @@ export function SyncifyModal() {
             role="radiogroup"
             aria-label="Choose a backup to restore"
           >
-            {visibleBackups.map((backup) => {
-              const isSelected =
-                selectedRestorePayload?.payload_hash === backup.payload_hash;
-              const isOnDevice = backup.payload_hash === localHash;
-
-              return (
-                <button
-                  className="syncify-backup"
-                  role="radio"
-                  aria-checked={isSelected}
-                  data-selected={isSelected ? "true" : "false"}
-                  type="button"
-                  key={`${backup.payload_hash}-${backup.metadata.last_sync_datetime}`}
-                  onClick={() => {
-                    setSelectedRestorePayload(backup);
-                    setIsConfirmingRestore(false);
-                  }}
-                  disabled={isBusy}
-                >
-                  <span className="syncify-radio" aria-hidden="true" />
-                  <span className="syncify-backup-text">
-                    <span className="syncify-backup-date">
-                      {formatBackupDate(backup.metadata.last_sync_datetime)}
-                    </span>
-                    <span className="syncify-muted">
-                      {formatItemCount(countBackupItems(backup))}{" "}
-                      · from {backup.metadata.device_info}
-                    </span>
-                  </span>
-                  {isOnDevice ? (
-                    <span
-                      className="syncify-tag"
-                      title="What's on this device now"
-                    >
-                      Current
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
+            {visibleBackups.map((backup) => renderBackup(backup))}
+            {backupsExpanded && safetyCopy ? (
+              <>
+                <div className="syncify-backup-divider" role="presentation" />
+                {renderBackup(safetyCopy, { isSafetyCopy: true })}
+              </>
+            ) : null}
           </div>
 
           {!backupsExpanded ? null : marketplaceAvailable === false ? (
@@ -570,9 +661,9 @@ export function SyncifyModal() {
               className="syncify-switch"
               type="checkbox"
               role="switch"
-              checked={config.autoBackupEnabled}
+              checked={config.autoBackupEnabled && !isUnsupported}
               onChange={(event) => updateAutoBackup(event.currentTarget.checked)}
-              disabled={isBusy}
+              disabled={isBusy || isUnsupported}
             />
           </label>
 
@@ -661,7 +752,18 @@ export function SyncifyModal() {
       </div>
 
       <footer className="syncify-footer">
-        <span>Syncify {projectConfig.version}</span>
+        <span className="syncify-footer-version">
+          <span>Syncify {projectConfig.version}</span>
+          {newerVersion ? (
+            <button
+              className="syncify-text-button syncify-update"
+              type="button"
+              onClick={() => window.location.reload()}
+            >
+              {newerVersion} is out · Reload
+            </button>
+          ) : null}
+        </span>
         <span className="syncify-footer-links">
           <button
             className="syncify-text-button"
@@ -728,6 +830,20 @@ function AccordionSection(props: {
   );
 }
 
+function ShieldIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg
+      className="syncify-shield"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" />
+    </svg>
+  );
+}
+
 function ChevronIcon() {
   const React = Spicetify.React;
   return (
@@ -760,6 +876,26 @@ const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [
   { value: "topbar", label: "Top bar" },
   { value: "menu", label: "Profile menu" },
 ];
+
+/** "1 added, 2 removed since today, 04:42 AM", or the last backup's time. */
+function describeChanges(
+  backupItems: string[],
+  localItems: string[],
+  backupDate: string,
+): string {
+  const inBackup = new Set(backupItems);
+  const onDevice = new Set(localItems);
+  const added = localItems.filter((item) => !inBackup.has(item)).length;
+  const removed = backupItems.filter((item) => !onDevice.has(item)).length;
+  const changes = [
+    added ? `${added} added` : null,
+    removed ? `${removed} removed` : null,
+  ].filter(Boolean);
+
+  return changes.length
+    ? `${changes.join(", ")} since ${formatBackupDate(backupDate)}`
+    : `Last backup ${formatBackupDate(backupDate)}`;
+}
 
 function formatItemCount(count: number): string {
   return count === 1 ? "1 extension or theme" : `${count} extensions and themes`;
