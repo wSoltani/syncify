@@ -33,6 +33,7 @@ import type {
   ReactNode,
   useEffect as useEffectType,
   useMemo as useMemoType,
+  useRef as useRefType,
   useState as useStateType,
 } from "react";
 
@@ -46,6 +47,7 @@ export function SyncifyModal() {
   const useEffect = React.useEffect as typeof useEffectType;
   const useMemo = React.useMemo as typeof useMemoType;
   const useState = React.useState as typeof useStateType;
+  const useRef = React.useRef as typeof useRefType;
 
   const [config, setConfig] = useState<SyncifyConfig>(() => loadConfig());
   const [status, setStatus] = useState<SyncifyStatus>("idle");
@@ -74,6 +76,7 @@ export function SyncifyModal() {
   // The backup service refused this version (HTTP 426).
   const [isUnsupported, setIsUnsupported] = useState(false);
   const [newerVersion, setNewerVersion] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const projectConfig = useMemo(() => getProjectConfig(), []);
   const allBackups = useMemo(
@@ -137,6 +140,13 @@ export function SyncifyModal() {
     if (!isRecordingShortcut) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // The window was closed while recording: stop, and let the key through.
+      if (!panelRef.current?.isConnected) {
+        setIsRecordingShortcut(false);
+        setShortcutError(null);
+        return;
+      }
+
       event.preventDefault();
       event.stopImmediatePropagation();
 
@@ -470,6 +480,7 @@ export function SyncifyModal() {
   return (
     <div
       className="syncify-panel"
+      ref={panelRef}
       onClick={keepModalOpen}
       onMouseDown={keepModalOpen}
       onPointerDown={keepModalOpen}
@@ -585,9 +596,9 @@ export function SyncifyModal() {
                 ? Spotify will reload.
               </p>
               {localIsUnsaved ? (
-                <p className="syncify-muted" data-kind="warning">
+                <div className="syncify-alert">
                   Your current setup isn't backed up.
-                </p>
+                </div>
               ) : null}
               <div className="syncify-actions">
                 <button
@@ -689,11 +700,7 @@ export function SyncifyModal() {
           <div className="syncify-setting">
             <span className="syncify-setting-text">
               <span>Keyboard shortcut</span>
-              {shortcutError ? (
-                <span className="syncify-muted" data-kind="warning">
-                  {shortcutError}
-                </span>
-              ) : isRecordingShortcut ? (
+              {isRecordingShortcut && !shortcutError ? (
                 <span className="syncify-muted">
                   Press a key combination, or Esc to cancel
                 </span>
@@ -737,6 +744,11 @@ export function SyncifyModal() {
               </button>
             </span>
           </div>
+          {shortcutError ? (
+            <div className="syncify-alert" role="alert">
+              {shortcutError}
+            </div>
+          ) : null}
         </AccordionSection>
       </div>
 

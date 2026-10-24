@@ -103,10 +103,6 @@
     font-size: 13px;
 }
 
-.syncify-muted[data-kind="warning"] {
-    color: var(--syncify-warning);
-}
-
 /* Status */
 
 .syncify-status {
