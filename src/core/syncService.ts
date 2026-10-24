@@ -1,11 +1,15 @@
-import { downloadPayload, uploadPayload } from "../api/syncifyApi";
+import {
+  downloadPayload,
+  reportRestore,
+  uploadPayload,
+} from "../api/syncifyApi";
 import type {
   SyncifyConfig,
   SyncifyPayload,
   SyncifyRemoteState,
 } from "../types/syncify";
 import { hasWorkerUrl } from "./config";
-import { getUserHash } from "./user";
+import { getUserIdentity } from "./user";
 import {
   createPayload,
   hashMarketplaceKeys,
@@ -19,8 +23,8 @@ export async function backupNow(
     throw new Error("Syncify backup service is not configured.");
   }
 
-  const [userHash, payload] = await Promise.all([
-    getUserHash(),
+  const [identity, payload] = await Promise.all([
+    getUserIdentity(),
     createPayload(),
   ]);
 
@@ -32,7 +36,7 @@ export async function backupNow(
 
   const { unchanged } = await uploadPayload(
     config.workerUrl,
-    userHash,
+    identity,
     payload,
   );
   return { payload, unchanged };
@@ -45,7 +49,10 @@ export async function fetchRemoteState(
     throw new Error("Syncify backup service is not configured.");
   }
 
-  const remote = await downloadPayload(config.workerUrl, await getUserHash());
+  const remote = await downloadPayload(
+    config.workerUrl,
+    await getUserIdentity(),
+  );
 
   // Backups made by older versions carry a hash computed over every key, so
   // recompute it with the current rules. Otherwise updating Syncify alone would
@@ -105,5 +112,15 @@ export async function restoreNow(
   }
 
   const restoredCount = await restoreMarketplaceKeys(payload);
+
+  // Counted by the backup service. Not awaited: it finishes on its own while
+  // Spotify reloads, and a failure doesn't matter to the restore.
+  const backupId = payload.backup?.id;
+  if (backupId && hasWorkerUrl(config)) {
+    void getUserIdentity()
+      .then((identity) => reportRestore(config.workerUrl, identity, backupId))
+      .catch(() => {});
+  }
+
   return { payload, restoredCount };
 }

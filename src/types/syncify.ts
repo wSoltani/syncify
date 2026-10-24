@@ -23,6 +23,14 @@ export interface SyncifyPayload {
   payload_hash: string;
   marketplace_data: SyncifyMarketplaceData;
   backup_history?: SyncifyPayload[];
+  /** Added by the backup service to each backup it sends. */
+  backup?: SyncifyBackupInfo;
+}
+
+export interface SyncifyBackupInfo {
+  id: string;
+  /** "anchor" is the safety copy. */
+  kind: "rolling" | "anchor" | "pinned";
 }
 
 export interface SyncifyRemoteState {
