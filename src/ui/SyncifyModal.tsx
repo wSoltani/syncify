@@ -4,7 +4,7 @@ import { summarizeMarketplaceState } from "../core/marketplace";
 import {
   listItems,
   previewRestore,
-  type ByHandItem,
+  type ManualItem,
   type InstalledItem,
   type ItemChange,
   type ItemType,
@@ -641,12 +641,12 @@ export function SyncifyModal() {
                   onToggle={() => setShowChanges(!showChanges)}
                 />
               ) : null}
-              {localIsUnsaved ? (
-                <div className="syncify-alert">
-                  Your current setup isn't backed up.
-                </div>
-              ) : null}
               <div className="syncify-actions">
+                {localIsUnsaved ? (
+                  <div className="syncify-alert syncify-actions-hint">
+                    Your current setup isn't backed up.
+                  </div>
+                ) : null}
                 <button
                   className="syncify-button secondary"
                   type="button"
@@ -853,7 +853,7 @@ const ITEM_GROUPS: [ItemType, string][] = [
   ["theme", "Themes"],
   ["snippet", "Snippets"],
 ];
-const BY_HAND_LABELS: Record<ByHandItem["type"], string> = {
+const MANUAL_LABELS: Record<ManualItem["type"], string> = {
   extension: "extension",
   custom_app: "custom app",
   theme: "theme",
@@ -869,7 +869,7 @@ function RestoreChanges(props: {
   onToggle(): void;
 }) {
   const React = Spicetify.React;
-  const { items, counts, byHand } = props.preview;
+  const { items, counts, manual } = props.preview;
 
   return (
     <>
@@ -887,12 +887,14 @@ function RestoreChanges(props: {
         {counts.unchanged ? (
           <span className="syncify-chip">{counts.unchanged} unchanged</span>
         ) : null}
-        {byHand.length ? (
-          <span className="syncify-chip">{byHand.length} to add by hand</span>
+        {manual.length ? (
+          <span className="syncify-chip">
+            {manual.length} to add manually
+          </span>
         ) : null}
       </div>
 
-      {items.length || byHand.length ? (
+      {items.length || manual.length ? (
         <button
           className="syncify-text-button syncify-disclosure"
           type="button"
@@ -940,18 +942,18 @@ function RestoreChanges(props: {
               </section>
             );
           })}
-          {byHand.length ? (
-            <section aria-label="Add by hand">
-              <h5 className="syncify-change-group">Add by hand</h5>
+          {manual.length ? (
+            <section aria-label="Add manually">
+              <h5 className="syncify-change-group">Add manually</h5>
               <ul className="syncify-change-list">
-                {byHand.map((item) => (
+                {manual.map((item) => (
                   <li className="syncify-change" key={`${item.type}:${item.name}`}>
                     <span className="syncify-mark" aria-hidden="true" />
                     <span className="syncify-change-name">
                       {item.name}
                       <span className="syncify-change-detail">
                         {" "}
-                        · {BY_HAND_LABELS[item.type]}
+                        · {MANUAL_LABELS[item.type]}
                         {item.scheme ? `, ${item.scheme}` : ""}
                       </span>
                     </span>

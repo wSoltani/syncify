@@ -37,7 +37,7 @@ You can change the shortcut and where the Syncify button appears under **Setting
 
 ### Updating
 
-Syncify updates itself. Like other extensions that update themselves, it loads its latest release each time Spotify starts, whether you installed it from Marketplace or by hand. When a new version comes out while Spotify is open, the bottom of Syncify's window says so; click **Reload** to switch to it.
+Syncify updates itself. Like other extensions that update themselves, it loads its latest release each time Spotify starts, whether you installed it from Marketplace or manually. When a new version comes out while Spotify is open, the bottom of Syncify's window says so; click **Reload** to switch to it.
 
 Old versions stop backing up after a grace period, and Syncify then says it's no longer supported. If you see that:
 
@@ -48,7 +48,7 @@ Old versions stop backing up after a grace period, and Syncify then says it's no
 
 - Syncify needs [Spicetify Marketplace](https://github.com/spicetify/marketplace) to be installed. It saves Marketplace's list of what you installed, and Marketplace downloads the actual files again after a restore.
 - If something shows as installed but doesn't load after a restore, reload Spotify once more or reinstall that item from Marketplace.
-- Backups also list the extensions, custom apps and theme you set up by hand in Spicetify's config, but Syncify can only restore what came from Marketplace.
+- Backups also list the extensions, custom apps and theme you set up manually in Spicetify's config, but Syncify can only restore what came from Marketplace.
 - **Privacy:** Syncify never sends your Spotify username. It sends a one-way hash of it, which identifies your backups without revealing who you are. Each request also carries Syncify's version, a random ID for this install, your time zone and which Spotify account field was hashed, so the server knows which versions are in use and can count backups and restores in your local time. Backups are not encrypted on the server, so don't count on them to keep anything secret.
 
 ### Support

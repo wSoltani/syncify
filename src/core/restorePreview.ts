@@ -20,7 +20,7 @@ export interface PreviewItem extends InstalledItem {
 }
 
 /** An item from Spicetify's config that only a terminal command can add. */
-export interface ByHandItem {
+export interface ManualItem {
   type: "extension" | "custom_app" | "theme";
   name: string;
   /** The theme's color scheme, when it has one. */
@@ -31,7 +31,7 @@ export interface RestorePreview {
   items: PreviewItem[];
   counts: Record<ItemChange, number>;
   /** In the backup's Spicetify config but not this device's. */
-  byHand: ByHandItem[];
+  manual: ManualItem[];
 }
 
 const LISTS: [string, ItemType][] = [
@@ -93,18 +93,18 @@ export function previewRestore(
   const counts = { added: 0, removed: 0, unchanged: 0 };
   for (const item of items) counts[item.change] += 1;
 
-  return { items, counts, byHand: listByHand(backupConfig, localConfig) };
+  return { items, counts, manual: listManual(backupConfig, localConfig) };
 }
 
-function listByHand(
+function listManual(
   backupConfig: SyncifySpicetifyConfig | undefined,
   localConfig: SyncifySpicetifyConfig | null,
-): ByHandItem[] {
+): ManualItem[] {
   if (!backupConfig) return [];
   const backup = normalizeSpicetifyConfig(backupConfig);
   const local = normalizeSpicetifyConfig(localConfig);
 
-  const byHand: ByHandItem[] = [
+  const manual: ManualItem[] = [
     ...backup.extensions
       .filter((name) => !local.extensions.includes(name))
       .map((name) => ({ type: "extension" as const, name })),
@@ -119,14 +119,14 @@ function listByHand(
     theme !== MARKETPLACE_THEME &&
     (theme !== local.current_theme || backup.color_scheme !== local.color_scheme)
   ) {
-    byHand.push({
+    manual.push({
       type: "theme",
       name: theme,
       ...(backup.color_scheme ? { scheme: backup.color_scheme } : {}),
     });
   }
 
-  return byHand;
+  return manual;
 }
 
 function describeItem(
