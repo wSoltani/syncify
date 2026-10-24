@@ -146,6 +146,13 @@
     border-left-color: var(--syncify-error);
 }
 
+.syncify-alert-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 12px;
+}
+
 /* Sections */
 
 .syncify-section {
@@ -156,13 +163,93 @@
     border-top: 1px solid var(--syncify-divider);
 }
 
-.syncify-section-title {
+.syncify-section-title,
+.syncify-accordion-title {
     margin: 0 0 4px;
     color: var(--syncify-muted);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+.syncify-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.syncify-section-header .syncify-section-title {
+    margin-bottom: 0;
+}
+
+/* Accordion: one section open at a time */
+
+.syncify-accordion {
+    display: flex;
+    flex-direction: column;
+}
+
+.syncify-accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-top: 1px solid var(--syncify-divider);
+    color: var(--syncify-muted);
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.syncify-accordion-title {
+    flex: 1 1 auto;
+    margin: 0;
+    color: inherit;
+}
+
+.syncify-accordion-header:hover,
+.syncify-accordion-header[aria-expanded="true"] {
+    color: var(--syncify-text);
+}
+
+.syncify-accordion-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0 12px;
+}
+
+.syncify-chevron {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 150ms ease;
+}
+
+[aria-expanded="true"] > .syncify-chevron {
+    transform: rotate(90deg);
+}
+
+.syncify-disclosure {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.syncify-disclosure .syncify-chevron {
+    width: 14px;
+    height: 14px;
 }
 
 /* Backups */
@@ -319,6 +406,35 @@
     flex: 0 0 auto;
     color: var(--syncify-text);
     font-weight: 700;
+}
+
+.syncify-icon-button {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    color: var(--syncify-muted);
+    background: none;
+    cursor: pointer;
+}
+
+.syncify-icon-button:hover {
+    color: var(--syncify-text);
+    background: var(--syncify-surface-hover);
+}
+
+.syncify-icon-button svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
 }
 
 /* Settings */
