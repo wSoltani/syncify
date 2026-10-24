@@ -24,8 +24,10 @@ import type {
   SyncifyStatus,
 } from "../types/syncify";
 import type {
+  ReactNode,
   useEffect as useEffectType,
   useMemo as useMemoType,
+  useRef as useRefType,
   useState as useStateType,
 } from "react";
 
@@ -39,6 +41,7 @@ export function SyncifyModal() {
   const useEffect = React.useEffect as typeof useEffectType;
   const useMemo = React.useMemo as typeof useMemoType;
   const useState = React.useState as typeof useStateType;
+  const useRef = React.useRef as typeof useRefType;
 
   const [config, setConfig] = useState<SyncifyConfig>(() => loadConfig());
   const [status, setStatus] = useState<SyncifyStatus>("idle");
@@ -58,6 +61,11 @@ export function SyncifyModal() {
   const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
+  const [openSection, setOpenSection] = useState<AccordionSectionId | null>(
+    null,
+  );
+  const [showAllBackups, setShowAllBackups] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const projectConfig = useMemo(() => getProjectConfig(), []);
   // Parsing a backup's item lists is the costly part of a row, so count each
@@ -90,6 +98,13 @@ export function SyncifyModal() {
       localHash &&
       selectedRestorePayload.payload_hash === localHash,
   );
+  // With everything backed up, only the latest backup is shown until asked.
+  // Otherwise the list stays open, so someone who came to restore sees it.
+  const backupsExpanded =
+    showAllBackups || !isBackedUp || remoteBackups.length < 2;
+  const visibleBackups = backupsExpanded
+    ? remoteBackups
+    : remoteBackups.slice(0, 1);
   // Restoring overwrites this device, so warn when what's here now can't be
   // brought back from any backup.
   const localIsUnsaved = Boolean(
@@ -108,6 +123,13 @@ export function SyncifyModal() {
     if (!isRecordingShortcut) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // The window was closed while recording: stop, and let the key through.
+      if (!panelRef.current?.isConnected) {
+        setIsRecordingShortcut(false);
+        setShortcutError(null);
+        return;
+      }
+
       event.preventDefault();
       event.stopImmediatePropagation();
 
@@ -346,10 +368,38 @@ export function SyncifyModal() {
   return (
     <div
       className="syncify-panel"
+      ref={panelRef}
       onClick={keepModalOpen}
       onMouseDown={keepModalOpen}
       onPointerDown={keepModalOpen}
     >
+      {alertMessage ? (
+        <div className="syncify-alert" data-kind={alertMessage.kind}>
+          <span>{alertMessage.text}</span>
+          <span className="syncify-alert-actions">
+            {alertMessage.kind === "error" ? (
+              <button
+                className="syncify-text-button"
+                type="button"
+                onClick={() => void refreshStatus()}
+                disabled={isBusy}
+              >
+                Try again
+              </button>
+            ) : null}
+            <button
+              className="syncify-icon-button"
+              type="button"
+              aria-label="Dismiss"
+              title="Dismiss"
+              onClick={() => setMessage(null)}
+            >
+              <CloseIcon />
+            </button>
+          </span>
+        </div>
+      ) : null}
+
       <section className="syncify-status" aria-live="polite">
         <div className="syncify-status-text">
           <h3 className="syncify-status-title">{statusTitle}</h3>
@@ -369,31 +419,35 @@ export function SyncifyModal() {
         </button>
       </section>
 
-      {alertMessage ? (
-        <div className="syncify-alert" data-kind={alertMessage.kind}>
-          <span>{alertMessage.text}</span>
-          {alertMessage.kind === "error" ? (
-            <button
-              className="syncify-text-button"
-              type="button"
-              onClick={() => void refreshStatus()}
-              disabled={isBusy}
-            >
-              Try again
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
       {remoteBackups.length > 0 ? (
         <section className="syncify-section" aria-label="Backups">
-          <h4 className="syncify-section-title">Backups</h4>
+          <div className="syncify-section-header">
+            <h4 className="syncify-section-title">Backups</h4>
+            {isBackedUp && remoteBackups.length > 1 ? (
+              <button
+                className="syncify-text-button syncify-disclosure"
+                type="button"
+                aria-expanded={showAllBackups}
+                aria-controls="syncify-backup-list"
+                onClick={() => {
+                  setShowAllBackups(!showAllBackups);
+                  setIsConfirmingRestore(false);
+                }}
+              >
+                {showAllBackups
+                  ? "Show less"
+                  : `Show all ${remoteBackups.length}`}
+                <ChevronIcon />
+              </button>
+            ) : null}
+          </div>
           <div
             className="syncify-backup-list"
+            id="syncify-backup-list"
             role="radiogroup"
             aria-label="Choose a backup to restore"
           >
-            {remoteBackups.map((backup) => {
+            {visibleBackups.map((backup) => {
               const isSelected =
                 selectedRestorePayload?.payload_hash === backup.payload_hash;
               const isOnDevice = backup.payload_hash === localHash;
@@ -435,7 +489,7 @@ export function SyncifyModal() {
             })}
           </div>
 
-          {marketplaceAvailable === false ? (
+          {!backupsExpanded ? null : marketplaceAvailable === false ? (
             <p className="syncify-muted">
               Install Spicetify Marketplace to restore a backup.
             </p>
@@ -450,9 +504,9 @@ export function SyncifyModal() {
                 ? Spotify will reload.
               </p>
               {localIsUnsaved ? (
-                <p className="syncify-muted" data-kind="warning">
+                <div className="syncify-alert">
                   Your current setup isn't backed up.
-                </p>
+                </div>
               ) : null}
               <div className="syncify-actions">
                 <button
@@ -493,107 +547,118 @@ export function SyncifyModal() {
         </section>
       ) : null}
 
-      <section className="syncify-section" aria-label="Settings">
-        <h4 className="syncify-section-title">Settings</h4>
+      <div className="syncify-accordion">
+        <AccordionSection
+          id="settings"
+          title="Settings"
+          openSection={openSection}
+          onToggle={(section) => {
+            setOpenSection(section);
+            // Recording keeps swallowing keys, so don't leave it running hidden.
+            if (section !== "settings") setIsRecordingShortcut(false);
+          }}
+        >
 
-        <label className="syncify-setting">
-          <span className="syncify-setting-text">
-            <span>Back up automatically</span>
-            <span className="syncify-muted">
-              When Spotify starts and something has changed
+          <label className="syncify-setting">
+            <span className="syncify-setting-text">
+              <span>Back up automatically</span>
+              <span className="syncify-muted">
+                When Spotify starts and something has changed
+              </span>
             </span>
-          </span>
-          <input
-            className="syncify-switch"
-            type="checkbox"
-            role="switch"
-            checked={config.autoBackupEnabled}
-            onChange={(event) => updateAutoBackup(event.currentTarget.checked)}
-            disabled={isBusy}
-          />
-        </label>
+            <input
+              className="syncify-switch"
+              type="checkbox"
+              role="switch"
+              checked={config.autoBackupEnabled}
+              onChange={(event) => updateAutoBackup(event.currentTarget.checked)}
+              disabled={isBusy}
+            />
+          </label>
 
-        <label className="syncify-setting">
-          <span className="syncify-setting-text">
-            <span>Open Syncify from</span>
-            {!menuAvailable ? (
-              <span className="syncify-muted">
-                The profile menu isn't available in this Spicetify version
-              </span>
-            ) : config.entryPoint === "menu" && !config.shortcut ? (
-              <span className="syncify-muted">
-                Keep a shortcut in case a Spotify update breaks the menu
-              </span>
-            ) : null}
-          </span>
-          <select
-            className="syncify-select"
-            value={menuAvailable ? config.entryPoint : "topbar"}
-            onChange={(event) =>
-              updateEntryPoint(event.currentTarget.value as SyncifyEntryPoint)
-            }
-            disabled={!menuAvailable}
-          >
-            {ENTRY_POINT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="syncify-setting">
-          <span className="syncify-setting-text">
-            <span>Keyboard shortcut</span>
-            {shortcutError ? (
-              <span className="syncify-muted" data-kind="warning">
-                {shortcutError}
-              </span>
-            ) : isRecordingShortcut ? (
-              <span className="syncify-muted">
-                Press a key combination, or Esc to cancel
-              </span>
-            ) : null}
-          </span>
-          <span className="syncify-shortcut">
-            {config.shortcut && !isRecordingShortcut ? (
-              <button
-                className="syncify-text-button"
-                type="button"
-                onClick={() => updateShortcut(null)}
-              >
-                Turn off
-              </button>
-            ) : null}
-            {!config.shortcut && !isRecordingShortcut ? (
-              <button
-                className="syncify-text-button"
-                type="button"
-                onClick={() => updateShortcut(DEFAULT_SHORTCUT)}
-              >
-                Use default
-              </button>
-            ) : null}
-            <button
-              className="syncify-key"
-              type="button"
-              data-recording={isRecordingShortcut ? "true" : "false"}
-              onClick={() =>
-                isRecordingShortcut
-                  ? setIsRecordingShortcut(false)
-                  : startRecordingShortcut()
+          <label className="syncify-setting">
+            <span className="syncify-setting-text">
+              <span>Open Syncify from</span>
+              {!menuAvailable ? (
+                <span className="syncify-muted">
+                  The profile menu isn't available in this Spicetify version
+                </span>
+              ) : config.entryPoint === "menu" && !config.shortcut ? (
+                <span className="syncify-muted">
+                  Keep a shortcut in case a Spotify update breaks the menu
+                </span>
+              ) : null}
+            </span>
+            <select
+              className="syncify-select"
+              value={menuAvailable ? config.entryPoint : "topbar"}
+              onChange={(event) =>
+                updateEntryPoint(event.currentTarget.value as SyncifyEntryPoint)
               }
-              title="Click to change"
+              disabled={!menuAvailable}
             >
-              {isRecordingShortcut
-                ? "Press keys…"
-                : config.shortcut
-                  ? formatShortcut(config.shortcut)
-                  : "Off"}
-            </button>
-          </span>
-        </div>
-      </section>
+              {ENTRY_POINT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="syncify-setting">
+            <span className="syncify-setting-text">
+              <span>Keyboard shortcut</span>
+              {isRecordingShortcut && !shortcutError ? (
+                <span className="syncify-muted">
+                  Press a key combination, or Esc to cancel
+                </span>
+              ) : null}
+            </span>
+            <span className="syncify-shortcut">
+              {config.shortcut && !isRecordingShortcut ? (
+                <button
+                  className="syncify-text-button"
+                  type="button"
+                  onClick={() => updateShortcut(null)}
+                >
+                  Turn off
+                </button>
+              ) : null}
+              {!config.shortcut && !isRecordingShortcut ? (
+                <button
+                  className="syncify-text-button"
+                  type="button"
+                  onClick={() => updateShortcut(DEFAULT_SHORTCUT)}
+                >
+                  Use default
+                </button>
+              ) : null}
+              <button
+                className="syncify-key"
+                type="button"
+                data-recording={isRecordingShortcut ? "true" : "false"}
+                onClick={() =>
+                  isRecordingShortcut
+                    ? setIsRecordingShortcut(false)
+                    : startRecordingShortcut()
+                }
+                title="Click to change"
+              >
+                {isRecordingShortcut
+                  ? "Press keys…"
+                  : config.shortcut
+                    ? formatShortcut(config.shortcut)
+                    : "Off"}
+              </button>
+            </span>
+          </div>
+          {shortcutError ? (
+            <div className="syncify-alert" role="alert">
+              {shortcutError}
+            </div>
+          ) : null}
+        </AccordionSection>
+      </div>
 
       <footer className="syncify-footer">
         <span>Syncify {projectConfig.version}</span>
@@ -622,6 +687,68 @@ export function SyncifyModal() {
         </span>
       </footer>
     </div>
+  );
+}
+
+type AccordionSectionId = "settings";
+
+/**
+ * One section of the accordion: an uppercase title with a chevron. Only one
+ * section is open at a time, and all are closed when the window opens.
+ */
+function AccordionSection(props: {
+  id: AccordionSectionId;
+  title: string;
+  openSection: AccordionSectionId | null;
+  onToggle(section: AccordionSectionId | null): void;
+  children?: ReactNode;
+}) {
+  const React = Spicetify.React;
+  const isOpen = props.openSection === props.id;
+  const bodyId = `syncify-section-${props.id}`;
+
+  return (
+    <section className="syncify-accordion-section" aria-label={props.title}>
+      <button
+        className="syncify-accordion-header"
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={bodyId}
+        onClick={() => props.onToggle(isOpen ? null : props.id)}
+      >
+        <span className="syncify-accordion-title">{props.title}</span>
+        <ChevronIcon />
+      </button>
+      {isOpen ? (
+        <div className="syncify-accordion-body" id={bodyId}>
+          {props.children}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ChevronIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg
+      className="syncify-chevron"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
   );
 }
 
