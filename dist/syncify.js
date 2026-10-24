@@ -323,11 +323,7 @@
     flex: 0 0 auto;
     width: 18px;
     height: 18px;
-    fill: none;
-    stroke: var(--syncify-muted);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    fill: var(--syncify-muted);
 }
 
 .syncify-backup-note {
