@@ -79,6 +79,8 @@ export interface SyncifyProjectConfig {
   extensionName: string;
   version: string;
   workerUrl: string;
+  /** Where sign-in is served (the website's address). */
+  webUrl: string;
   githubUrl: string;
   kofiUrl: string;
   issueUrl: string;

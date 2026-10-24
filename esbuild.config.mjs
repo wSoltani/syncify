@@ -46,6 +46,7 @@ const options = {
     ),
     "process.env.SYNCIFY_VERSION": JSON.stringify(packageVersion),
     "process.env.SYNCIFY_WORKER_URL": defineEnvValue(env.SYNCIFY_WORKER_URL),
+    "process.env.SYNCIFY_WEB_URL": defineEnvValue(env.SYNCIFY_WEB_URL),
     "process.env.SYNCIFY_GITHUB_URL": defineEnvValue(env.SYNCIFY_GITHUB_URL),
     "process.env.SYNCIFY_KOFI_URL": defineEnvValue(env.SYNCIFY_KOFI_URL),
     "process.env.SYNCIFY_ISSUE_URL": defineEnvValue(env.SYNCIFY_ISSUE_URL),

@@ -399,6 +399,48 @@
     align-self: flex-start;
 }
 
+/* Account */
+
+.syncify-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.syncify-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 4px;
+    color: var(--syncify-text);
+    background: var(--syncify-surface-hover);
+    font: inherit;
+    font-size: 14px;
+}
+
+.syncify-input::placeholder {
+    color: var(--syncify-muted);
+    opacity: 1;
+}
+
+.syncify-code-input {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    letter-spacing: 0.3em;
+}
+
+.syncify-account-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.syncify-account-email {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Restore preview */
 
 .syncify-chips {
@@ -560,6 +602,11 @@
 .syncify-text-button:hover:not(:disabled) {
     color: var(--syncify-text);
     text-decoration: underline;
+}
+
+.syncify-text-button:disabled {
+    cursor: default;
+    opacity: 0.6;
 }
 
 .syncify-alert .syncify-text-button {

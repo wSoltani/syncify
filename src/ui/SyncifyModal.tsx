@@ -27,6 +27,21 @@ import {
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
 import { UnsupportedVersionError } from "../api/syncifyApi";
 import {
+  AccountError,
+  describeAccountError,
+  refreshSession,
+  sendCode,
+  signIn,
+  signOut,
+} from "../api/accountApi";
+import {
+  getSignInDraft,
+  loadSession,
+  saveSignInDraft,
+  type AccountSession,
+  type SignInDraft,
+} from "../core/account";
+import {
   compareVersions,
   fetchLatestVersion,
   getLoaderInfo,
@@ -348,6 +363,12 @@ export function SyncifyModal() {
     setConfig(nextConfig);
     saveConfig(nextConfig);
     applyEntryPoint(entryPoint);
+  }
+
+  function toggleSection(section: AccordionSectionId | null) {
+    setOpenSection(section);
+    // Recording keeps swallowing keys, so don't leave it running hidden.
+    if (section !== "settings") setIsRecordingShortcut(false);
   }
 
   function startRecordingShortcut() {
@@ -843,14 +864,18 @@ export function SyncifyModal() {
 
       <div className="syncify-accordion">
         <AccordionSection
+          id="account"
+          title="Account"
+          openSection={openSection}
+          onToggle={toggleSection}
+        >
+          <AccountPanel />
+        </AccordionSection>
+        <AccordionSection
           id="settings"
           title="Settings"
           openSection={openSection}
-          onToggle={(section) => {
-            setOpenSection(section);
-            // Recording keeps swallowing keys, so don't leave it running hidden.
-            if (section !== "settings") setIsRecordingShortcut(false);
-          }}
+          onToggle={toggleSection}
         >
 
           <label className="syncify-setting">
@@ -1167,7 +1192,328 @@ function SourceLabel(props: { check: SourceCheck }) {
   );
 }
 
-type AccordionSectionId = "settings";
+/**
+ * The Account section: an email code to sign in, then the email and Sign out.
+ * The form's progress outlives the section and the window while Spotify runs.
+ */
+function AccountPanel() {
+  const React = Spicetify.React;
+  const useEffect = React.useEffect as typeof useEffectType;
+  const useState = React.useState as typeof useStateType;
+
+  // undefined until the stored session has been read.
+  const [session, setSession] = useState<AccountSession | null | undefined>(
+    undefined,
+  );
+  const [draft, setDraft] = useState<SignInDraft>(() => getSignInDraft());
+  const [email, setEmail] = useState(() => getSignInDraft().email);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<MessageState | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  const codeSent = Boolean(
+    draft.codeSentAt && now - draft.codeSentAt < CODE_VALID_MS,
+  );
+  const waitSeconds = Math.max(0, Math.ceil((draft.retryAt - now) / 1000));
+  // Waits are per email, except after too many requests from this network.
+  const emailWaitSeconds =
+    draft.retryEmail === null ||
+    draft.retryEmail === email.trim().toLowerCase()
+      ? waitSeconds
+      : 0;
+
+  // Shows the stored session at once, then checks it with the service.
+  useEffect(() => {
+    let current = true;
+    void loadSession()
+      .catch(() => null)
+      .then((stored) => {
+        if (!current) return;
+        setSession(stored);
+        if (!stored) return;
+
+        void refreshSession()
+          .then((checked) => {
+            if (!current) return;
+            setSession(checked);
+            if (!checked) {
+              setError({
+                kind: "warning",
+                text: describeAccountError(new AccountError("signed_out")),
+              });
+            }
+          })
+          .catch(() => {
+            // Offline or refused for now: keep showing the stored session.
+          });
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  // Ticks while a countdown runs.
+  useEffect(() => {
+    if (draft.retryAt <= Date.now()) return;
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      if (draft.retryAt <= Date.now()) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [draft.retryAt]);
+
+  function updateDraft(next: Partial<SignInDraft>) {
+    const updated = { ...getSignInDraft(), ...next };
+    saveSignInDraft(updated);
+    setDraft(updated);
+    setNow(Date.now());
+  }
+
+  async function requestCode(address: string) {
+    const target = address.trim();
+    if (!EMAIL_PATTERN.test(target)) {
+      setError({ kind: "error", text: "Enter a valid email address." });
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const resendIn = await sendCode(target);
+      updateDraft({
+        email: target,
+        codeSentAt: Date.now(),
+        retryAt: Date.now() + resendIn * 1000,
+        retryEmail: target.toLowerCase(),
+      });
+      setCode("");
+    } catch (failure) {
+      const failed = failure instanceof AccountError ? failure : null;
+      const retryAfter = failed?.retryAfter ?? null;
+      const retryAt =
+        retryAfter && retryAfter <= MAX_COUNTDOWN_SECONDS
+          ? Date.now() + retryAfter * 1000
+          : 0;
+      const retryEmail =
+        failed?.code === "too_many_requests" ? null : target.toLowerCase();
+
+      // A code went to this email less than a minute ago, and it still works.
+      if (failed?.code === "resend_wait") {
+        updateDraft({
+          email: target,
+          codeSentAt:
+            draft.email === target && draft.codeSentAt
+              ? draft.codeSentAt
+              : Date.now(),
+          retryAt,
+          retryEmail,
+        });
+        return;
+      }
+
+      if (retryAt) updateDraft({ retryAt, retryEmail });
+      setError({ kind: "error", text: describeAccountError(failure) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verify() {
+    setBusy(true);
+    setError(null);
+    try {
+      const signedIn = await signIn(draft.email, code);
+      updateDraft({ codeSentAt: null });
+      setCode("");
+      setSession(signedIn);
+    } catch (failure) {
+      setError({ kind: "error", text: describeAccountError(failure) });
+      const failed = failure instanceof AccountError ? failure.code : null;
+      if (failed === "too_many_attempts" || failed === "code_expired") {
+        setCode("");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runSignOut() {
+    const lastEmail = session?.email ?? "";
+    setBusy(true);
+    setError(null);
+    await signOut();
+    // Signing in again starts from the same email.
+    updateDraft({ email: lastEmail, codeSentAt: null });
+    setEmail(lastEmail);
+    setSession(null);
+    setBusy(false);
+  }
+
+  const errorAlert = error ? (
+    <div
+      className="syncify-alert"
+      data-kind={error.kind === "error" ? "error" : undefined}
+      role="alert"
+    >
+      {error.text}
+    </div>
+  ) : null;
+
+  if (session === undefined) return null;
+
+  if (session) {
+    return (
+      <>
+        <div className="syncify-setting">
+          <span className="syncify-setting-text">
+            <span className="syncify-account-email">{session.email}</span>
+            <span className="syncify-muted">Signed in</span>
+          </span>
+          <button
+            className="syncify-button secondary"
+            type="button"
+            onClick={() => void runSignOut()}
+            disabled={busy}
+          >
+            Sign out
+          </button>
+        </div>
+        {errorAlert}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="syncify-setting">
+        <span className="syncify-setting-text">
+          <span>Secure your backup</span>
+          <span className="syncify-muted">So only you can restore it</span>
+        </span>
+      </div>
+      <form
+        className="syncify-confirm"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (busy) return;
+          if (codeSent) {
+            if (code.length === CODE_LENGTH) void verify();
+          } else if (!emailWaitSeconds) {
+            void requestCode(email);
+          }
+        }}
+      >
+        {codeSent ? (
+          <>
+            <p className="syncify-muted">Code sent to {maskEmail(draft.email)}</p>
+            <div className="syncify-field">
+              <input
+                className="syncify-input syncify-code-input"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                aria-label="6-digit code"
+                placeholder="123456"
+                maxLength={CODE_LENGTH}
+                value={code}
+                onChange={(event) =>
+                  setCode(
+                    event.currentTarget.value
+                      .replace(/\D/g, "")
+                      .slice(0, CODE_LENGTH),
+                  )
+                }
+                autoFocus
+              />
+              <button
+                className="syncify-button"
+                type="submit"
+                disabled={busy || code.length !== CODE_LENGTH}
+              >
+                {busy ? "Verifying…" : "Verify"}
+              </button>
+            </div>
+            <p className="syncify-muted syncify-account-links">
+              <button
+                className="syncify-text-button"
+                type="button"
+                onClick={() => void requestCode(draft.email)}
+                disabled={busy || waitSeconds > 0}
+              >
+                {waitSeconds > 0
+                  ? `Resend in ${formatCountdown(waitSeconds)}`
+                  : "Resend code"}
+              </button>
+              <button
+                className="syncify-text-button"
+                type="button"
+                onClick={() => {
+                  updateDraft({ codeSentAt: null });
+                  setCode("");
+                  setError(null);
+                }}
+                disabled={busy}
+              >
+                Use another email
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="syncify-field">
+              <input
+                className="syncify-input"
+                type="email"
+                autoComplete="email"
+                aria-label="Email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.currentTarget.value)}
+                autoFocus
+              />
+              <button
+                className="syncify-button"
+                type="submit"
+                disabled={busy || emailWaitSeconds > 0 || !email.trim()}
+              >
+                {busy ? "Sending…" : "Send code"}
+              </button>
+            </div>
+            <p className="syncify-muted">
+              {emailWaitSeconds > 0
+                ? `Send another code in ${formatCountdown(emailWaitSeconds)}`
+                : "We only email sign-in codes."}
+            </p>
+          </>
+        )}
+        {errorAlert}
+      </form>
+    </>
+  );
+}
+
+// Codes are 6 digits and work for 10 minutes.
+const CODE_LENGTH = 6;
+const CODE_VALID_MS = 10 * 60 * 1000;
+// Longer waits (until tomorrow) are only explained, not counted down.
+const MAX_COUNTDOWN_SECONDS = 5 * 60;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** "a***@gmail.com" */
+function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 1) return email;
+  return `${email[0]}***${email.slice(at)}`;
+}
+
+/** "0:45" */
+function formatCountdown(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+type AccordionSectionId = "account" | "settings";
 
 /**
  * One section of the accordion: an uppercase title with a chevron. Only one
