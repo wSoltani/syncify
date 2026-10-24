@@ -8,12 +8,29 @@ interface SpicetifyUserCandidate {
   uri?: string;
 }
 
-export async function getUserHash(): Promise<string> {
-  const username = await resolveUsername();
-  return sha256Hex(username);
+/** The Spotify user fields tried in order; the first one present is hashed. */
+const IDENTITY_FIELDS = [
+  "username",
+  "canonicalUsername",
+  "id",
+  "uri",
+  "displayName",
+] as const;
+
+export type IdentityField = (typeof IDENTITY_FIELDS)[number];
+
+export interface UserIdentity {
+  hash: string;
+  /** Which field the hash was computed from. */
+  field: IdentityField;
 }
 
-async function resolveUsername(): Promise<string> {
+export async function getUserIdentity(): Promise<UserIdentity> {
+  const { value, field } = await resolveUsername();
+  return { hash: await sha256Hex(value), field };
+}
+
+async function resolveUsername(): Promise<{ value: string; field: IdentityField }> {
   const userApi = Spicetify.Platform?.UserAPI as { getUser?: () => Promise<SpicetifyUserCandidate> | SpicetifyUserCandidate } | undefined;
 
   if (!userApi?.getUser) {
@@ -21,11 +38,12 @@ async function resolveUsername(): Promise<string> {
   }
 
   const user = await userApi.getUser();
-  const identifier = user?.username ?? user?.canonicalUsername ?? user?.id ?? user?.uri ?? user?.displayName;
+  const field = IDENTITY_FIELDS.find((name) => user?.[name] != null);
+  const value = field ? user[field] : undefined;
 
-  if (!identifier) {
+  if (!field || !value) {
     throw new Error("Unable to resolve the active Spotify user.");
   }
 
-  return identifier;
+  return { value, field };
 }
