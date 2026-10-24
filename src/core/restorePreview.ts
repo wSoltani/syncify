@@ -47,6 +47,9 @@ const LISTS: [string, ItemType][] = [
 ];
 const ENTRY_PREFIX = "marketplace:installed:";
 const SNIPPET_PREFIX = `${ENTRY_PREFIX}snippet:`;
+// Syncify's own Marketplace entry. A restore keeps it when the backup has
+// none, so restoring a backup made with a manual copy doesn't remove Syncify.
+const SYNCIFY_REPO = "wsoltani/syncify";
 // Marketplace sets this theme when it manages the theme itself.
 const MARKETPLACE_THEME = "marketplace";
 const CHANGE_ORDER: Record<ItemChange, number> = {
@@ -95,7 +98,9 @@ export function previewRestore(
       .filter((item) => !inBackup.has(item.key))
       .map((item) => ({
         ...item,
-        change: "removed" as const,
+        change: keepsSyncify(item, backupItems)
+          ? ("unchanged" as const)
+          : ("removed" as const),
         isNew: false,
       })),
   ].sort(
@@ -108,6 +113,22 @@ export function previewRestore(
   for (const item of items) counts[item.change] += 1;
 
   return { items, counts, manual: listManual(backupConfig, localConfig) };
+}
+
+/** Syncify's own entry on this device, which a restore keeps if the backup has none. */
+export function keepsSyncify(
+  item: InstalledItem,
+  backupItems: InstalledItem[],
+): boolean {
+  return (
+    item.type === "extension" &&
+    isSyncify(item) &&
+    !backupItems.some(isSyncify)
+  );
+}
+
+function isSyncify(item: InstalledItem): boolean {
+  return item.repo?.toLowerCase() === SYNCIFY_REPO;
 }
 
 function listManual(
