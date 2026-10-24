@@ -18,10 +18,12 @@ jobs:
       - run: npm run typecheck
       - run: node scripts/check-release.mjs
       - run: npm run build
-      # Marketplace serves the committed dist/syncify.js, so it must match src.
+      # Marketplace runs the committed loader, and it falls back to the
+      # committed bundle, so both must match src.
       - name: Ensure dist is up to date
         run: |
-          if ! git diff --exit-code -- dist; then
-            echo "::error::dist/syncify.js is stale. Run 'npm run build' and commit it."
+          if [ -n "$(git status --porcelain -- dist)" ]; then
+            git status --short -- dist
+            echo "::error::dist is stale. Run 'npm run build' and commit it."
             exit 1
           fi

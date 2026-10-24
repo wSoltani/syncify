@@ -4,7 +4,11 @@ import { context, build } from "esbuild";
 
 const watch = process.argv.includes("--watch");
 const env = process.env;
-const outfile = env.SYNCIFY_OUTFILE ?? "dist/syncify.js";
+// dist/syncify.js is the small loader Marketplace and manual installs run; it
+// loads dist/syncify.bundle.js, the app, from jsDelivr. SYNCIFY_OUTFILE builds
+// only the app, to that file (install:dev runs it without the loader).
+const bundleOutfile = env.SYNCIFY_OUTFILE ?? "dist/syncify.bundle.js";
+const buildLoader = env.SYNCIFY_OUTFILE === undefined;
 const extensionName = env.SYNCIFY_EXTENSION_NAME ?? "Syncify";
 // Read package.json directly so the version is right during `npm version`.
 const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
@@ -27,8 +31,6 @@ const normalizeLineEndings = {
 };
 
 const options = {
-  entryPoints: ["src/app.tsx"],
-  outfile,
   bundle: true,
   minify: !watch,
   sourcemap: watch,
@@ -47,7 +49,9 @@ const options = {
     "process.env.SYNCIFY_GITHUB_URL": defineEnvValue(env.SYNCIFY_GITHUB_URL),
     "process.env.SYNCIFY_KOFI_URL": defineEnvValue(env.SYNCIFY_KOFI_URL),
     "process.env.SYNCIFY_ISSUE_URL": defineEnvValue(env.SYNCIFY_ISSUE_URL),
-    "process.env.SYNCIFY_RELEASES_URL": defineEnvValue(env.SYNCIFY_RELEASES_URL),
+    "process.env.SYNCIFY_RELEASES_URL": defineEnvValue(
+      env.SYNCIFY_RELEASES_URL,
+    ),
     "process.env.SYNCIFY_EXTENSION_NAME": JSON.stringify(extensionName),
   },
   external: ["react", "react-dom"],
@@ -58,11 +62,19 @@ const options = {
   },
 };
 
+const builds = [
+  { ...options, entryPoints: ["src/app.tsx"], outfile: bundleOutfile },
+  ...(buildLoader
+    ? [{ ...options, entryPoints: ["src/loader.ts"], outfile: "dist/syncify.js" }]
+    : []),
+];
+
 if (watch) {
-  const ctx = await context(options);
-  await ctx.watch();
+  for (const target of builds) await (await context(target)).watch();
   console.log("Watching Syncify extension...");
 } else {
-  await build(options);
-  console.log(`Built ${outfile}`);
+  for (const target of builds) {
+    await build(target);
+    console.log(`Built ${target.outfile}`);
+  }
 }

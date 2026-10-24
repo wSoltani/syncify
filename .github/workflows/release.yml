@@ -5,11 +5,13 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,17 +22,76 @@ jobs:
       - run: npm run typecheck
       - run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
       - run: npm run build
+      # jsDelivr serves the files committed in the tag, so they must match src.
       - name: Ensure committed dist matches the tag
         run: |
-          if ! git diff --exit-code -- dist; then
-            echo "::error::dist/syncify.js in the tagged commit is stale. Rebuild, commit and re-tag."
+          if [ -n "$(git status --porcelain -- dist)" ]; then
+            git status --short -- dist
+            echo "::error::dist in the tagged commit is stale. Rebuild, commit and tag a new version."
             exit 1
           fi
+      # The loader is what manual installs download.
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          prerelease=()
+          case "$GITHUB_REF_NAME" in *-beta.*) prerelease=(--prerelease) ;; esac
           gh release create "$GITHUB_REF_NAME" dist/syncify.js \
             --title "Syncify $GITHUB_REF_NAME" \
             --generate-notes \
-            --verify-tag
+            --verify-tag \
+            "${prerelease[@]}"
+
+  # Every release goes to the beta channel first; the Promote workflow sends
+  # it to everyone.
+  beta:
+    needs: release
+    runs-on: ubuntu-latest
+    environment: releases
+    # One pointer write at a time, so two tags pushed together can't race.
+    concurrency:
+      group: release-pointers
+      cancel-in-progress: false
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Wait for jsDelivr to serve the release
+        run: |
+          url="https://cdn.jsdelivr.net/gh/wSoltani/syncify@${GITHUB_REF_NAME}/dist/syncify.bundle.js"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            curl -fsS -o /dev/null "$url" && exit 0
+            sleep 30
+          done
+          echo "::error::$url isn't reachable"
+          exit 1
+      # Read from the bucket, not the public address, which is cached.
+      - name: Write latest-beta.json
+        run: |
+          if ! aws s3api get-object --endpoint-url "$R2_ENDPOINT" \
+              --bucket syncify-releases --key latest-beta.json current-beta.json \
+              > /dev/null 2> get-error.txt; then
+            grep -q NoSuchKey get-error.txt || { cat get-error.txt; exit 1; }
+          fi
+          node scripts/release-pointer.mjs latest-beta.json "${GITHUB_REF_NAME#v}" \
+            --newer-than current-beta.json
+      - name: Upload latest-beta.json
+        if: hashFiles('latest-beta.json') != ''
+        run: |
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket syncify-releases \
+            --key latest-beta.json \
+            --body latest-beta.json \
+            --content-type application/json \
+            --cache-control "public, max-age=60"

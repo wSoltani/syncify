@@ -13,6 +13,13 @@ const [manifest] = await readJson("manifest.json");
 const tag = process.argv[2];
 const errors = [];
 
+// The loader only accepts these, so a release can't use any other form.
+if (!/^\d{1,4}\.\d{1,4}\.\d{1,4}(-beta\.\d{1,4})?$/.test(version)) {
+  errors.push(
+    `Version ${version} must look like 1.4.0 or 1.4.0-beta.1, the only forms the loader loads`,
+  );
+}
+
 if (manifest.version !== version) {
   errors.push(
     `manifest.json is ${manifest.version} but package.json is ${version}. Run: node scripts/sync-version.mjs`,

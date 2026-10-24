@@ -37,10 +37,12 @@ You can change the shortcut and where the Syncify button appears under **Setting
 
 ### Updating
 
-Syncify tells you at the bottom of its window when a new version is out. Old versions eventually stop backing up; Syncify then says so.
+Syncify updates itself. Like other extensions that update themselves, it loads its latest release each time Spotify starts, whether you installed it from Marketplace or by hand. When a new version comes out while Spotify is open, the bottom of Syncify's window says so; click **Reload** to switch to it.
 
-- **From Marketplace:** restart Spotify. Marketplace can take up to 12 hours to pick up a new version.
-- **Manual install:** download `syncify.js` from the [latest release](https://github.com/wSoltani/Syncify/releases/latest), replace the one in your `Extensions` folder, then run `spicetify apply`.
+Old versions stop backing up after a grace period, and Syncify then says it's no longer supported. If you see that:
+
+- **From Marketplace:** restart Spotify. If it still says so, uninstall Syncify in Marketplace and install it again.
+- **Manual install:** download `syncify.js` from the [latest release](https://github.com/wSoltani/Syncify/releases/latest), replace the one in your `Extensions` folder, then run `spicetify apply`. From then on it updates itself.
 
 ### Good to know
 
@@ -75,13 +77,13 @@ This repo is the Spicetify extension. The backend is a Cloudflare Worker that li
 
 ```bash
 npm install          # install dependencies
-npm run build        # build dist/syncify.js
+npm run build        # build dist/syncify.js (loader) and dist/syncify.bundle.js
 npm run watch        # rebuild on change
 npm run typecheck    # type-check only
 npm run install:dev  # install a "Syncify (dev)" build into Spicetify (Windows), then run spicetify apply
 ```
 
-`install:dev` doesn't touch `dist/syncify.js`.
+`install:dev` installs the app itself, without the loader, and doesn't touch `dist`.
 
 ### Configuration
 
@@ -93,13 +95,39 @@ SYNCIFY_WORKER_URL=http://localhost:8787 npm run build
 
 `SYNCIFY_GITHUB_URL`, `SYNCIFY_KOFI_URL` and `SYNCIFY_ISSUE_URL` override the footer links the same way, and `SYNCIFY_RELEASES_URL` the address of `latest.json`, which the update note reads. At runtime, setting `window.SyncifyConfig` (with `workerUrl`, `githubUrl`, `kofiUrl`, `issueUrl` or `releasesUrl`) before Syncify starts overrides them too.
 
-### Releasing
+### How Syncify loads
 
-Marketplace installs the `dist/syncify.js` committed on `master`, so every release commits a fresh build:
+- `dist/syncify.js` is a small loader. It's the file Marketplace runs (from `master`, through jsDelivr) and the file manual installs download. It rarely changes.
+- At startup it reads `latest.json` from `https://syncify-releases.wsoltani.com` (giving up after 3 seconds), then loads that release's `dist/syncify.bundle.js` from jsDelivr by its tag. It accepts only a version number such as `1.4.0` or `1.4.0-beta.1` and always loads from this repo.
+- If `latest.json` can't be read, it loads the last version it loaded. If that fails too, it loads `dist/syncify.bundle.js` from `master`.
+- If another copy of Syncify is already running, the second one stops.
 
-```bash
-npm version patch   # or minor / major
-git push --follow-tags
+**Beta channel:** to get releases before everyone else, run this in Spotify's DevTools (`spicetify enable-devtools`), then restart Spotify:
+
+```js
+localStorage.setItem("syncify:beta", "true")
 ```
 
-`npm version` bumps `package.json` and `manifest.json`, rebuilds `dist/syncify.js`, commits, and tags the result `vX.Y.Z`. Pushing the tag runs the Release workflow, which checks everything and publishes a GitHub release with `syncify.js` attached. CI fails any push where `dist/syncify.js` is out of date.
+The loader then loads the newer of `latest-beta.json` and `latest.json`. `localStorage.removeItem("syncify:beta")` goes back to stable releases.
+
+### Releasing
+
+Every release goes to the beta channel first, and reaches everyone only once it's promoted. jsDelivr serves the files committed in each tag, so every release commits a fresh build. Never re-tag: jsDelivr caches a tag's files for a year, so a fix gets a new version.
+
+1. **Beta**, on a release branch, never on `master`:
+
+   ```bash
+   npm version 1.4.0-beta.1
+   git push --follow-tags
+   ```
+
+2. **Stable**, once a beta works: merge the branch, then on `master` re-version the same code, so stable users don't see a beta version:
+
+   ```bash
+   npm version 1.4.0
+   git push --follow-tags
+   ```
+
+3. **Promote:** run the **Promote** workflow in GitHub Actions with `1.4.0`. It writes `latest.json`, which reaches everyone within about a minute. To roll back, run it with the previous version.
+
+`npm version` bumps `package.json` and `manifest.json`, rebuilds `dist`, commits, and tags the result. Pushing a tag runs the Release workflow: it checks that the committed `dist` matches its own build, publishes a GitHub release with the loader attached, then points `latest-beta.json` at the new version (never at an older one). CI fails any push or pull request where `dist` is out of date.

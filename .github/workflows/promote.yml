@@ -1,0 +1,60 @@
+name: Promote
+
+# Sends a release to everyone by writing latest.json. Running it with an
+# older version rolls back. Either takes effect within about a minute.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to send to everyone, such as 1.4.0
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pointers
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: releases
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Write latest.json
+        run: node scripts/release-pointer.mjs latest.json "$VERSION" --stable
+      # The Release workflow publishes the GitHub release only once the tag's
+      # committed build matches src, so a tag without one never goes out.
+      - name: Check the release passed and jsDelivr serves it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          unpublished=$(gh release view "v$VERSION" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease') \
+            || { echo "::error::No GitHub release for v$VERSION; did its Release workflow pass?"; exit 1; }
+          [ "$unpublished" = "false" ] \
+            || { echo "::error::v$VERSION is a draft or prerelease"; exit 1; }
+          curl -fsS -o /dev/null "https://cdn.jsdelivr.net/gh/wSoltani/syncify@v$VERSION/dist/syncify.bundle.js" \
+            || { echo "::error::jsDelivr doesn't serve v$VERSION's bundle"; exit 1; }
+      - name: Upload latest.json
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket syncify-releases \
+            --key latest.json \
+            --body latest.json \
+            --content-type application/json \
+            --cache-control "public, max-age=60"
