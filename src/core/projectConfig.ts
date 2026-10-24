@@ -5,6 +5,7 @@ const DEFAULT_PROJECT_CONFIG: SyncifyProjectConfig = {
   version: process.env.SYNCIFY_VERSION ?? "0.0.0",
   workerUrl:
     process.env.SYNCIFY_WORKER_URL ?? "https://syncify-worker.wsoltani.com",
+  webUrl: process.env.SYNCIFY_WEB_URL ?? "https://syncify.wsoltani.com",
   githubUrl:
     process.env.SYNCIFY_GITHUB_URL ?? "https://github.com/wSoltani/Syncify",
   kofiUrl: process.env.SYNCIFY_KOFI_URL ?? "https://ko-fi.com/wsoltani",
@@ -31,6 +32,8 @@ export function getProjectConfig(): SyncifyProjectConfig {
     workerUrl:
       normalizeUrl(runtimeConfig?.workerUrl) ??
       DEFAULT_PROJECT_CONFIG.workerUrl,
+    webUrl:
+      normalizeUrl(runtimeConfig?.webUrl) ?? DEFAULT_PROJECT_CONFIG.webUrl,
     githubUrl:
       normalizeUrl(runtimeConfig?.githubUrl) ??
       DEFAULT_PROJECT_CONFIG.githubUrl,

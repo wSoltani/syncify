@@ -1,3 +1,4 @@
+import { openDatabase, STORE_NAME } from "./database";
 import { getProjectConfig } from "./projectConfig";
 
 // Sent with every request, so the backup service knows which version each
@@ -6,10 +7,8 @@ const VERSION_HEADER = "x-syncify-version";
 const INSTALL_HEADER = "x-syncify-install";
 const TIMEZONE_HEADER = "x-syncify-timezone";
 
-// Syncify's own database, never Marketplace's. IndexedDB survives the Spotify
-// profile resets that wipe localStorage, so the install ID does too.
-const DATABASE_NAME = "syncify";
-const STORE_NAME = "state";
+// Kept in Syncify's own database (see database.ts), which survives the Spotify
+// profile resets that wipe localStorage.
 const INSTALL_ID_KEY = "install-id";
 const INSTALL_ID_FALLBACK_KEY = "syncify:install-id";
 // Every request waits for the install ID, so a stuck IndexedDB must not hold
@@ -56,60 +55,39 @@ async function loadInstallId(): Promise<string> {
   }
 }
 
-function readOrCreateInDatabase(): Promise<string | null> {
-  let factory: IDBFactory | undefined;
-  try {
-    factory = window.indexedDB;
-  } catch {
-    return Promise.resolve(null);
-  }
-  if (!factory) return Promise.resolve(null);
+async function readOrCreateInDatabase(): Promise<string | null> {
+  const db = await openDatabase();
+  if (!db) return null;
 
   return new Promise((resolve) => {
-    let request: IDBOpenDBRequest;
+    let id: string | null = null;
+
     try {
-      request = factory.open(DATABASE_NAME, 1);
-    } catch {
-      resolve(null);
-      return;
-    }
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const read = store.get(INSTALL_ID_KEY);
 
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore(STORE_NAME);
-    };
-    request.onerror = () => resolve(null);
-    request.onblocked = () => resolve(null);
-    request.onsuccess = () => {
-      const db = request.result;
-      let id: string | null = null;
+      read.onsuccess = () => {
+        if (typeof read.result === "string" && isInstallId(read.result)) {
+          id = read.result;
+          return;
+        }
 
-      try {
-        const transaction = db.transaction(STORE_NAME, "readwrite");
-        const store = transaction.objectStore(STORE_NAME);
-        const read = store.get(INSTALL_ID_KEY);
-
-        read.onsuccess = () => {
-          if (typeof read.result === "string" && isInstallId(read.result)) {
-            id = read.result;
-            return;
-          }
-
-          id = createInstallId();
-          store.put(id, INSTALL_ID_KEY);
-        };
-        transaction.oncomplete = () => {
-          db.close();
-          resolve(id);
-        };
-        transaction.onerror = transaction.onabort = () => {
-          db.close();
-          resolve(null);
-        };
-      } catch {
+        id = createInstallId();
+        store.put(id, INSTALL_ID_KEY);
+      };
+      transaction.oncomplete = () => {
+        db.close();
+        resolve(id);
+      };
+      transaction.onerror = transaction.onabort = () => {
         db.close();
         resolve(null);
-      }
-    };
+      };
+    } catch {
+      db.close();
+      resolve(null);
+    }
   });
 }
 
