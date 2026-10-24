@@ -4,6 +4,7 @@ import {
   listInstalledItems,
   summarizeMarketplaceState,
 } from "../core/marketplace";
+import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
 import { UnsupportedVersionError } from "../api/syncifyApi";
 import {
   compareVersions,
@@ -28,6 +29,7 @@ import type {
   SyncifyEntryPoint,
   SyncifyPayload,
   SyncifyShortcut,
+  SyncifySpicetifyConfig,
   SyncifyStatus,
 } from "../types/syncify";
 import type {
@@ -55,6 +57,8 @@ export function SyncifyModal() {
   const [message, setMessage] = useState<MessageState | null>(null);
   const [installedItemCount, setInstalledItemCount] = useState(0);
   const [localItems, setLocalItems] = useState<string[]>([]);
+  const [localConfig, setLocalConfig] =
+    useState<SyncifySpicetifyConfig | null>(null);
   const [marketplaceAvailable, setMarketplaceAvailable] = useState<
     boolean | null
   >(null);
@@ -186,6 +190,7 @@ export function SyncifyModal() {
     setLocalHash(summary.hash);
     setInstalledItemCount(summary.installedItemCount);
     setLocalItems(summary.installedItems);
+    setLocalConfig(summary.spicetifyConfig);
     setMarketplaceAvailable(summary.marketplaceAvailable);
     return summary;
   }
@@ -472,9 +477,10 @@ export function SyncifyModal() {
         ? "Save your extensions and themes so you can restore them after a reinstall or on another computer."
         : localDiffersFromBackup
           ? describeChanges(
+              remotePayload,
               getBackupItems(remotePayload),
               localItems,
-              remotePayload.metadata.last_sync_datetime,
+              localConfig,
             )
           : `Last backup ${formatBackupDate(remotePayload.metadata.last_sync_datetime)}`;
 
@@ -883,24 +889,38 @@ const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [
   { value: "menu", label: "Profile menu" },
 ];
 
-/** "1 added, 2 removed since today, 04:42 AM", or the last backup's time. */
+/**
+ * "1 added, Spicetify config changed since today, 04:42 AM", or the last
+ * backup's time. A backup from before the config was saved says so instead.
+ */
 function describeChanges(
+  backup: SyncifyPayload,
   backupItems: string[],
   localItems: string[],
-  backupDate: string,
+  localConfig: SyncifySpicetifyConfig | null,
 ): string {
   const inBackup = new Set(backupItems);
   const onDevice = new Set(localItems);
   const added = localItems.filter((item) => !inBackup.has(item)).length;
   const removed = backupItems.filter((item) => !onDevice.has(item)).length;
+  const backupConfig = backup.spicetify_config ?? null;
+  const configUnsaved = Boolean(localConfig && !backupConfig);
+  const configChanged =
+    !configUnsaved &&
+    (localConfig && backupConfig
+      ? !isSameSpicetifyConfig(localConfig, backupConfig)
+      : localConfig !== backupConfig);
   const changes = [
     added ? `${added} added` : null,
     removed ? `${removed} removed` : null,
+    configChanged ? "Spicetify config changed" : null,
   ].filter(Boolean);
 
-  return changes.length
-    ? `${changes.join(", ")} since ${formatBackupDate(backupDate)}`
-    : `Last backup ${formatBackupDate(backupDate)}`;
+  const date = formatBackupDate(backup.metadata.last_sync_datetime);
+  const summary = changes.length
+    ? `${changes.join(", ")} since ${date}`
+    : `Last backup ${date}`;
+  return configUnsaved ? `${summary} · Spicetify config not saved yet` : summary;
 }
 
 function formatItemCount(count: number): string {

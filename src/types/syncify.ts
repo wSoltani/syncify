@@ -1,4 +1,5 @@
-export const SYNCIFY_SCHEMA_VERSION = 1 as const;
+// 2 adds spicetify_config. Older backups are version 1.
+export const SYNCIFY_SCHEMA_VERSION = 2;
 
 export type SyncifyStatus =
   | "idle"
@@ -18,13 +19,24 @@ export interface SyncifyMarketplaceData {
 }
 
 export interface SyncifyPayload {
-  schema_version: typeof SYNCIFY_SCHEMA_VERSION;
+  schema_version: number;
   metadata: SyncifyMetadata;
   payload_hash: string;
   marketplace_data: SyncifyMarketplaceData;
+  /** What Spicetify's config lists outside Marketplace. From version 2. */
+  spicetify_config?: SyncifySpicetifyConfig;
   backup_history?: SyncifyPayload[];
   /** Added by the backup service to each backup it sends. */
   backup?: SyncifyBackupInfo;
+}
+
+/** Spicetify's config, without the extensions Marketplace adds to it. */
+export interface SyncifySpicetifyConfig {
+  /** Empty when none is set. */
+  current_theme: string;
+  color_scheme: string;
+  extensions: string[];
+  custom_apps: string[];
 }
 
 export interface SyncifyBackupInfo {
@@ -78,5 +90,7 @@ export interface SyncifySnapshotSummary {
   installedItemCount: number;
   /** Keys of the installed extensions, themes and snippets. */
   installedItems: string[];
+  /** Null when this Spicetify has no config to read. */
+  spicetifyConfig: SyncifySpicetifyConfig | null;
   marketplaceAvailable: boolean;
 }
