@@ -6,25 +6,47 @@ import type { SyncifySpicetifyConfig } from "../types/syncify";
 const NAME_PATTERN = /^\w(?:[\w .()+@/-]{0,126}[\w.()+@/])?$/;
 const MAX_ITEMS = 100;
 const INSTALLED_EXTENSIONS_KEY = "marketplace:installed-extensions";
+const INSTALLED_THEMES_KEY = "marketplace:installed-themes";
+const ACTIVE_THEME_KEY = "marketplace:theme-installed";
+const ENTRY_PREFIX = "marketplace:installed:";
+// What Spicetify's config says when Marketplace manages the theme.
+const MARKETPLACE_THEME = "marketplace";
 
 /**
- * What Spicetify's own config lists, minus the extensions Marketplace adds
- * to it while it loads them. Null when this Spicetify has no config to read.
+ * What Spicetify's own config lists, without what Marketplace adds to it
+ * while it loads. Null when this Spicetify has no config to read.
  */
 export function readSpicetifyConfig(
   marketplaceKeys: Record<string, string>,
 ): SyncifySpicetifyConfig | null {
-  const config = Spicetify.Config as
-    | Partial<Record<keyof SyncifySpicetifyConfig, unknown>>
-    | undefined;
-  if (!config) return null;
+  if (!Spicetify.Config) return null;
+  return cleanSpicetifyConfig(Spicetify.Config, marketplaceKeys);
+}
 
-  const fromMarketplace = new Set(marketplaceExtensionFiles(marketplaceKeys));
-  const extensions = Array.isArray(config.extensions)
-    ? config.extensions.filter((name) => !fromMarketplace.has(name))
-    : [];
+/**
+ * A config without what Marketplace adds to Spicetify.Config at runtime,
+ * judged by the Marketplace data saved with it: each extension it loads and
+ * each script of its theme go into `extensions`, and an active Marketplace
+ * theme replaces `current_theme` and `color_scheme`. Otherwise the same
+ * setup reads differently depending on whether Marketplace had loaded yet.
+ */
+export function cleanSpicetifyConfig(
+  value: unknown,
+  marketplaceKeys: Record<string, string>,
+): SyncifySpicetifyConfig {
+  const config = normalizeSpicetifyConfig(value);
+  const fromMarketplace = new Set(marketplaceScriptFiles(marketplaceKeys));
+  const themeFromMarketplace =
+    marketplaceKeys[ACTIVE_THEME_KEY]?.includes(ENTRY_PREFIX) === true;
 
-  return normalizeSpicetifyConfig({ ...config, extensions });
+  return {
+    current_theme: themeFromMarketplace
+      ? MARKETPLACE_THEME
+      : config.current_theme,
+    color_scheme: themeFromMarketplace ? "" : config.color_scheme,
+    extensions: config.extensions.filter((name) => !fromMarketplace.has(name)),
+    custom_apps: config.custom_apps,
+  };
 }
 
 /**
@@ -67,14 +89,21 @@ function isName(value: unknown): value is string {
 }
 
 // Marketplace adds each extension it loads to Spicetify.Config.extensions,
-// under the file name of its manifest's `main`.
-function marketplaceExtensionFiles(keys: Record<string, string>): string[] {
-  return parseList(keys[INSTALLED_EXTENSIONS_KEY]).flatMap((key) => {
+// under the file name of its manifest's `main`, and each script a theme
+// includes, under the last part of its address.
+function marketplaceScriptFiles(keys: Record<string, string>): string[] {
+  const extensions = parseList(keys[INSTALLED_EXTENSIONS_KEY]).map((key) => {
     const manifest = parseObject(keys[key])?.manifest;
-    const path =
-      manifest && typeof manifest === "object"
-        ? (manifest as { main?: unknown }).main
-        : undefined;
+    return manifest && typeof manifest === "object"
+      ? (manifest as { main?: unknown }).main
+      : undefined;
+  });
+  const themeScripts = parseList(keys[INSTALLED_THEMES_KEY]).flatMap((key) => {
+    const include = parseObject(keys[key])?.include;
+    return Array.isArray(include) ? include : [];
+  });
+
+  return [...extensions, ...themeScripts].flatMap((path) => {
     const file = typeof path === "string" ? path.split("/").pop() : undefined;
     return file ? [file] : [];
   });
