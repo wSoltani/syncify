@@ -289,6 +289,11 @@ export function SyncifyModal() {
           ),
         ].slice(0, MAX_BACKUPS),
       );
+      // Same data as the safety copy: show it once, as the new backup. The
+      // Worker may also move the safety copy; the next refresh shows that.
+      setSafetyCopy((copy) =>
+        copy?.payload_hash === payload.payload_hash ? null : copy,
+      );
       setSelectedRestorePayload(payload);
       setRemoteChecked(true);
       setStatus("success");

@@ -12,6 +12,9 @@ const DATABASE_NAME = "syncify";
 const STORE_NAME = "state";
 const INSTALL_ID_KEY = "install-id";
 const INSTALL_ID_FALLBACK_KEY = "syncify:install-id";
+// Every request waits for the install ID, so a stuck IndexedDB must not hold
+// them up: past this, the localStorage copy is used instead.
+const DATABASE_TIMEOUT_MS = 2000;
 
 let installId: Promise<string> | null = null;
 
@@ -27,12 +30,17 @@ export async function getClientHeaders(): Promise<Record<string, string>> {
 }
 
 export function getInstallId(): Promise<string> {
-  installId ??= loadInstallId();
+  installId ??= loadInstallId().catch(() => createInstallId());
   return installId;
 }
 
 async function loadInstallId(): Promise<string> {
-  const stored = await readOrCreateInDatabase();
+  const stored = await Promise.race([
+    readOrCreateInDatabase(),
+    new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), DATABASE_TIMEOUT_MS),
+    ),
+  ]);
   if (stored) return stored;
 
   // No usable IndexedDB: keep the ID in localStorage instead.
@@ -58,7 +66,13 @@ function readOrCreateInDatabase(): Promise<string | null> {
   if (!factory) return Promise.resolve(null);
 
   return new Promise((resolve) => {
-    const request = factory.open(DATABASE_NAME, 1);
+    let request: IDBOpenDBRequest;
+    try {
+      request = factory.open(DATABASE_NAME, 1);
+    } catch {
+      resolve(null);
+      return;
+    }
 
     request.onupgradeneeded = () => {
       request.result.createObjectStore(STORE_NAME);
