@@ -28,7 +28,10 @@ export interface SyncifyPayload {
 export interface SyncifyRemoteState {
   exists: boolean;
   payload: SyncifyPayload | null;
+  /** The latest backups, newest first. */
   backups: SyncifyPayload[];
+  /** An older backup kept aside and updated about once a week. */
+  safetyCopy: SyncifyPayload | null;
 }
 
 export interface SyncifyConfig {
@@ -57,11 +60,15 @@ export interface SyncifyProjectConfig {
   githubUrl: string;
   kofiUrl: string;
   issueUrl: string;
+  /** Where the release pointers (latest.json) are served. */
+  releasesUrl: string;
 }
 
 export interface SyncifySnapshotSummary {
   keyCount: number;
   hash: string;
   installedItemCount: number;
+  /** Keys of the installed extensions, themes and snippets. */
+  installedItems: string[];
   marketplaceAvailable: boolean;
 }

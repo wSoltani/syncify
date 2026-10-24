@@ -47,6 +47,7 @@ const options = {
     "process.env.SYNCIFY_GITHUB_URL": defineEnvValue(env.SYNCIFY_GITHUB_URL),
     "process.env.SYNCIFY_KOFI_URL": defineEnvValue(env.SYNCIFY_KOFI_URL),
     "process.env.SYNCIFY_ISSUE_URL": defineEnvValue(env.SYNCIFY_ISSUE_URL),
+    "process.env.SYNCIFY_RELEASES_URL": defineEnvValue(env.SYNCIFY_RELEASES_URL),
     "process.env.SYNCIFY_EXTENSION_NAME": JSON.stringify(extensionName),
   },
   external: ["react", "react-dom"],

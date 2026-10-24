@@ -314,6 +314,28 @@
     white-space: nowrap;
 }
 
+/* The safety copy sits apart, below the recent backups. */
+.syncify-backup-divider {
+    margin: 6px 0 2px;
+    border-top: 1px dashed var(--syncify-divider);
+}
+
+.syncify-shield {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--syncify-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.syncify-backup-note {
+    color: var(--syncify-muted);
+    font-size: 12px;
+}
+
 .syncify-tag {
     flex: 0 0 auto;
     padding: 2px 8px;
@@ -564,6 +586,18 @@ label.syncify-setting {
     border-top: 1px solid var(--syncify-divider);
     color: var(--syncify-muted);
     font-size: 12px;
+}
+
+.syncify-footer-version {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+}
+
+.syncify-footer .syncify-update {
+    color: var(--syncify-accent);
+    font-weight: 700;
 }
 
 .syncify-footer-links {

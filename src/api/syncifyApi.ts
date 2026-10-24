@@ -1,18 +1,27 @@
+import { getClientHeaders } from "../core/client";
 import type { SyncifyPayload, SyncifyRemoteState } from "../types/syncify";
 
 const USER_HASH_HEADER = "x-syncify-user-hash";
+// The backup service keeps the 3 latest backups, then sends an older safety
+// copy after them when the request carries Syncify's version.
+const RECENT_BACKUPS = 3;
+
+/** The backup service no longer accepts this version of Syncify (HTTP 426). */
+export class UnsupportedVersionError extends Error {
+  constructor() {
+    super("This version of Syncify is no longer supported.");
+    this.name = "UnsupportedVersionError";
+  }
+}
 
 export async function uploadPayload(
   workerUrl: string,
   userHash: string,
   payload: SyncifyPayload,
 ): Promise<{ unchanged: boolean }> {
-  const response = await fetch(workerUrl, {
+  const response = await request(workerUrl, userHash, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      [USER_HASH_HEADER]: userHash,
-    },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   });
 
@@ -32,15 +41,10 @@ export async function downloadPayload(
   workerUrl: string,
   userHash: string,
 ): Promise<SyncifyRemoteState> {
-  const response = await fetch(workerUrl, {
-    method: "GET",
-    headers: {
-      [USER_HASH_HEADER]: userHash,
-    },
-  });
+  const response = await request(workerUrl, userHash, { method: "GET" });
 
   if (response.status === 404) {
-    return { exists: false, payload: null, backups: [] };
+    return { exists: false, payload: null, backups: [], safetyCopy: null };
   }
 
   if (!response.ok) {
@@ -48,7 +52,30 @@ export async function downloadPayload(
   }
 
   const payload = (await response.json()) as SyncifyPayload;
-  const backups = [payload, ...(payload.backup_history ?? [])].slice(0, 3);
+  const all = [payload, ...(payload.backup_history ?? [])];
 
-  return { exists: true, payload, backups };
+  return {
+    exists: true,
+    payload,
+    backups: all.slice(0, RECENT_BACKUPS),
+    safetyCopy: all[RECENT_BACKUPS] ?? null,
+  };
+}
+
+async function request(
+  workerUrl: string,
+  userHash: string,
+  init: RequestInit & { headers?: Record<string, string> },
+): Promise<Response> {
+  const response = await fetch(workerUrl, {
+    ...init,
+    headers: {
+      ...init.headers,
+      ...(await getClientHeaders()),
+      [USER_HASH_HEADER]: userHash,
+    },
+  });
+
+  if (response.status === 426) throw new UnsupportedVersionError();
+  return response;
 }
