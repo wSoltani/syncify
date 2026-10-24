@@ -9,6 +9,13 @@ import {
   type ItemChange,
   type ItemType,
 } from "../core/restorePreview";
+import {
+  checkCatalog,
+  checkSources,
+  isWarning,
+  type SourceCheck,
+  type SourceChecks,
+} from "../core/sourceChecks";
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
 import { UnsupportedVersionError } from "../api/syncifyApi";
 import {
@@ -81,6 +88,9 @@ export function SyncifyModal() {
   const [remoteChecked, setRemoteChecked] = useState(false);
   const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
   const [showChanges, setShowChanges] = useState(false);
+  const [catalogChecks, setCatalogChecks] = useState<SourceChecks | null>(
+    null,
+  );
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<AccordionSectionId | null>(
@@ -133,6 +143,16 @@ export function SyncifyModal() {
       localConfig,
     ],
   );
+  // Where each item comes from, checked as soon as the preview opens; the
+  // catalog lookups follow. The local checks win when both have something.
+  const localChecks = useMemo(
+    () => (restorePreview ? checkSources(restorePreview.items) : null),
+    [restorePreview],
+  );
+  const sourceChecks = useMemo<SourceChecks>(
+    () => new Map([...(catalogChecks ?? []), ...(localChecks ?? [])]),
+    [catalogChecks, localChecks],
+  );
   const menuAvailable = useMemo(() => isMenuEntryPointAvailable(), []);
   // Only the loader fetches the latest release on reload. Older manual
   // copies and dev builds have to be replaced instead.
@@ -170,6 +190,23 @@ export function SyncifyModal() {
     void refreshStatus({ silent: true });
     void checkForUpdate();
   }, []);
+
+  // Any warning opens the list, so the item can't be missed.
+  useEffect(() => {
+    setCatalogChecks(null);
+    if (!restorePreview || !localChecks) return;
+    if ([...localChecks.values()].some(isWarning)) setShowChanges(true);
+
+    let current = true;
+    void checkCatalog(restorePreview.items, localChecks).then((checks) => {
+      if (!current) return;
+      setCatalogChecks(checks);
+      if ([...checks.values()].some(isWarning)) setShowChanges(true);
+    });
+    return () => {
+      current = false;
+    };
+  }, [restorePreview, localChecks]);
 
   // Capture phase on window runs before Mousetrap (bubble phase on document),
   // so recording never triggers the current shortcut or Spotify's own ones.
@@ -637,6 +674,7 @@ export function SyncifyModal() {
               {restorePreview ? (
                 <RestoreChanges
                   preview={restorePreview}
+                  checks={sourceChecks}
                   expanded={showChanges}
                   onToggle={() => setShowChanges(!showChanges)}
                 />
@@ -865,6 +903,7 @@ const MANUAL_LABELS: Record<ManualItem["type"], string> = {
  */
 function RestoreChanges(props: {
   preview: ReturnType<typeof previewRestore>;
+  checks: SourceChecks;
   expanded: boolean;
   onToggle(): void;
 }) {
@@ -936,6 +975,9 @@ function RestoreChanges(props: {
                           </span>
                         ) : null}
                       </span>
+                      {props.checks.has(item.key) ? (
+                        <SourceLabel check={props.checks.get(item.key)!} />
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -965,6 +1007,45 @@ function RestoreChanges(props: {
         </div>
       ) : null}
     </>
+  );
+}
+
+const SOURCE_TITLES: Record<SourceCheck["kind"], string> = {
+  host: "Loads from outside GitHub",
+  repo: "Its code is in a different repo than the one it names",
+  blocked: "On Marketplace's block list",
+  catalog: "Not in Marketplace's catalog",
+  unchecked: "GitHub couldn't be reached to check it",
+  custom: "A snippet made in Marketplace, not from its list",
+};
+
+/** A small label after an item: a muted warning, or a plain note. */
+function SourceLabel(props: { check: SourceCheck }) {
+  const React = Spicetify.React;
+  const { check } = props;
+  const warning = isWarning(check);
+  const label =
+    check.kind === "host"
+      ? `Code from ${check.host}`
+      : check.kind === "repo"
+        ? `Code from ${check.repo}`
+        : check.kind === "blocked"
+          ? "Blocked by Marketplace"
+          : check.kind === "catalog"
+            ? "Not in Marketplace"
+            : check.kind === "unchecked"
+              ? "Not checked"
+              : "Custom";
+
+  return (
+    <span
+      className="syncify-source"
+      data-warning={warning ? "true" : "false"}
+      title={SOURCE_TITLES[check.kind]}
+    >
+      {warning ? <WarningIcon /> : null}
+      {label}
+    </span>
   );
 }
 
@@ -1016,6 +1097,22 @@ function ShieldIcon() {
       focusable="false"
     >
       <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" />
+    </svg>
+  );
+}
+
+function WarningIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg
+      className="syncify-warning-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M12 3 2 21h20z" />
+      <path d="M12 10v5" />
+      <path d="M12 18h.01" />
     </svg>
   );
 }
