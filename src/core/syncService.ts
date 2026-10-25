@@ -3,6 +3,12 @@ import {
   reportRestore,
   uploadPayload,
 } from "../api/syncifyApi";
+import {
+  cancelClaim,
+  claimBackup,
+  fetchClaimStatus,
+  type ClaimStatus,
+} from "../api/claimsApi";
 import type {
   SyncifyConfig,
   SyncifyPayload,
@@ -43,8 +49,13 @@ export async function backupNow(
   return { payload, unchanged };
 }
 
+/**
+ * This Spotify account's backups, or with `linkedHash` those of another
+ * Spotify account linked to the signed-in account.
+ */
 export async function fetchRemoteState(
   config: SyncifyConfig,
+  linkedHash?: string,
 ): Promise<SyncifyRemoteState> {
   if (!hasWorkerUrl(config)) {
     throw new Error("Syncify backup service is not configured.");
@@ -53,6 +64,7 @@ export async function fetchRemoteState(
   const remote = await downloadPayload(
     config.workerUrl,
     await getUserIdentity(),
+    linkedHash,
   );
 
   // Backups made by older versions carry a hash computed over every key, so
@@ -110,9 +122,11 @@ async function withCurrentHash(
   };
 }
 
+/** With `linkedHash`, the backup is one of that linked Spotify account's. */
 export async function restoreNow(
   config: SyncifyConfig,
   selectedPayload?: SyncifyPayload,
+  linkedHash?: string,
 ): Promise<{ payload: SyncifyPayload; restoredCount: number }> {
   const payload = selectedPayload ?? (await fetchRemoteState(config)).payload;
 
@@ -129,9 +143,37 @@ export async function restoreNow(
   const backupId = payload.backup?.id;
   if (backupId && hasWorkerUrl(config)) {
     void getUserIdentity()
-      .then((identity) => reportRestore(config.workerUrl, identity, backupId))
+      .then((identity) =>
+        reportRestore(config.workerUrl, identity, backupId, linkedHash),
+      )
       .catch(() => {});
   }
 
   return { payload, restoredCount };
+}
+
+/** The claim on this Spotify account, with its hash to find it in `accounts`. */
+export async function fetchClaims(
+  config: SyncifyConfig,
+): Promise<ClaimStatus & { hash: string }> {
+  const identity = await getUserIdentity();
+  const status = await fetchClaimStatus(requireWorkerUrl(config), identity);
+  return { ...status, hash: identity.hash };
+}
+
+/** Claims this Spotify account for the signed-in account. */
+export async function secureBackup(config: SyncifyConfig): Promise<void> {
+  await claimBackup(requireWorkerUrl(config), await getUserIdentity());
+}
+
+/** Cancels the pending claim on this Spotify account. */
+export async function cancelPendingClaim(config: SyncifyConfig): Promise<void> {
+  await cancelClaim(requireWorkerUrl(config), await getUserIdentity());
+}
+
+function requireWorkerUrl(config: SyncifyConfig): string {
+  if (!hasWorkerUrl(config)) {
+    throw new Error("Syncify backup service is not configured.");
+  }
+  return config.workerUrl;
 }

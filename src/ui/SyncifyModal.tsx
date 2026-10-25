@@ -25,7 +25,8 @@ import {
   type SourceChecks,
 } from "../core/sourceChecks";
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
-import { UnsupportedVersionError } from "../api/syncifyApi";
+import { LockedError, UnsupportedVersionError } from "../api/syncifyApi";
+import { ClaimError, type ClaimStatus } from "../api/claimsApi";
 import {
   AccountError,
   describeAccountError,
@@ -47,7 +48,14 @@ import {
   getLoaderInfo,
   isReleaseVersion,
 } from "../core/releases";
-import { backupNow, fetchRemoteState, restoreNow } from "../core/syncService";
+import {
+  backupNow,
+  cancelPendingClaim,
+  fetchClaims,
+  fetchRemoteState,
+  restoreNow,
+  secureBackup,
+} from "../core/syncService";
 import {
   applyShortcut,
   DEFAULT_SHORTCUT,
@@ -60,9 +68,11 @@ import {
   isMenuEntryPointAvailable,
 } from "../core/entryPoints";
 import type {
+  SyncifyClaim,
   SyncifyConfig,
   SyncifyEntryPoint,
   SyncifyPayload,
+  SyncifyRemoteState,
   SyncifyShortcut,
   SyncifySpicetifyConfig,
   SyncifyStatus,
@@ -126,6 +136,26 @@ export function SyncifyModal() {
   // The backup service refused this version (HTTP 426).
   const [isUnsupported, setIsUnsupported] = useState(false);
   const [newerVersion, setNewerVersion] = useState<string | null>(null);
+  // undefined until the stored session has been read.
+  const [session, setSession] = useState<AccountSession | null | undefined>(
+    undefined,
+  );
+  // A secured backup this device can't read: signed out, or another account.
+  const [locked, setLocked] = useState<LockedError["code"] | null>(null);
+  // A pending claim on this Spotify account, from its backups.
+  const [remoteClaim, setRemoteClaim] = useState<SyncifyClaim | null>(null);
+  // Signed in: the claim on this Spotify account and the account's claims.
+  const [claims, setClaims] = useState<
+    (ClaimStatus & { hash: string }) | null
+  >(null);
+  const [securing, setSecuring] = useState(false);
+  const [secureError, setSecureError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  // The linked Spotify account whose backups are shown; null for this one.
+  const [linkedHash, setLinkedHash] = useState<string | null>(null);
+  const [linkedRemote, setLinkedRemote] = useState<SyncifyRemoteState | null>(
+    null,
+  );
   const panelRef = useRef<HTMLDivElement>(null);
 
   const projectConfig = useMemo(() => getProjectConfig(), []);
@@ -133,17 +163,23 @@ export function SyncifyModal() {
     () => (safetyCopy ? [...remoteBackups, safetyCopy] : remoteBackups),
     [remoteBackups, safetyCopy],
   );
+  // The list shows this Spotify account's backups, or a linked one's.
+  const shownBackups = linkedHash ? (linkedRemote?.backups ?? []) : remoteBackups;
+  const shownSafetyCopy = linkedHash
+    ? (linkedRemote?.safetyCopy ?? null)
+    : safetyCopy;
   // Parsing a backup's item lists is the costly part of a row, so list each
   // backup's items once when the backups load instead of on every render.
   const backupItems = useMemo(
     () =>
       new Map(
-        allBackups.map((backup) => [
-          backup,
-          listItems(backup.marketplace_data.keys),
-        ]),
+        [
+          ...allBackups,
+          ...(linkedRemote?.backups ?? []),
+          ...(linkedRemote?.safetyCopy ? [linkedRemote.safetyCopy] : []),
+        ].map((backup) => [backup, listItems(backup.marketplace_data.keys)]),
       ),
-    [allBackups],
+    [allBackups, linkedRemote],
   );
   const getBackupItemDetails = (backup: SyncifyPayload) =>
     backupItems.get(backup) ?? listItems(backup.marketplace_data.keys);
@@ -199,11 +235,30 @@ export function SyncifyModal() {
   );
   // With everything backed up, only the latest backup is shown until asked.
   // Otherwise the list stays open, so someone who came to restore sees it.
+  // A linked account's backups are always shown in full.
   const backupsExpanded =
-    showAllBackups || !isBackedUp || allBackups.length < 2;
+    linkedHash !== null ||
+    showAllBackups ||
+    !isBackedUp ||
+    allBackups.length < 2;
   const visibleBackups = backupsExpanded
-    ? remoteBackups
-    : remoteBackups.slice(0, 1);
+    ? shownBackups
+    : shownBackups.slice(0, 1);
+  // Someone else's claim on this Spotify account: the real owner can cancel it.
+  const otherClaim =
+    remoteClaim?.status === "pending" && !remoteClaim.mine ? remoteClaim : null;
+  const secureState = describeSecureState(claims, locked, otherClaim !== null);
+  // The signed-in account's other Spotify accounts, numbered in the order
+  // they were linked. Backups only ever go to this one.
+  const linkedAccounts = session
+    ? (claims?.accounts ?? []).filter((account) => account.status === "final")
+    : [];
+  const otherAccounts = linkedAccounts
+    .map((account, index) => ({
+      hash: account.hash,
+      label: `Spotify account ${index + 1}${account.device_info ? ` · from ${account.device_info}` : ""}`,
+    }))
+    .filter((account) => account.hash !== claims?.hash);
   // Restoring overwrites this device, so warn when what's here now can't be
   // brought back from any backup.
   const localIsUnsaved = Boolean(
@@ -213,6 +268,10 @@ export function SyncifyModal() {
   );
 
   useEffect(() => {
+    // Shown at once; the backup check below reads it again with the claims.
+    void loadSession()
+      .catch(() => null)
+      .then((stored) => setSession((known) => known ?? stored));
     void refreshStatus({ silent: true });
     void checkForUpdate();
     return onRestoreResult(setRestoreResult);
@@ -298,7 +357,31 @@ export function SyncifyModal() {
       }
 
       await refreshLocalSummary();
-      const remote = await fetchRemoteState(config);
+      let remote: SyncifyRemoteState;
+      let lockedBy: LockedError["code"] | null = null;
+      try {
+        remote = await fetchRemoteState(config);
+      } catch (error) {
+        if (!(error instanceof LockedError)) throw error;
+        remote = NO_REMOTE_STATE;
+        lockedBy = error.code;
+      }
+      // Signed in, the claim and linked accounts come from the claim status.
+      // A refused session is forgotten along the way, so read it after.
+      const signedIn = await loadSession().catch(() => null);
+      const claimStatus = signedIn
+        ? await fetchClaims(config).catch(() => null)
+        : null;
+      const current = signedIn ? await loadSession().catch(() => null) : null;
+
+      setSession(current);
+      setClaims(current ? claimStatus : null);
+      setLocked(lockedBy);
+      // A locked backup needs a sign-in: the Account section opens by itself.
+      if (lockedBy) setOpenSection("account");
+      setRemoteClaim(remote.claim);
+      setLinkedHash(null);
+      setLinkedRemote(null);
       setRemotePayload(remote.payload);
       setRemoteBackups(remote.backups);
       setSafetyCopy(remote.safetyCopy);
@@ -306,7 +389,7 @@ export function SyncifyModal() {
       setRemoteChecked(true);
       setStatus(remote.exists ? "success" : "idle");
 
-      if (!options?.silent) {
+      if (!options?.silent && !lockedBy) {
         setMessage(
           remote.exists && remote.payload
             ? {
@@ -320,6 +403,83 @@ export function SyncifyModal() {
         );
       }
     } catch (error) {
+      handleError(error);
+    }
+  }
+
+  /** Claims this Spotify account for the signed-in account. */
+  async function runSecure() {
+    setSecuring(true);
+    setSecureError(null);
+    try {
+      await secureBackup(config);
+    } catch (error) {
+      // Another claim, another owner or a dispute show as the claim's state.
+      const shownAsState =
+        error instanceof ClaimError &&
+        ["claim_pending", "claimed", "claim_disputed"].includes(error.code);
+      if (!shownAsState) {
+        setSecureError(error instanceof Error ? error.message : String(error));
+      }
+    } finally {
+      await refreshStatus({ silent: true });
+      setSecuring(false);
+    }
+  }
+
+  // Signing in from "Secure your backup" claims it at once. Signing in to a
+  // locked backup only unlocks it.
+  function handleSignedIn(signedIn: AccountSession) {
+    setSession(signedIn);
+    if (!locked && remotePayload) {
+      void runSecure();
+    } else {
+      void refreshStatus({ silent: true });
+    }
+  }
+
+  function handleSignedOut() {
+    setSession(null);
+    setClaims(null);
+    setSecureError(null);
+    void refreshStatus({ silent: true });
+  }
+
+  /** "Not me, cancel it": anyone on this Spotify account can cancel. */
+  async function cancelOtherClaim() {
+    setCancelling(true);
+    try {
+      await cancelPendingClaim(config);
+      Spicetify.showNotification("Syncify: claim cancelled");
+      await refreshStatus({ silent: true });
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  /** Shows a linked Spotify account's backups, or this one's with null. */
+  async function showBackupsOf(hash: string | null) {
+    setIsConfirmingRestore(false);
+    setLinkedHash(hash);
+    setLinkedRemote(null);
+    if (!hash) {
+      setSelectedRestorePayload(remotePayload);
+      return;
+    }
+
+    setSelectedRestorePayload(null);
+    try {
+      const remote = await fetchRemoteState(config, hash);
+      setLinkedRemote(remote);
+      setSelectedRestorePayload(remote.payload);
+    } catch (error) {
+      setLinkedHash(null);
+      setSelectedRestorePayload(remotePayload);
       handleError(error);
     }
   }
@@ -467,6 +627,7 @@ export function SyncifyModal() {
       const { payload, restoredCount } = await restoreNow(
         config,
         selectedRestorePayload ?? undefined,
+        linkedHash ?? undefined,
       );
       setSelectedRestorePayload(payload);
       setStatus("success");
@@ -512,6 +673,13 @@ export function SyncifyModal() {
     if (error instanceof UnsupportedVersionError) {
       setIsUnsupported(true);
       setMessage(null);
+      return;
+    }
+
+    // Secured since the window opened, or the session ended: show the lock.
+    if (error instanceof LockedError && error.code !== "not_linked") {
+      setMessage(null);
+      void refreshStatus({ silent: true });
       return;
     }
 
@@ -585,30 +753,36 @@ export function SyncifyModal() {
 
   const statusTitle = isUnsupported
     ? "Update Syncify to keep backing up"
-    : !remoteChecked
-      ? status === "error"
-        ? "Couldn't check your backup"
-        : "Checking your backup…"
-      : !remotePayload
-        ? "No backup yet"
-        : localDiffersFromBackup
-          ? "Changes since your last backup"
-          : "Everything is backed up";
+    : locked
+      ? "Sign in to restore"
+      : !remoteChecked
+        ? status === "error"
+          ? "Couldn't check your backup"
+          : "Checking your backup…"
+        : !remotePayload
+          ? "No backup yet"
+          : localDiffersFromBackup
+            ? "Changes since your last backup"
+            : "Everything is backed up";
 
   const statusDetail = isUnsupported
     ? "Your backups are safe"
-    : !remoteChecked
-      ? null
-      : !remotePayload
-        ? "Save your extensions and themes so you can restore them after a reinstall or on another computer."
-        : localDiffersFromBackup
-          ? describeChanges(
-              remotePayload,
-              getBackupItems(remotePayload),
-              localItems,
-              localConfig,
-            )
-          : `Last backup ${formatBackupDate(remotePayload.metadata.last_sync_datetime)}`;
+    : locked
+      ? locked === "not_owner"
+        ? "Secured by another account"
+        : "This backup is secured"
+      : !remoteChecked
+        ? null
+        : !remotePayload
+          ? "Save your extensions and themes so you can restore them after a reinstall or on another computer."
+          : localDiffersFromBackup
+            ? describeChanges(
+                remotePayload,
+                getBackupItems(remotePayload),
+                localItems,
+                localConfig,
+              )
+            : `Last backup ${formatBackupDate(remotePayload.metadata.last_sync_datetime)}`;
 
   // The result of a restore stands in for the status for a while after it.
   const showResult = Boolean(
@@ -638,6 +812,20 @@ export function SyncifyModal() {
             onClick={() => openExternal(`${projectConfig.githubUrl}#updating`)}
           >
             How to update
+          </button>
+        </div>
+      ) : null}
+
+      {otherClaim ? (
+        <div className="syncify-alert" role="alert">
+          <span>{otherClaim.email ?? "Someone"} is claiming this backup.</span>
+          <button
+            className="syncify-text-button"
+            type="button"
+            onClick={() => void cancelOtherClaim()}
+            disabled={cancelling}
+          >
+            Not me, cancel it
           </button>
         </div>
       ) : null}
@@ -750,114 +938,161 @@ export function SyncifyModal() {
             className="syncify-button"
             type="button"
             onClick={runBackup}
-            disabled={isBusy || isBackedUp || isUnsupported}
-            title={isBackedUp ? "No changes since your last backup" : undefined}
+            disabled={isBusy || isBackedUp || isUnsupported || locked !== null}
+            title={
+              locked
+                ? "Sign in to back up"
+                : isBackedUp
+                  ? "No changes since your last backup"
+                  : undefined
+            }
           >
             {isBusy ? "Working…" : isBackedUp ? "Backed up" : "Back up now"}
           </button>
         )}
       </section>
 
-      {remoteBackups.length > 0 ? (
+      {locked || remoteBackups.length > 0 || otherAccounts.length > 0 ? (
         <section className="syncify-section" aria-label="Backups">
           <div className="syncify-section-header">
             <h4 className="syncify-section-title">Backups</h4>
-            {isBackedUp && allBackups.length > 1 ? (
-              <button
-                className="syncify-text-button syncify-disclosure"
-                type="button"
-                aria-expanded={showAllBackups}
-                aria-controls="syncify-backup-list"
-                onClick={() => {
-                  setShowAllBackups(!showAllBackups);
-                  setIsConfirmingRestore(false);
-                }}
-              >
-                {showAllBackups
-                  ? "Show less"
-                  : `Show all ${allBackups.length}`}
-                <ChevronIcon />
-              </button>
-            ) : null}
-          </div>
-          <div
-            className="syncify-backup-list"
-            id="syncify-backup-list"
-            role="radiogroup"
-            aria-label="Choose a backup to restore"
-          >
-            {visibleBackups.map((backup) => renderBackup(backup))}
-            {backupsExpanded && safetyCopy ? (
-              <>
-                <div className="syncify-backup-divider" role="presentation" />
-                {renderBackup(safetyCopy, { isSafetyCopy: true })}
-              </>
-            ) : null}
-          </div>
-
-          {!backupsExpanded ? null : marketplaceAvailable === false ? (
-            <p className="syncify-muted">
-              Install Spicetify Marketplace to restore a backup.
-            </p>
-          ) : isConfirmingRestore ? (
-            <div className="syncify-confirm">
-              <p className="syncify-confirm-title">
-                Restore{" "}
-                {selectedRestorePayload
-                  ? formatBackupDate(
-                      selectedRestorePayload.metadata.last_sync_datetime,
-                    )
-                  : "this backup"}
-                ?
-              </p>
-              {restorePreview ? (
-                <RestoreChanges
-                  preview={restorePreview}
-                  checks={sourceChecks}
-                  expanded={showChanges}
-                  onToggle={() => setShowChanges(!showChanges)}
-                />
+            <span className="syncify-section-controls">
+              {!linkedHash && isBackedUp && allBackups.length > 1 ? (
+                <button
+                  className="syncify-text-button syncify-disclosure"
+                  type="button"
+                  aria-expanded={showAllBackups}
+                  aria-controls="syncify-backup-list"
+                  onClick={() => {
+                    setShowAllBackups(!showAllBackups);
+                    setIsConfirmingRestore(false);
+                  }}
+                >
+                  {showAllBackups
+                    ? "Show less"
+                    : `Show all ${allBackups.length}`}
+                  <ChevronIcon />
+                </button>
               ) : null}
-              <div className="syncify-actions">
-                {localIsUnsaved ? (
-                  <div className="syncify-alert syncify-actions-hint">
-                    Your current setup isn't backed up.
-                  </div>
-                ) : null}
-                <button
-                  className="syncify-button secondary"
-                  type="button"
-                  onClick={() => setIsConfirmingRestore(false)}
-                  disabled={isBusy}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="syncify-button"
-                  type="button"
-                  onClick={runRestore}
-                  disabled={isBusy}
-                >
-                  Restore
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="syncify-actions">
-              {selectedIsOnDevice ? (
-                <span className="syncify-muted syncify-actions-hint">
-                  This backup is already current.
+              {!locked && otherAccounts.length > 0 ? (
+                <span className="syncify-select-field">
+                  <select
+                    className="syncify-select"
+                    aria-label="Show backups from"
+                    value={linkedHash ?? ""}
+                    onChange={(event) =>
+                      void showBackupsOf(event.currentTarget.value || null)
+                    }
+                    disabled={isBusy}
+                  >
+                    <option value="">This Spotify account</option>
+                    {otherAccounts.map((account) => (
+                      <option key={account.hash} value={account.hash}>
+                        {account.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronIcon />
                 </span>
               ) : null}
-              <button
-                className="syncify-button secondary"
-                type="button"
-                onClick={() => requestRestoreConfirmation()}
-                disabled={isBusy || !selectedRestorePayload || selectedIsOnDevice}
+            </span>
+          </div>
+
+          {locked ? (
+            <p className="syncify-locked">
+              <LockIcon />
+              <span>
+                {locked === "not_owner"
+                  ? "Sign in with the account that secured them"
+                  : "Sign in to see and restore your backups"}
+              </span>
+            </p>
+          ) : linkedHash && !linkedRemote ? (
+            <p className="syncify-muted">Loading backups…</p>
+          ) : shownBackups.length === 0 ? (
+            <p className="syncify-muted">No backups yet.</p>
+          ) : (
+            <>
+              <div
+                className="syncify-backup-list"
+                id="syncify-backup-list"
+                role="radiogroup"
+                aria-label="Choose a backup to restore"
               >
-                Restore backup
-              </button>
-            </div>
+                {visibleBackups.map((backup) => renderBackup(backup))}
+                {backupsExpanded && shownSafetyCopy ? (
+                  <>
+                    <div className="syncify-backup-divider" role="presentation" />
+                    {renderBackup(shownSafetyCopy, { isSafetyCopy: true })}
+                  </>
+                ) : null}
+              </div>
+
+              {!backupsExpanded ? null : marketplaceAvailable === false ? (
+                <p className="syncify-muted">
+                  Install Spicetify Marketplace to restore a backup.
+                </p>
+              ) : isConfirmingRestore ? (
+                <div className="syncify-confirm">
+                  <p className="syncify-confirm-title">
+                    Restore{" "}
+                    {selectedRestorePayload
+                      ? formatBackupDate(
+                          selectedRestorePayload.metadata.last_sync_datetime,
+                        )
+                      : "this backup"}
+                    ?
+                  </p>
+                  {restorePreview ? (
+                    <RestoreChanges
+                      preview={restorePreview}
+                      checks={sourceChecks}
+                      expanded={showChanges}
+                      onToggle={() => setShowChanges(!showChanges)}
+                    />
+                  ) : null}
+                  <div className="syncify-actions">
+                    {localIsUnsaved ? (
+                      <div className="syncify-alert syncify-actions-hint">
+                        Your current setup isn't backed up.
+                      </div>
+                    ) : null}
+                    <button
+                      className="syncify-button secondary"
+                      type="button"
+                      onClick={() => setIsConfirmingRestore(false)}
+                      disabled={isBusy}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="syncify-button"
+                      type="button"
+                      onClick={runRestore}
+                      disabled={isBusy}
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="syncify-actions">
+                  {selectedIsOnDevice ? (
+                    <span className="syncify-muted syncify-actions-hint">
+                      This backup is already current.
+                    </span>
+                  ) : null}
+                  <button
+                    className="syncify-button secondary"
+                    type="button"
+                    onClick={() => requestRestoreConfirmation()}
+                    disabled={isBusy || !selectedRestorePayload || selectedIsOnDevice}
+                  >
+                    Restore backup
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       ) : null}
@@ -869,7 +1104,17 @@ export function SyncifyModal() {
           openSection={openSection}
           onToggle={toggleSection}
         >
-          <AccountPanel />
+          <AccountPanel
+            session={session}
+            locked={locked}
+            secure={secureState}
+            securing={securing}
+            secureError={secureError}
+            onSecure={() => void runSecure()}
+            onSignedIn={handleSignedIn}
+            onSignedOut={handleSignedOut}
+            onReportIssue={() => openExternal(projectConfig.issueUrl)}
+          />
         </AccordionSection>
         <AccordionSection
           id="settings"
@@ -908,20 +1153,25 @@ export function SyncifyModal() {
                 </span>
               ) : null}
             </span>
-            <select
-              className="syncify-select"
-              value={menuAvailable ? config.entryPoint : "topbar"}
-              onChange={(event) =>
-                updateEntryPoint(event.currentTarget.value as SyncifyEntryPoint)
-              }
-              disabled={!menuAvailable}
-            >
-              {ENTRY_POINT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <span className="syncify-select-field">
+              <select
+                className="syncify-select"
+                value={menuAvailable ? config.entryPoint : "topbar"}
+                onChange={(event) =>
+                  updateEntryPoint(
+                    event.currentTarget.value as SyncifyEntryPoint,
+                  )
+                }
+                disabled={!menuAvailable}
+              >
+                {ENTRY_POINT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronIcon />
+            </span>
           </label>
 
           <div className="syncify-setting">
@@ -1192,19 +1442,74 @@ function SourceLabel(props: { check: SourceCheck }) {
   );
 }
 
+/** Where securing this Spotify account's backup stands, signed in. */
+type SecureState =
+  // The claim status couldn't be read yet.
+  | { kind: "unknown" }
+  | { kind: "open" }
+  | { kind: "pending"; finalAt: number }
+  | { kind: "secured"; linkedCount: number }
+  | { kind: "other-claim" }
+  | { kind: "other-account" }
+  | { kind: "cancelled" }
+  | { kind: "disputed" };
+
+function describeSecureState(
+  claims: (ClaimStatus & { hash: string }) | null,
+  locked: LockedError["code"] | null,
+  otherClaim: boolean,
+): SecureState {
+  if (locked === "not_owner") return { kind: "other-account" };
+  if (!claims) return otherClaim ? { kind: "other-claim" } : { kind: "unknown" };
+
+  const { claim } = claims;
+  if (claim?.status === "final") {
+    if (!claim.mine) return { kind: "other-account" };
+    const linkedCount = (claims.accounts ?? []).filter(
+      (account) => account.status === "final",
+    ).length;
+    return { kind: "secured", linkedCount: Math.max(linkedCount, 1) };
+  }
+  if (claim?.status === "pending") {
+    return claim.mine
+      ? { kind: "pending", finalAt: claim.final_at }
+      : { kind: "other-claim" };
+  }
+  if (claims.disputed) return { kind: "disputed" };
+
+  // Cancelled from this Spotify account lately, and not claimed again since.
+  const own = (claims.accounts ?? []).filter(
+    (account) => account.hash === claims.hash,
+  );
+  const latest = own[own.length - 1];
+  if (latest?.status === "cancelled" && latest.cancelled_by === "owner") {
+    return { kind: "cancelled" };
+  }
+  return { kind: "open" };
+}
+
 /**
- * The Account section: an email code to sign in, then the email and Sign out.
- * The form's progress outlives the section and the window while Spotify runs.
+ * The Account section: an email code to sign in, then the email, where
+ * securing the backup stands, and Sign out. The form's progress outlives the
+ * section and the window while Spotify runs.
  */
-function AccountPanel() {
+function AccountPanel(props: {
+  /** undefined until the stored session has been read. */
+  session: AccountSession | null | undefined;
+  locked: LockedError["code"] | null;
+  secure: SecureState;
+  securing: boolean;
+  secureError: string | null;
+  onSecure(): void;
+  onSignedIn(session: AccountSession): void;
+  onSignedOut(): void;
+  onReportIssue(): void;
+}) {
   const React = Spicetify.React;
   const useEffect = React.useEffect as typeof useEffectType;
   const useState = React.useState as typeof useStateType;
 
-  // undefined until the stored session has been read.
-  const [session, setSession] = useState<AccountSession | null | undefined>(
-    undefined,
-  );
+  const { session, secure } = props;
   const [draft, setDraft] = useState<SignInDraft>(() => getSignInDraft());
   const [email, setEmail] = useState(() => getSignInDraft().email);
   const [code, setCode] = useState("");
@@ -1223,35 +1528,26 @@ function AccountPanel() {
       ? waitSeconds
       : 0;
 
-  // Shows the stored session at once, then checks it with the service.
+  // Checks the stored session with the service, once per Spotify run.
   useEffect(() => {
+    if (!session) return;
     let current = true;
-    void loadSession()
-      .catch(() => null)
-      .then((stored) => {
-        if (!current) return;
-        setSession(stored);
-        if (!stored) return;
-
-        void refreshSession()
-          .then((checked) => {
-            if (!current) return;
-            setSession(checked);
-            if (!checked) {
-              setError({
-                kind: "warning",
-                text: describeAccountError(new AccountError("signed_out")),
-              });
-            }
-          })
-          .catch(() => {
-            // Offline or refused for now: keep showing the stored session.
-          });
+    void refreshSession()
+      .then((checked) => {
+        if (!current || checked) return;
+        setError({
+          kind: "warning",
+          text: describeAccountError(new AccountError("signed_out")),
+        });
+        props.onSignedOut();
+      })
+      .catch(() => {
+        // Offline or refused for now: keep showing the stored session.
       });
     return () => {
       current = false;
     };
-  }, []);
+  }, [session?.token]);
 
   // Ticks while a countdown runs.
   useEffect(() => {
@@ -1326,7 +1622,7 @@ function AccountPanel() {
       const signedIn = await signIn(draft.email, code);
       updateDraft({ codeSentAt: null });
       setCode("");
-      setSession(signedIn);
+      props.onSignedIn(signedIn);
     } catch (failure) {
       setError({ kind: "error", text: describeAccountError(failure) });
       const failed = failure instanceof AccountError ? failure.code : null;
@@ -1346,8 +1642,8 @@ function AccountPanel() {
     // Signing in again starts from the same email.
     updateDraft({ email: lastEmail, codeSentAt: null });
     setEmail(lastEmail);
-    setSession(null);
     setBusy(false);
+    props.onSignedOut();
   }
 
   const errorAlert = error ? (
@@ -1363,12 +1659,38 @@ function AccountPanel() {
   if (session === undefined) return null;
 
   if (session) {
+    const canSecure =
+      secure.kind === "open" ||
+      secure.kind === "other-claim" ||
+      secure.kind === "cancelled" ||
+      secure.kind === "disputed";
+
     return (
       <>
         <div className="syncify-setting">
           <span className="syncify-setting-text">
             <span className="syncify-account-email">{session.email}</span>
-            <span className="syncify-muted">Signed in</span>
+            {secure.kind === "secured" ? (
+              <span className="syncify-muted">
+                Backup secured ·{" "}
+                {secure.linkedCount === 1
+                  ? "1 Spotify account linked"
+                  : `${secure.linkedCount} Spotify accounts linked`}
+              </span>
+            ) : secure.kind === "pending" ? (
+              <span className="syncify-muted syncify-account-state">
+                <ClockIcon />
+                <span>
+                  Securing this backup · final {formatFinalDate(secure.finalAt)}
+                </span>
+              </span>
+            ) : secure.kind === "other-account" ? (
+              <span className="syncify-muted">
+                This backup is secured by another account
+              </span>
+            ) : (
+              <span className="syncify-muted">Signed in</span>
+            )}
           </span>
           <button
             className="syncify-button secondary"
@@ -1379,6 +1701,57 @@ function AccountPanel() {
             Sign out
           </button>
         </div>
+        {canSecure ? (
+          <div className="syncify-setting">
+            <span className="syncify-setting-text">
+              <span>Secure your backup</span>
+              <span className="syncify-muted">So only you can restore it</span>
+            </span>
+            <button
+              className="syncify-button"
+              type="button"
+              onClick={props.onSecure}
+              disabled={
+                busy ||
+                props.securing ||
+                secure.kind === "other-claim" ||
+                secure.kind === "disputed"
+              }
+            >
+              {props.securing
+                ? "Securing…"
+                : secure.kind === "cancelled"
+                  ? "Secure again"
+                  : "Secure"}
+            </button>
+          </div>
+        ) : null}
+        {secure.kind === "other-claim" ? (
+          <div className="syncify-alert" role="status">
+            Another claim is pending. Cancel it above to secure this backup
+            yourself.
+          </div>
+        ) : secure.kind === "cancelled" ? (
+          <div className="syncify-alert" role="status">
+            Your claim was cancelled from this Spotify account.
+          </div>
+        ) : secure.kind === "disputed" ? (
+          <div className="syncify-alert" role="status">
+            <span>This backup can't be secured for now.</span>
+            <button
+              className="syncify-text-button"
+              type="button"
+              onClick={props.onReportIssue}
+            >
+              Report an issue
+            </button>
+          </div>
+        ) : null}
+        {props.secureError ? (
+          <div className="syncify-alert" data-kind="error" role="alert">
+            {props.secureError}
+          </div>
+        ) : null}
         {errorAlert}
       </>
     );
@@ -1387,10 +1760,19 @@ function AccountPanel() {
   return (
     <>
       <div className="syncify-setting">
-        <span className="syncify-setting-text">
-          <span>Secure your backup</span>
-          <span className="syncify-muted">So only you can restore it</span>
-        </span>
+        {props.locked ? (
+          <span className="syncify-setting-text">
+            <span>Sign in to restore</span>
+            <span className="syncify-muted">
+              With the email that secured this backup
+            </span>
+          </span>
+        ) : (
+          <span className="syncify-setting-text">
+            <span>Secure your backup</span>
+            <span className="syncify-muted">So only you can restore it</span>
+          </span>
+        )}
       </div>
       <form
         className="syncify-confirm"
@@ -1508,6 +1890,12 @@ function maskEmail(email: string): string {
   return `${email[0]}***${email.slice(at)}`;
 }
 
+/** "on Nov 1, 04:42 PM", or "today, 04:42 PM" */
+function formatFinalDate(at: number): string {
+  const date = formatBackupDate(new Date(at).toISOString());
+  return date.startsWith("today") ? date : `on ${date}`;
+}
+
 /** "0:45" */
 function formatCountdown(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -1595,6 +1983,36 @@ function ChevronIcon() {
   );
 }
 
+function LockIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg
+      className="syncify-lock"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg
+      className="syncify-clock"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
 function CloseIcon() {
   const React = Spicetify.React;
   return (
@@ -1610,6 +2028,14 @@ const RESULT_SHOWN_MS = 10 * 60 * 1000;
 
 // Mirrors the worker's MAX_BACKUP_HISTORY.
 const MAX_BACKUPS = 3;
+// What a locked backup shows: nothing can be read without signing in.
+const NO_REMOTE_STATE: SyncifyRemoteState = {
+  exists: false,
+  payload: null,
+  backups: [],
+  safetyCopy: null,
+  claim: null,
+};
 
 const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [
   { value: "both", label: "Top bar and profile menu" },
