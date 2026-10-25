@@ -54,7 +54,24 @@ export interface SyncifyRemoteState {
   backups: SyncifyPayload[];
   /** An older backup kept aside and updated about once a week. */
   safetyCopy: SyncifyPayload | null;
+  /** A pending claim on this Spotify account, sent with its backups. */
+  claim: SyncifyClaim | null;
 }
+
+/**
+ * A claim on a Spotify account's backups. `mine` is true when it was made by
+ * the signed-in account.
+ */
+export type SyncifyClaim =
+  | {
+      status: "pending";
+      mine: boolean;
+      /** The claimer's email, masked ("a***@gmail.com"). */
+      email: string | null;
+      /** When it becomes final, in milliseconds. */
+      final_at: number;
+    }
+  | { status: "final"; mine: boolean };
 
 export interface SyncifyConfig {
   workerUrl: string | null;
