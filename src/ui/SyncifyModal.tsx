@@ -953,7 +953,10 @@ export function SyncifyModal() {
         )}
       </section>
 
-      {locked || remoteBackups.length > 0 || otherAccounts.length > 0 ? (
+      {!remoteChecked ||
+      locked ||
+      remoteBackups.length > 0 ||
+      otherAccounts.length > 0 ? (
         <section className="syncify-section" aria-label="Backups">
           <div className="syncify-section-header">
             <h4 className="syncify-section-title">Backups</h4>
@@ -999,7 +1002,15 @@ export function SyncifyModal() {
             </span>
           </div>
 
-          {locked ? (
+          {!remoteChecked ? (
+            <div className="syncify-backup-skeleton" aria-hidden="true">
+              <span className="syncify-radio" />
+              <span className="syncify-backup-text">
+                <span className="syncify-skeleton-line" />
+                <span className="syncify-skeleton-line wide" />
+              </span>
+            </div>
+          ) : locked ? (
             <p className="syncify-locked">
               <LockIcon />
               <span>
@@ -1715,7 +1726,7 @@ function AccountPanel(props: {
           </span>
           <span className="syncify-account-actions">
             <button
-              className="syncify-button secondary syncify-manage"
+              className="syncify-text-button syncify-disclosure"
               type="button"
               aria-label="Manage on the website"
               onClick={() => void openManage()}
@@ -1725,7 +1736,7 @@ function AccountPanel(props: {
               <ExternalIcon />
             </button>
             <button
-              className="syncify-button secondary"
+              className="syncify-text-button"
               type="button"
               onClick={() => void runSignOut()}
               disabled={busy}

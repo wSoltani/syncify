@@ -357,6 +357,26 @@
     white-space: nowrap;
 }
 
+/* Holds the first backup's place until the backups are read. */
+.syncify-backup-skeleton {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+}
+
+.syncify-backup-text > .syncify-skeleton-line {
+    width: 120px;
+    height: 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    background: var(--syncify-surface-hover);
+}
+
+.syncify-backup-text > .syncify-skeleton-line.wide {
+    width: 200px;
+}
+
 /* The safety copy sits apart, below the recent backups. */
 .syncify-backup-divider {
     margin: 6px 0 2px;
@@ -476,21 +496,15 @@
 }
 
 .syncify-external {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
 }
 
 .syncify-account-actions {
     display: flex;
     flex: 0 0 auto;
     flex-wrap: wrap;
-    gap: 8px;
-}
-
-.syncify-manage {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    gap: 16px;
 }
 
 /* A secured backup on a device that isn't signed in to it */
