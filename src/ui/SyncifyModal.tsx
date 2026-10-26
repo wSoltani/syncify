@@ -29,6 +29,7 @@ import { LockedError, UnsupportedVersionError } from "../api/syncifyApi";
 import { ClaimError, type ClaimStatus } from "../api/claimsApi";
 import {
   AccountError,
+  createManageLink,
   describeAccountError,
   refreshSession,
   sendCode,
@@ -1113,6 +1114,7 @@ export function SyncifyModal() {
             onSecure={() => void runSecure()}
             onSignedIn={handleSignedIn}
             onSignedOut={handleSignedOut}
+            onOpenWebsite={openExternal}
             onReportIssue={() => openExternal(projectConfig.issueUrl)}
           />
         </AccordionSection>
@@ -1490,7 +1492,7 @@ function describeSecureState(
 
 /**
  * The Account section: an email code to sign in, then the email, where
- * securing the backup stands, and Sign out. The form's progress outlives the
+ * securing the backup stands, Manage and Sign out. The form's progress outlives the
  * section and the window while Spotify runs.
  */
 function AccountPanel(props: {
@@ -1503,6 +1505,7 @@ function AccountPanel(props: {
   onSecure(): void;
   onSignedIn(session: AccountSession): void;
   onSignedOut(): void;
+  onOpenWebsite(url: string): void;
   onReportIssue(): void;
 }) {
   const React = Spicetify.React;
@@ -1646,6 +1649,24 @@ function AccountPanel(props: {
     props.onSignedOut();
   }
 
+  async function openManage() {
+    setBusy(true);
+    setError(null);
+    try {
+      props.onOpenWebsite(await createManageLink());
+    } catch (failure) {
+      const signedOut =
+        failure instanceof AccountError && failure.code === "signed_out";
+      setError({
+        kind: signedOut ? "warning" : "error",
+        text: describeAccountError(failure),
+      });
+      if (signedOut) props.onSignedOut();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const errorAlert = error ? (
     <div
       className="syncify-alert"
@@ -1692,14 +1713,26 @@ function AccountPanel(props: {
               <span className="syncify-muted">Signed in</span>
             )}
           </span>
-          <button
-            className="syncify-button secondary"
-            type="button"
-            onClick={() => void runSignOut()}
-            disabled={busy}
-          >
-            Sign out
-          </button>
+          <span className="syncify-account-actions">
+            <button
+              className="syncify-button secondary syncify-manage"
+              type="button"
+              aria-label="Manage on the website"
+              onClick={() => void openManage()}
+              disabled={busy}
+            >
+              Manage
+              <ExternalIcon />
+            </button>
+            <button
+              className="syncify-button secondary"
+              type="button"
+              onClick={() => void runSignOut()}
+              disabled={busy}
+            >
+              Sign out
+            </button>
+          </span>
         </div>
         {canSecure ? (
           <div className="syncify-setting">
@@ -2009,6 +2042,22 @@ function ClockIcon() {
     >
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function ExternalIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg
+      className="syncify-external"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M14 4h6v6" />
+      <path d="M20 4 10 14" />
+      <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
     </svg>
   );
 }
