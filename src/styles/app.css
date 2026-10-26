@@ -455,7 +455,8 @@
 }
 
 .syncify-clock,
-.syncify-lock {
+.syncify-lock,
+.syncify-external {
     flex: 0 0 auto;
     fill: none;
     stroke: currentColor;
@@ -472,6 +473,24 @@
 .syncify-lock {
     width: 16px;
     height: 16px;
+}
+
+.syncify-external {
+    width: 14px;
+    height: 14px;
+}
+
+.syncify-account-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.syncify-manage {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* A secured backup on a device that isn't signed in to it */

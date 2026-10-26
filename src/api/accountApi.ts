@@ -14,6 +14,7 @@ const SEND_CODE_PATH = "/api/auth/email-otp/send-verification-otp";
 const SIGN_IN_PATH = "/api/auth/sign-in/email-otp";
 const SESSION_PATH = "/api/auth/get-session";
 const SIGN_OUT_PATH = "/api/auth/sign-out";
+const LINK_PATH = "/api/auth/link";
 
 const DEVICE_KEY_HEADER = "x-syncify-device-key";
 const SIGNATURE_HEADER = "x-syncify-signature";
@@ -38,6 +39,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   signed_out: "You've been signed out. Sign in again.",
   no_device_key: "Syncify couldn't keep its sign-in key on this device.",
   offline: "Couldn't reach Syncify. Check your connection and try again.",
+  link_failed: "Couldn't open the website. Try again.",
 };
 
 /** A request to sign-in's service was refused, with the service's code. */
@@ -139,6 +141,23 @@ export async function signOut(): Promise<void> {
     );
   }
   await clearSession();
+}
+
+/**
+ * A one-time link that signs the browser in to the website, for Manage. Only
+ * the website's own address is returned.
+ */
+export async function createManageLink(): Promise<string> {
+  const session = await loadSession();
+  if (!session) throw new AccountError("signed_out");
+
+  const result = (await signedSessionRequest(session, LINK_PATH, "POST")) as {
+    url?: unknown;
+  } | null;
+  const url = typeof result?.url === "string" ? result.url : "";
+  const origin = new URL(getProjectConfig().webUrl).origin;
+  if (!url.startsWith(`${origin}/link#`)) throw new AccountError("link_failed");
+  return url;
 }
 
 async function signedSessionRequest(
