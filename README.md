@@ -70,7 +70,7 @@ You can link more than one Spotify account to the same Syncify account.
 
 - **With an account:** sign in at [syncify.wsoltani.com](https://syncify.wsoltani.com/account) and press **Delete everything**. It deletes your account, your email, your signed-in devices, and every linked Spotify account with all its backups and activity counts. This can't be undone.
 - **Without an account:** secure your backup first, then delete everything once it's secured.
-- **Data you stop using:** a Spotify account without a Syncify account that hasn't used Syncify for 12 months is deleted with all its backups.
+- **Data you stop using:** a Spotify account without a Syncify account that hasn't used Syncify for 12 months is deleted with all its backups. A Syncify account with no sign-in for 12 months, and none of its linked Spotify accounts using Syncify in that time, is deleted entirely, the same as Delete everything.
 
 If an admin ever changed your account manually, for example by signing out your devices, that log entry keeps a one-way hash of your email after the account is deleted, so a later question about it can still be answered. Usage analytics drop your username hash within 3 months.
 
