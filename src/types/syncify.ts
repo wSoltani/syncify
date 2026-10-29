@@ -92,7 +92,7 @@ export type SyncifyClaim =
   | {
       status: "pending";
       mine: boolean;
-      /** The claimer's email, masked ("s******9@gmail.com"). */
+      /** The claimer's email, masked ("a***e@example.com"). */
       email: string | null;
       /** When it becomes final, in milliseconds, unless it's held. */
       final_at: number;
