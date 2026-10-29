@@ -48,6 +48,8 @@ If Syncify saved your setup, consider supporting the project:
 
 Starring the repo, sharing it and [reporting bugs](https://github.com/wSoltani/Syncify/issues/new) help a lot too. 💚
 
+Check out [Netherstone](https://github.com/Netherstone-HQ/Netherstone)
+
 ---
 
 ## Development
