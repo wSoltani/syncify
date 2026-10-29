@@ -1,4 +1,5 @@
 import type { ItemType, PreviewItem } from "./restorePreview";
+import { githubRepo } from "./githubSource";
 
 /** What Syncify found about where an item in a backup comes from. */
 export type SourceCheck =
@@ -17,8 +18,6 @@ export type SourceCheck =
 
 export type SourceChecks = Map<string, SourceCheck>;
 
-// Marketplace loads these through jsDelivr and anything else as it is.
-const GITHUB_RAW_HOST = "raw.githubusercontent.com";
 const TOPICS: Partial<Record<ItemType, string>> = {
   extension: "spicetify-extensions",
   theme: "spicetify-themes",
@@ -146,10 +145,9 @@ function checkAddresses(item: PreviewItem): SourceCheck | null {
     } catch {
       return { kind: "host", host: address.slice(0, 40) };
     }
-    if (url.host !== GITHUB_RAW_HOST) return { kind: "host", host: url.host };
-
-    const repo = rawRepo(url);
-    if (repo && item.repo && repo.toLowerCase() !== item.repo.toLowerCase()) {
+    const repo = githubRepo(url);
+    if (!repo) return { kind: "host", host: url.host };
+    if (item.repo && repo.toLowerCase() !== item.repo.toLowerCase()) {
       otherRepo ??= repo;
     }
   }
@@ -162,19 +160,13 @@ function checkAddresses(item: PreviewItem): SourceCheck | null {
 function sourceRepo(item: PreviewItem): string | null {
   for (const address of item.sources) {
     try {
-      const repo = rawRepo(new URL(address));
+      const repo = githubRepo(new URL(address));
       if (repo) return repo;
     } catch {
       // checkSources already flagged it
     }
   }
   return item.repo;
-}
-
-// raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
-function rawRepo(url: URL): string | null {
-  const [owner, repo] = url.pathname.split("/").filter(Boolean);
-  return owner && repo ? `${owner}/${repo}` : null;
 }
 
 // Marketplace's rule: case-insensitive, and * matches one path segment.
