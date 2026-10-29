@@ -262,5 +262,6 @@ export function readClaim(value: unknown): SyncifyClaim | null {
     mine: claim.mine,
     email: typeof claim.email === "string" ? claim.email : null,
     final_at: claim.final_at,
+    held: claim.held === true,
   };
 }

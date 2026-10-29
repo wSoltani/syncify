@@ -68,8 +68,10 @@ export type SyncifyClaim =
       mine: boolean;
       /** The claimer's email, masked ("a***@gmail.com"). */
       email: string | null;
-      /** When it becomes final, in milliseconds. */
+      /** When it becomes final, in milliseconds, unless it's held. */
       final_at: number;
+      /** Held for Syncify to review: it won't become final on its own. */
+      held: boolean;
     }
   | { status: "final"; mine: boolean };
 

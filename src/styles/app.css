@@ -97,6 +97,12 @@
     box-sizing: border-box;
 }
 
+/* The claim notice shown when Spotify starts */
+
+.syncify-claim-notice {
+    margin: 0;
+}
+
 .syncify-muted {
     margin: 0;
     color: var(--syncify-muted);

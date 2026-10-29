@@ -415,10 +415,10 @@ export function SyncifyModal() {
     try {
       await secureBackup(config);
     } catch (error) {
-      // Another claim, another owner or a dispute show as the claim's state.
+      // Another claim or another owner show as the claim's state.
       const shownAsState =
         error instanceof ClaimError &&
-        ["claim_pending", "claimed", "claim_disputed"].includes(error.code);
+        ["claim_pending", "claimed"].includes(error.code);
       if (!shownAsState) {
         setSecureError(error instanceof Error ? error.message : String(error));
       }
@@ -446,12 +446,12 @@ export function SyncifyModal() {
     void refreshStatus({ silent: true });
   }
 
-  /** "Not me, cancel it": anyone on this Spotify account can cancel. */
+  /** "Not me": anyone on this Spotify account can send a claim to review. */
   async function cancelOtherClaim() {
     setCancelling(true);
     try {
       await cancelPendingClaim(config);
-      Spicetify.showNotification("Syncify: claim cancelled");
+      Spicetify.showNotification("Syncify: claim sent for review");
       await refreshStatus({ silent: true });
     } catch (error) {
       setMessage({
@@ -819,14 +819,17 @@ export function SyncifyModal() {
 
       {otherClaim ? (
         <div className="syncify-alert" role="alert">
-          <span>{otherClaim.email ?? "Someone"} is claiming this backup.</span>
+          <span>
+            {otherClaim.email ?? "Someone"} is claiming this backup.
+            {otherClaim.held ? " Syncify is reviewing it." : null}
+          </span>
           <button
             className="syncify-text-button"
             type="button"
             onClick={() => void cancelOtherClaim()}
             disabled={cancelling}
           >
-            Not me, cancel it
+            Not me
           </button>
         </div>
       ) : null}
@@ -1126,7 +1129,6 @@ export function SyncifyModal() {
             onSignedIn={handleSignedIn}
             onSignedOut={handleSignedOut}
             onOpenWebsite={openExternal}
-            onReportIssue={() => openExternal(projectConfig.issueUrl)}
           />
         </AccordionSection>
         <AccordionSection
@@ -1460,12 +1462,11 @@ type SecureState =
   // The claim status couldn't be read yet.
   | { kind: "unknown" }
   | { kind: "open" }
-  | { kind: "pending"; finalAt: number }
+  | { kind: "pending"; finalAt: number; held: boolean }
   | { kind: "secured"; linkedCount: number }
   | { kind: "other-claim" }
   | { kind: "other-account" }
-  | { kind: "cancelled" }
-  | { kind: "disputed" };
+  | { kind: "cancelled" };
 
 function describeSecureState(
   claims: (ClaimStatus & { hash: string }) | null,
@@ -1485,10 +1486,9 @@ function describeSecureState(
   }
   if (claim?.status === "pending") {
     return claim.mine
-      ? { kind: "pending", finalAt: claim.final_at }
+      ? { kind: "pending", finalAt: claim.final_at, held: claim.held }
       : { kind: "other-claim" };
   }
-  if (claims.disputed) return { kind: "disputed" };
 
   // Cancelled from this Spotify account lately, and not claimed again since.
   const own = (claims.accounts ?? []).filter(
@@ -1517,7 +1517,6 @@ function AccountPanel(props: {
   onSignedIn(session: AccountSession): void;
   onSignedOut(): void;
   onOpenWebsite(url: string): void;
-  onReportIssue(): void;
 }) {
   const React = Spicetify.React;
   const useEffect = React.useEffect as typeof useEffectType;
@@ -1694,8 +1693,7 @@ function AccountPanel(props: {
     const canSecure =
       secure.kind === "open" ||
       secure.kind === "other-claim" ||
-      secure.kind === "cancelled" ||
-      secure.kind === "disputed";
+      secure.kind === "cancelled";
 
     return (
       <>
@@ -1713,7 +1711,10 @@ function AccountPanel(props: {
               <span className="syncify-muted syncify-account-state">
                 <ClockIcon />
                 <span>
-                  Securing this backup · final {formatFinalDate(secure.finalAt)}
+                  Securing this backup ·{" "}
+                  {secure.held
+                    ? "in review"
+                    : `final ${formatFinalDate(secure.finalAt)}`}
                 </span>
               </span>
             ) : secure.kind === "other-account" ? (
@@ -1758,8 +1759,7 @@ function AccountPanel(props: {
               disabled={
                 busy ||
                 props.securing ||
-                secure.kind === "other-claim" ||
-                secure.kind === "disputed"
+                secure.kind === "other-claim"
               }
             >
               {props.securing
@@ -1772,23 +1772,12 @@ function AccountPanel(props: {
         ) : null}
         {secure.kind === "other-claim" ? (
           <div className="syncify-alert" role="status">
-            Another claim is pending. Cancel it above to secure this backup
-            yourself.
+            Another claim is pending. If it isn't yours, press Not me above and
+            Syncify will review it.
           </div>
         ) : secure.kind === "cancelled" ? (
           <div className="syncify-alert" role="status">
             Your claim was cancelled from this Spotify account.
-          </div>
-        ) : secure.kind === "disputed" ? (
-          <div className="syncify-alert" role="status">
-            <span>This backup can't be secured for now.</span>
-            <button
-              className="syncify-text-button"
-              type="button"
-              onClick={props.onReportIssue}
-            >
-              Report an issue
-            </button>
           </div>
         ) : null}
         {props.secureError ? (
@@ -1935,7 +1924,7 @@ function maskEmail(email: string): string {
 }
 
 /** "on Nov 1, 04:42 PM", or "today, 04:42 PM" */
-function formatFinalDate(at: number): string {
+export function formatFinalDate(at: number): string {
   const date = formatBackupDate(new Date(at).toISOString());
   return date.startsWith("today") ? date : `on ${date}`;
 }

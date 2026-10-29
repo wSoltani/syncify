@@ -7,6 +7,8 @@ import { loadConfig } from "./core/config";
 import { initShortcut } from "./core/shortcut";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { SyncifyModal } from "./ui/SyncifyModal";
+import { ClaimNotice } from "./ui/ClaimNotice";
+import type { SyncifyClaim } from "./types/syncify";
 
 const LOG_PREFIX = "[Syncify]";
 
@@ -58,7 +60,7 @@ function main(): void {
   });
   applyEntryPoint(config.entryPoint);
   initShortcut(config.shortcut, openSyncifyModal);
-  void runStartupSyncCheck().catch((error) => {
+  void runStartupSyncCheck(openClaimNotice).catch((error) => {
     warn("Startup sync check failed", error);
   });
   void checkRestore().catch((error) => {
@@ -283,6 +285,23 @@ function openSyncifyModal(): void {
   }
 
   debug("Opening modal");
+  openWindow(Spicetify.React.createElement(SyncifyModal));
+}
+
+// Someone else's claim on this Spotify account, found when Spotify started.
+function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" }>): void {
+  // Syncify's own window already shows it.
+  if (openModal?.container.isConnected) return;
+  debug("Opening claim notice");
+  openWindow(
+    Spicetify.React.createElement(ClaimNotice, {
+      claim,
+      onClose: () => Spicetify.PopupModal.hide(),
+    }),
+  );
+}
+
+function openWindow(element: ReturnType<typeof Spicetify.React.createElement>): void {
   openModal?.root?.unmount();
   const container = document.createElement("div");
   openModal = { container, root: null };
@@ -299,7 +318,7 @@ function openSyncifyModal(): void {
   }
 
   prepareSyncifyModalShell(container);
-  renderReact(container);
+  renderReact(container, element);
 }
 
 function prepareSyncifyModalShell(container: Element): void {
@@ -335,10 +354,11 @@ function findSyncifyModalShell(container: Element): HTMLElement | null {
   return container.closest<HTMLElement>('[class*="trackCreditsModal"]');
 }
 
-function renderReact(container: Element): void {
+function renderReact(
+  container: Element,
+  element: ReturnType<typeof Spicetify.React.createElement>,
+): void {
   try {
-    const element = Spicetify.React.createElement(SyncifyModal);
-
     if (typeof Spicetify.ReactDOM.createRoot === "function") {
       const root = Spicetify.ReactDOM.createRoot(container);
       root.render(element);

@@ -26,6 +26,8 @@ export interface LinkedAccount {
   /** `final` claims are the linked accounts. */
   status: "pending" | "final" | "cancelled";
   final_at: number;
+  /** A pending claim held for Syncify to review. */
+  held: boolean;
   /** For a cancelled claim, who cancelled it. */
   cancelled_by: "owner" | "claimer" | null;
   device_info: string | null;
@@ -34,8 +36,6 @@ export interface LinkedAccount {
 export interface ClaimStatus {
   /** The claim on this Spotify account. */
   claim: SyncifyClaim | null;
-  /** Too many claims were cancelled lately: none is accepted for now. */
-  disputed: boolean;
   /** Only when signed in. */
   accounts: LinkedAccount[] | null;
 }
@@ -50,12 +50,10 @@ export async function fetchClaimStatus(
 
   const result = (await response.json().catch(() => null)) as {
     claim?: unknown;
-    disputed?: unknown;
     accounts?: unknown;
   } | null;
   return {
     claim: readClaim(result?.claim),
-    disputed: result?.disputed === true,
     accounts: Array.isArray(result?.accounts)
       ? result.accounts.filter(isLinkedAccount)
       : null,
@@ -76,7 +74,10 @@ export async function claimBackup(
   return readClaim(result?.claim);
 }
 
-/** Cancels the pending claim on this Spotify account. */
+/**
+ * Not me: holds someone else's pending claim on this Spotify account for
+ * Syncify to review. Signed by the claimer, it cancels the claimer's own.
+ */
 export async function cancelClaim(
   workerUrl: string,
   identity: UserIdentity,
