@@ -5,8 +5,9 @@ You don't need an account. Without one, your backups follow the Spotify account 
 ## What Syncify stores
 
 - **A one-way hash of your Spotify username,** and which account field was hashed. Syncify doesn't see your username or your Spotify password.
-- **Your backups:** your 3 latest backups and a safety copy. Each holds what Marketplace keeps about your extensions, themes (with their color scheme), snippets and apps, what you set up manually in Spicetify's config, and the kind of computer it came from (Windows, macOS or Linux). Backups aren't encrypted, so don't keep secrets in them.
-- **Each install:** a random ID made when Syncify is installed, its Syncify version, and when it was first and last seen.
+- **Your backups:** your 3 latest backups and a safety copy, and for a backup with items a restore leaves off by default, a copy without them for older versions of Syncify. Each holds what Marketplace keeps about your extensions, themes (with their color scheme), snippets and apps, what you set up manually in Spicetify's config, and the kind of computer it came from (Windows, macOS or Linux). Backups aren't encrypted, so don't keep secrets in them.
+- **Each install:** a random ID made when Syncify is installed, its Syncify version, and when it was first and last seen. Also the public half of a key the install makes for itself, and whether your Spotify account trusts that install, how it came to (it was there first, it signed in, or another install or Syncify approved it) and when.
+- **Backups from installs your Spotify account doesn't trust yet:** kept apart from your own, the 3 latest at most. They join your backups when the install is approved, and are deleted when newer ones replace them or someone presses **Not mine**.
 - **Activity counts:** how many backups and restores you made, by month and by day of the week and hour, when you first had each item, and which items you added and removed each year. Your time zone is used to count these and isn't stored.
 - **With an account:** your email, the Spotify accounts you linked, and your signed-in devices, each with its user agent, the country it signed in from and when it was last used. IP addresses aren't stored.
 - **Share codes (coming soon):** the items in each code you create, when it was made and changed, and how many times it was imported. Anyone with a code can see what's in it.

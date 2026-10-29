@@ -8,7 +8,8 @@ import { initShortcut } from "./core/shortcut";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { SyncifyModal } from "./ui/SyncifyModal";
 import { ClaimNotice } from "./ui/ClaimNotice";
-import type { SyncifyClaim } from "./types/syncify";
+import { InstallNotice } from "./ui/InstallNotice";
+import type { SyncifyClaim, SyncifyWaitingInstall } from "./types/syncify";
 
 const LOG_PREFIX = "[Syncify]";
 
@@ -60,7 +61,7 @@ function main(): void {
   });
   applyEntryPoint(config.entryPoint);
   initShortcut(config.shortcut, openSyncifyModal);
-  void runStartupSyncCheck(openClaimNotice).catch((error) => {
+  void runStartupSyncCheck({ onClaim: openClaimNotice, onInstall: openInstallNotice }).catch((error) => {
     warn("Startup sync check failed", error);
   });
   void checkRestore().catch((error) => {
@@ -298,6 +299,22 @@ function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" }>): v
       claim,
       onClose: () => Spicetify.PopupModal.hide(),
     }),
+  );
+}
+
+// A new install on this Spotify account waiting for this one's approval,
+// found when Spotify started.
+function openInstallNotice(install: SyncifyWaitingInstall): void {
+  // Syncify's own window already shows it.
+  if (openModal?.container.isConnected) return;
+  debug("Opening install notice");
+  const close = () => Spicetify.PopupModal.hide();
+  openWindow(
+    Spicetify.React.createElement(
+      "div",
+      { className: "syncify-panel" },
+      Spicetify.React.createElement(InstallNotice, { install, onDone: close, onClose: close }),
+    ),
   );
 }
 

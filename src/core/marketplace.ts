@@ -117,8 +117,13 @@ export async function createPayload(): Promise<SyncifyPayload> {
   };
 }
 
+/**
+ * Writes the backup's Marketplace keys. Items in `skipped` stay as they are on
+ * this device: kept when they're here, left out when they aren't.
+ */
 export async function restoreMarketplaceKeys(
   payload: SyncifyPayload,
+  skipped: string[] = [],
 ): Promise<number> {
   const restored: Record<string, string> = {};
   const backedUpKeys = payload.marketplace_data?.keys ?? {};
@@ -129,6 +134,7 @@ export async function restoreMarketplaceKeys(
 
   if (Object.keys(restored).length === 0) return 0;
   await keepOwnEntry(restored);
+  if (skipped.length > 0) await keepSkipped(restored, skipped);
   const restoredKeys = Object.keys(restored);
 
   // Write both stores: IndexedDB is what Marketplace >= 1.0.9 reads, and
@@ -165,6 +171,25 @@ async function keepOwnEntry(restored: Record<string, string>): Promise<void> {
     restored[item.key] = local[item.key];
   }
   restored[listKey] = JSON.stringify(list);
+}
+
+async function keepSkipped(
+  restored: Record<string, string>,
+  skipped: string[],
+): Promise<void> {
+  const local = await collectMarketplaceKeys();
+  const onDevice = listInstalledItems(local);
+  for (const listKey of INSTALLED_LIST_KEYS) {
+    if (restored[listKey] === undefined) continue;
+    const list = parseStoredArray(restored[listKey])
+      .map(String)
+      .filter((key) => !skipped.includes(key) || onDevice.includes(key));
+    restored[listKey] = JSON.stringify(list);
+  }
+  for (const key of skipped) {
+    if (local[key] !== undefined) restored[key] = local[key];
+    else delete restored[key];
+  }
 }
 
 export function countInstalledItems(keys: Record<string, string>): number {
