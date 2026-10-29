@@ -98,7 +98,8 @@ interface MessageState {
   text: string;
 }
 
-export function SyncifyModal() {
+/** section: the part to open with, as That's me, sign in opens Account. */
+export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   const React = Spicetify.React;
   const useEffect = React.useEffect as typeof useEffectType;
   const useMemo = React.useMemo as typeof useMemoType;
@@ -142,7 +143,7 @@ export function SyncifyModal() {
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<AccordionSectionId | null>(
-    null,
+    props.section ?? null,
   );
   const [showAllBackups, setShowAllBackups] = useState(false);
   // What loaded after the last restore, until Spotify restarts.
@@ -923,16 +924,31 @@ export function SyncifyModal() {
         <div className="syncify-alert" role="alert">
           <span>
             {otherClaim.email ?? "Someone"} is claiming this backup.
-            {otherClaim.held ? " Syncify is reviewing it." : null}
+            {session === null
+              ? " If that's you, sign in to finish."
+              : otherClaim.held
+                ? " Syncify is reviewing it."
+                : null}
           </span>
-          <button
-            className="syncify-text-button"
-            type="button"
-            onClick={() => void cancelOtherClaim()}
-            disabled={cancelling}
-          >
-            Not me
-          </button>
+          <span className="syncify-alert-actions">
+            <button
+              className="syncify-text-button"
+              type="button"
+              onClick={() => void cancelOtherClaim()}
+              disabled={cancelling}
+            >
+              Not me
+            </button>
+            {session === null ? (
+              <button
+                className="syncify-text-button"
+                type="button"
+                onClick={() => toggleSection("account")}
+              >
+                That's me, sign in
+              </button>
+            ) : null}
+          </span>
         </div>
       ) : null}
 
@@ -1646,7 +1662,7 @@ type SecureState =
   // The claim status couldn't be read yet.
   | { kind: "unknown" }
   | { kind: "open" }
-  | { kind: "pending"; finalAt: number; held: boolean }
+  | { kind: "pending"; finalAt: number; held: boolean; waiting: boolean }
   | { kind: "secured"; linkedCount: number }
   | { kind: "other-claim" }
   | { kind: "other-account" }
@@ -1670,7 +1686,7 @@ function describeSecureState(
   }
   if (claim?.status === "pending") {
     return claim.mine
-      ? { kind: "pending", finalAt: claim.final_at, held: claim.held }
+      ? { kind: "pending", finalAt: claim.final_at, held: claim.held, waiting: claim.waiting === true }
       : { kind: "other-claim" };
   }
 
@@ -1896,9 +1912,11 @@ function AccountPanel(props: {
                 <ClockIcon />
                 <span>
                   Securing this backup ·{" "}
-                  {secure.held
-                    ? "in review"
-                    : `final ${formatFinalDate(secure.finalAt)}`}
+                  {secure.waiting
+                    ? "waiting on sign-in"
+                    : secure.held
+                      ? "in review"
+                      : `final ${formatFinalDate(secure.finalAt)}`}
                 </span>
               </span>
             ) : secure.kind === "other-account" ? (
@@ -1962,6 +1980,12 @@ function AccountPanel(props: {
         ) : secure.kind === "cancelled" ? (
           <div className="syncify-alert" role="status">
             Your claim was cancelled from this Spotify account.
+          </div>
+        ) : secure.kind === "pending" && secure.waiting ? (
+          <div className="syncify-alert" role="status">
+            Syncify ran on this Spotify account without you signed in, maybe
+            after a Spotify update or on another computer. Sign in to Syncify
+            there to finish linking.
           </div>
         ) : null}
         {props.secureError ? (

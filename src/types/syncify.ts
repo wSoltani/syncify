@@ -92,12 +92,17 @@ export type SyncifyClaim =
   | {
       status: "pending";
       mine: boolean;
-      /** The claimer's email, masked ("a***@gmail.com"). */
+      /** The claimer's email, masked ("a***e@example.com"). */
       email: string | null;
       /** When it becomes final, in milliseconds, unless it's held. */
       final_at: number;
-      /** Held for Syncify to review: it won't become final on its own. */
+      /** Held: it won't become final on its own yet. */
       held: boolean;
+      /**
+       * Held only by installs that used this Spotify account without the
+       * claimer signed in: it goes through once the claimer signs in there.
+       */
+      waiting?: true;
     }
   | { status: "final"; mine: boolean };
 

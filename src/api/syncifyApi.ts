@@ -376,5 +376,6 @@ export function readClaim(value: unknown): SyncifyClaim | null {
     email: typeof claim.email === "string" ? claim.email : null,
     final_at: claim.final_at,
     held: claim.held === true,
+    ...(claim.waiting === true ? { waiting: true as const } : {}),
   };
 }
