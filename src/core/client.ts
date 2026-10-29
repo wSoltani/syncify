@@ -15,12 +15,21 @@ const INSTALL_ID_FALLBACK_KEY = "syncify:install-id";
 // them up: past this, the localStorage copy is used instead.
 const DATABASE_TIMEOUT_MS = 2000;
 
-let installId: Promise<string> | null = null;
+/**
+ * This install's ID, and whether it's kept in Syncify's database. Only an ID
+ * kept there has a key of its own (installKey.ts), stored next to it.
+ */
+export interface Install {
+  id: string;
+  inDatabase: boolean;
+}
+
+let install: Promise<Install> | null = null;
 
 export async function getClientHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     [VERSION_HEADER]: getProjectConfig().version,
-    [INSTALL_HEADER]: await getInstallId(),
+    [INSTALL_HEADER]: (await getInstall()).id,
   };
 
   const timezone = getTimezone();
@@ -28,30 +37,35 @@ export async function getClientHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
-export function getInstallId(): Promise<string> {
-  installId ??= loadInstallId().catch(() => createInstallId());
-  return installId;
+export function getInstall(): Promise<Install> {
+  install ??= loadInstall().catch(() => ({
+    id: createInstallId(),
+    inDatabase: false,
+  }));
+  return install;
 }
 
-async function loadInstallId(): Promise<string> {
+async function loadInstall(): Promise<Install> {
   const stored = await Promise.race([
     readOrCreateInDatabase(),
     new Promise<null>((resolve) =>
       setTimeout(() => resolve(null), DATABASE_TIMEOUT_MS),
     ),
   ]);
-  if (stored) return stored;
+  if (stored) return { id: stored, inDatabase: true };
 
   // No usable IndexedDB: keep the ID in localStorage instead.
   try {
     const existing = window.localStorage.getItem(INSTALL_ID_FALLBACK_KEY);
-    if (existing && isInstallId(existing)) return existing;
+    if (existing && isInstallId(existing)) {
+      return { id: existing, inDatabase: false };
+    }
 
     const created = createInstallId();
     window.localStorage.setItem(INSTALL_ID_FALLBACK_KEY, created);
-    return created;
+    return { id: created, inDatabase: false };
   } catch {
-    return createInstallId();
+    return { id: createInstallId(), inDatabase: false };
   }
 }
 

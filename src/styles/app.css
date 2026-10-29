@@ -551,6 +551,10 @@
     color: var(--syncify-error);
 }
 
+.syncify-chip[data-change="off"] {
+    color: var(--syncify-warning);
+}
+
 .syncify-changes {
     display: flex;
     flex-direction: column;
@@ -609,6 +613,22 @@
     gap: 4px;
     color: var(--syncify-muted);
     font-size: 12px;
+}
+
+/* Turns on an item a restore leaves off by default. */
+.syncify-item-switch {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    color: var(--syncify-muted);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.syncify-item-switch input {
+    margin: 0;
+    accent-color: var(--syncify-accent);
 }
 
 .syncify-warning-icon {

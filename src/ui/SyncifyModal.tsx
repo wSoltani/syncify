@@ -25,7 +25,12 @@ import {
   type SourceChecks,
 } from "../core/sourceChecks";
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
-import { LockedError, UnsupportedVersionError } from "../api/syncifyApi";
+import {
+  InstallRefusedError,
+  LockedError,
+  UnsupportedVersionError,
+} from "../api/syncifyApi";
+import { describeWaitingInstall } from "./InstallNotice";
 import { ClaimError, type ClaimStatus } from "../api/claimsApi";
 import {
   AccountError,
@@ -50,6 +55,7 @@ import {
   isReleaseVersion,
 } from "../core/releases";
 import {
+  answerWaitingInstall,
   backupNow,
   cancelPendingClaim,
   fetchClaims,
@@ -71,6 +77,7 @@ import {
 import type {
   SyncifyClaim,
   SyncifyConfig,
+  SyncifyInstallState,
   SyncifyEntryPoint,
   SyncifyPayload,
   SyncifyRemoteState,
@@ -117,6 +124,13 @@ export function SyncifyModal() {
   );
   const [remoteBackups, setRemoteBackups] = useState<SyncifyPayload[]>([]);
   const [safetyCopy, setSafetyCopy] = useState<SyncifyPayload | null>(null);
+  // Backups from installs this Spotify account hasn't approved.
+  const [unapproved, setUnapproved] = useState<SyncifyPayload[]>([]);
+  const [installState, setInstallState] =
+    useState<SyncifyInstallState | null>(null);
+  const [answering, setAnswering] = useState(false);
+  // Items off by default in a restore that were turned on.
+  const [allowed, setAllowed] = useState<Set<string>>(() => new Set());
   const [selectedRestorePayload, setSelectedRestorePayload] =
     useState<SyncifyPayload | null>(null);
   const [remoteChecked, setRemoteChecked] = useState(false);
@@ -164,6 +178,8 @@ export function SyncifyModal() {
     () => (safetyCopy ? [...remoteBackups, safetyCopy] : remoteBackups),
     [remoteBackups, safetyCopy],
   );
+  // Unapproved backups are only this Spotify account's, never a linked one's.
+  const shownUnapproved = linkedHash ? [] : unapproved;
   // The list shows this Spotify account's backups, or a linked one's.
   const shownBackups = linkedHash ? (linkedRemote?.backups ?? []) : remoteBackups;
   const shownSafetyCopy = linkedHash
@@ -176,11 +192,12 @@ export function SyncifyModal() {
       new Map(
         [
           ...allBackups,
+          ...unapproved,
           ...(linkedRemote?.backups ?? []),
           ...(linkedRemote?.safetyCopy ? [linkedRemote.safetyCopy] : []),
         ].map((backup) => [backup, listItems(backup.marketplace_data.keys)]),
       ),
-    [allBackups, linkedRemote],
+    [allBackups, unapproved, linkedRemote],
   );
   const getBackupItemDetails = (backup: SyncifyPayload) =>
     backupItems.get(backup) ?? listItems(backup.marketplace_data.keys);
@@ -216,6 +233,30 @@ export function SyncifyModal() {
     () => new Map([...(catalogChecks ?? []), ...(localChecks ?? [])]),
     [catalogChecks, localChecks],
   );
+  const selectedIsUnapproved =
+    selectedRestorePayload?.backup?.kind === "quarantined";
+  // Items a restore leaves off unless turned on: from a backup no approved
+  // install made, or with a warning or a check that couldn't be done. Only
+  // items whose code would come from the backup; the rest stay as they are.
+  const offByDefault = useMemo(
+    () =>
+      new Set(
+        (restorePreview?.items ?? [])
+          .filter(
+            (item) =>
+              item.change !== "removed" &&
+              item.isNew &&
+              (selectedIsUnapproved ||
+                isWarning(sourceChecks.get(item.key)) ||
+                sourceChecks.get(item.key)?.kind === "unchecked"),
+          )
+          .map((item) => item.key),
+      ),
+    [restorePreview, sourceChecks, selectedIsUnapproved],
+  );
+  const skippedItems = [...offByDefault].filter((key) => !allowed.has(key));
+  // Restore waits for the catalog checks, so nothing unchecked slips through.
+  const checkingSources = restorePreview !== null && catalogChecks === null;
   const menuAvailable = useMemo(() => isMenuEntryPointAvailable(), []);
   // Only the loader fetches the latest release on reload. Older manual
   // copies and dev builds have to be replaced instead.
@@ -249,6 +290,16 @@ export function SyncifyModal() {
   const otherClaim =
     remoteClaim?.status === "pending" && !remoteClaim.mine ? remoteClaim : null;
   const secureState = describeSecureState(claims, locked, otherClaim !== null);
+  // A new install waiting for this one to approve it, one at a time.
+  const waitingInstall = installState?.waiting[0] ?? null;
+  // This install's own backups are kept apart until it's approved or signs
+  // in. A signed-in owner's install is trusted with its next backup.
+  const installNotice =
+    !installState || installState.trusted || locked || secureState.kind === "secured"
+      ? null
+      : installState.refused
+        ? "This Spotify account refused backups from this install. Sign in to back up from it."
+        : "This install isn't approved yet. Its backups are kept apart until you approve it from another install or sign in.";
   // The signed-in account's other Spotify accounts, numbered in the order
   // they were linked. Backups only ever go to this one.
   const linkedAccounts = session
@@ -386,6 +437,8 @@ export function SyncifyModal() {
       setRemotePayload(remote.payload);
       setRemoteBackups(remote.backups);
       setSafetyCopy(remote.safetyCopy);
+      setUnapproved(remote.unapproved);
+      setInstallState(remote.install);
       setSelectedRestorePayload(remote.payload);
       setRemoteChecked(true);
       setStatus(remote.exists ? "success" : "idle");
@@ -545,8 +598,19 @@ export function SyncifyModal() {
         kind: "info",
         text: "Backing up your extensions and themes…",
       });
-      const { payload, unchanged } = await backupNow(config);
+      const { payload, unchanged, unapproved: keptApart } = await backupNow(config);
       await refreshLocalSummary();
+
+      // Kept apart from the approved backups: show it with them on refresh.
+      if (keptApart) {
+        await refreshStatus({ silent: true });
+        setMessage({
+          kind: "warning",
+          text: "Backed up, but kept apart until this install is approved.",
+        });
+        Spicetify.showNotification("Syncify: backed up, waiting for approval");
+        return;
+      }
 
       // Nothing was stored, so keep showing the existing backup and its
       // original time instead of a new entry that won't be there on reopen.
@@ -585,6 +649,22 @@ export function SyncifyModal() {
     }
   }
 
+  async function answerInstall(action: "approve" | "reject") {
+    if (!waitingInstall) return;
+    setAnswering(true);
+    try {
+      await answerWaitingInstall(config, waitingInstall.id, action);
+      Spicetify.showNotification(
+        action === "approve" ? "Syncify: install approved" : "Syncify: install refused",
+      );
+      await refreshStatus({ silent: true });
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setAnswering(false);
+    }
+  }
+
   function requestRestoreConfirmation(payload = selectedRestorePayload) {
     if (marketplaceAvailable === false) {
       const text =
@@ -604,6 +684,7 @@ export function SyncifyModal() {
 
     setSelectedRestorePayload(payload);
     setShowChanges(false);
+    setAllowed(new Set());
     setIsConfirmingRestore(true);
   }
 
@@ -629,6 +710,7 @@ export function SyncifyModal() {
         config,
         selectedRestorePayload ?? undefined,
         linkedHash ?? undefined,
+        skippedItems,
       );
       setSelectedRestorePayload(payload);
       setStatus("success");
@@ -677,6 +759,13 @@ export function SyncifyModal() {
       return;
     }
 
+    // Refused by a trusted install: shown with this install's state.
+    if (error instanceof InstallRefusedError) {
+      setMessage({ kind: "error", text: error.message });
+      void refreshStatus({ silent: true });
+      return;
+    }
+
     // Secured since the window opened, or the session ended: show the lock.
     if (error instanceof LockedError && error.code !== "not_linked") {
       setMessage(null);
@@ -691,7 +780,7 @@ export function SyncifyModal() {
 
   function renderBackup(
     backup: SyncifyPayload,
-    options?: { isSafetyCopy?: boolean },
+    options?: { isSafetyCopy?: boolean; isUnapproved?: boolean },
   ) {
     const isSelected =
       selectedRestorePayload?.payload_hash === backup.payload_hash;
@@ -710,7 +799,9 @@ export function SyncifyModal() {
         title={
           options?.isSafetyCopy
             ? "Kept aside and updated about once a week, so a burst of new backups can't replace it"
-            : undefined
+            : options?.isUnapproved
+              ? "From an install this Spotify account hasn't approved"
+              : undefined
         }
         onClick={() => {
           setSelectedRestorePayload(backup);
@@ -729,6 +820,16 @@ export function SyncifyModal() {
               {date} · {items}
             </span>
           </span>
+        ) : options?.isUnapproved ? (
+          <span className="syncify-backup-text">
+            <span>
+              Not approved{" "}
+              <span className="syncify-backup-note">· {date}</span>
+            </span>
+            <span className="syncify-muted">
+              {items} · from {backup.metadata.device_info}
+            </span>
+          </span>
         ) : (
           <span className="syncify-backup-text">
             <span className="syncify-backup-date">{date}</span>
@@ -744,6 +845,7 @@ export function SyncifyModal() {
         ) : null}
         {/* At the far end, across from the radio. */}
         {options?.isSafetyCopy ? <ShieldIcon /> : null}
+        {options?.isUnapproved ? <WarningIcon /> : null}
       </button>
     );
   }
@@ -831,6 +933,36 @@ export function SyncifyModal() {
           >
             Not me
           </button>
+        </div>
+      ) : null}
+
+      {waitingInstall ? (
+        <div className="syncify-alert" role="alert">
+          <span>{describeWaitingInstall(waitingInstall)}</span>
+          <span className="syncify-alert-actions">
+            <button
+              className="syncify-text-button"
+              type="button"
+              onClick={() => void answerInstall("reject")}
+              disabled={answering}
+            >
+              Not mine
+            </button>
+            <button
+              className="syncify-text-button"
+              type="button"
+              onClick={() => void answerInstall("approve")}
+              disabled={answering}
+            >
+              Approve
+            </button>
+          </span>
+        </div>
+      ) : null}
+
+      {installNotice ? (
+        <div className="syncify-alert" role="status">
+          <span>{installNotice}</span>
         </div>
       ) : null}
 
@@ -959,6 +1091,7 @@ export function SyncifyModal() {
       {!remoteChecked ||
       locked ||
       remoteBackups.length > 0 ||
+      unapproved.length > 0 ||
       otherAccounts.length > 0 ? (
         <section className="syncify-section" aria-label="Backups">
           <div className="syncify-section-header">
@@ -1024,7 +1157,7 @@ export function SyncifyModal() {
             </p>
           ) : linkedHash && !linkedRemote ? (
             <p className="syncify-muted">Loading backups…</p>
-          ) : shownBackups.length === 0 ? (
+          ) : shownBackups.length === 0 && shownUnapproved.length === 0 ? (
             <p className="syncify-muted">No backups yet.</p>
           ) : (
             <>
@@ -1039,6 +1172,14 @@ export function SyncifyModal() {
                   <>
                     <div className="syncify-backup-divider" role="presentation" />
                     {renderBackup(shownSafetyCopy, { isSafetyCopy: true })}
+                  </>
+                ) : null}
+                {backupsExpanded && shownUnapproved.length > 0 ? (
+                  <>
+                    <div className="syncify-backup-divider" role="presentation" />
+                    {shownUnapproved.map((backup) =>
+                      renderBackup(backup, { isUnapproved: true }),
+                    )}
                   </>
                 ) : null}
               </div>
@@ -1058,10 +1199,24 @@ export function SyncifyModal() {
                       : "this backup"}
                     ?
                   </p>
+                  {selectedIsUnapproved ? (
+                    <div className="syncify-alert">
+                      An install this Spotify account hasn't approved made this backup. Its items stay off unless you turn them on.
+                    </div>
+                  ) : null}
                   {restorePreview ? (
                     <RestoreChanges
                       preview={restorePreview}
                       checks={sourceChecks}
+                      off={offByDefault}
+                      allowed={allowed}
+                      unapproved={selectedIsUnapproved}
+                      onAllow={(key, on) => {
+                        const next = new Set(allowed);
+                        if (on) next.add(key);
+                        else next.delete(key);
+                        setAllowed(next);
+                      }}
                       expanded={showChanges}
                       onToggle={() => setShowChanges(!showChanges)}
                     />
@@ -1084,9 +1239,9 @@ export function SyncifyModal() {
                       className="syncify-button"
                       type="button"
                       onClick={runRestore}
-                      disabled={isBusy}
+                      disabled={isBusy || checkingSources}
                     >
-                      Restore
+                      {checkingSources ? "Checking…" : "Restore"}
                     </button>
                   </div>
                 </div>
@@ -1312,11 +1467,18 @@ const MANUAL_LABELS: Record<ManualItem["type"], string> = {
 function RestoreChanges(props: {
   preview: ReturnType<typeof previewRestore>;
   checks: SourceChecks;
+  /** Items left off unless turned on, and those turned on. */
+  off: Set<string>;
+  allowed: Set<string>;
+  /** The backup came from an install this Spotify account hasn't approved. */
+  unapproved: boolean;
+  onAllow(key: string, on: boolean): void;
   expanded: boolean;
   onToggle(): void;
 }) {
   const React = Spicetify.React;
   const { items, counts, manual } = props.preview;
+  const offCount = [...props.off].filter((key) => !props.allowed.has(key)).length;
 
   return (
     <>
@@ -1337,6 +1499,11 @@ function RestoreChanges(props: {
         {manual.length ? (
           <span className="syncify-chip">
             {manual.length} to add manually
+          </span>
+        ) : null}
+        {offCount ? (
+          <span className="syncify-chip" data-change="off">
+            {offCount} off
           </span>
         ) : null}
       </div>
@@ -1385,6 +1552,23 @@ function RestoreChanges(props: {
                       </span>
                       {props.checks.has(item.key) ? (
                         <SourceLabel check={props.checks.get(item.key)!} />
+                      ) : props.unapproved && props.off.has(item.key) ? (
+                        <span className="syncify-source" data-warning="true">
+                          <WarningIcon />
+                          Not approved
+                        </span>
+                      ) : null}
+                      {props.off.has(item.key) ? (
+                        <label className="syncify-item-switch">
+                          <input
+                            type="checkbox"
+                            checked={props.allowed.has(item.key)}
+                            onChange={(event) =>
+                              props.onAllow(item.key, event.currentTarget.checked)
+                            }
+                          />
+                          Restore
+                        </label>
                       ) : null}
                     </li>
                   ))}
@@ -2084,6 +2268,8 @@ const NO_REMOTE_STATE: SyncifyRemoteState = {
   backups: [],
   safetyCopy: null,
   claim: null,
+  unapproved: [],
+  install: null,
 };
 
 const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [

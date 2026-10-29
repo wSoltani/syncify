@@ -1,4 +1,5 @@
 import {
+  answerInstall,
   downloadPayload,
   reportRestore,
   uploadPayload,
@@ -23,9 +24,13 @@ import {
   restoreMarketplaceKeys,
 } from "./marketplace";
 
+/**
+ * `unapproved`: the backup is kept apart until this install is approved from
+ * a trusted install of this Spotify account, or signs in.
+ */
 export async function backupNow(
   config: SyncifyConfig,
-): Promise<{ payload: SyncifyPayload; unchanged: boolean }> {
+): Promise<{ payload: SyncifyPayload; unchanged: boolean; unapproved: boolean }> {
   if (!hasWorkerUrl(config)) {
     throw new Error("Syncify backup service is not configured.");
   }
@@ -41,12 +46,12 @@ export async function backupNow(
     );
   }
 
-  const { unchanged } = await uploadPayload(
+  const { unchanged, unapproved } = await uploadPayload(
     config.workerUrl,
     identity,
     payload,
   );
-  return { payload, unchanged };
+  return { payload, unchanged, unapproved };
 }
 
 /**
@@ -73,9 +78,10 @@ export async function fetchRemoteState(
   // Recomputing can also make older backups identical to each other, so keep
   // only the newest backup for each distinct set of data. The safety copy is
   // left out when it holds the same data as a recent backup.
-  const [rehashed, safetyCopy] = await Promise.all([
+  const [rehashed, safetyCopy, unapproved] = await Promise.all([
     Promise.all(remote.backups.map(withCurrentHash)),
     remote.safetyCopy ? withCurrentHash(remote.safetyCopy) : null,
+    Promise.all(remote.unapproved.map(withCurrentHash)),
   ]);
   const backups = rehashed.filter(
     (backup, index) =>
@@ -91,6 +97,11 @@ export async function fetchRemoteState(
       !backups.some((backup) => backup.payload_hash === safetyCopy.payload_hash)
         ? safetyCopy
         : null,
+    // An unapproved backup with the same data as an approved one adds nothing.
+    unapproved: unapproved.filter(
+      (backup) =>
+        !backups.some((other) => other.payload_hash === backup.payload_hash),
+    ),
   };
 }
 
@@ -123,24 +134,28 @@ async function withCurrentHash(
 }
 
 /**
- * The claim on this Spotify account, read with its backups but without
- * rehashing them, for the daily launch check.
+ * The claim on this Spotify account and this install's state, read with its
+ * backups but without rehashing them, for the daily launch check.
  */
-export async function fetchPendingClaim(
+export async function fetchLaunchNotices(
   config: SyncifyConfig,
-): Promise<SyncifyRemoteState["claim"]> {
+): Promise<Pick<SyncifyRemoteState, "claim" | "install">> {
   const remote = await downloadPayload(
     requireWorkerUrl(config),
     await getUserIdentity(),
   );
-  return remote.claim;
+  return { claim: remote.claim, install: remote.install };
 }
 
-/** With `linkedHash`, the backup is one of that linked Spotify account's. */
+/**
+ * With `linkedHash`, the backup is one of that linked Spotify account's.
+ * `skipped`: item keys left as they are on this device.
+ */
 export async function restoreNow(
   config: SyncifyConfig,
   selectedPayload?: SyncifyPayload,
   linkedHash?: string,
+  skipped: string[] = [],
 ): Promise<{ payload: SyncifyPayload; restoredCount: number }> {
   const payload = selectedPayload ?? (await fetchRemoteState(config)).payload;
 
@@ -150,7 +165,7 @@ export async function restoreNow(
     );
   }
 
-  const restoredCount = await restoreMarketplaceKeys(payload);
+  const restoredCount = await restoreMarketplaceKeys(payload, skipped);
 
   // Counted by the backup service. Not awaited: it finishes on its own while
   // Spotify reloads, and a failure doesn't matter to the restore.
@@ -178,6 +193,15 @@ export async function fetchClaims(
 /** Claims this Spotify account for the signed-in account. */
 export async function secureBackup(config: SyncifyConfig): Promise<void> {
   await claimBackup(requireWorkerUrl(config), await getUserIdentity());
+}
+
+/** Approves or refuses a new install waiting on this Spotify account. */
+export async function answerWaitingInstall(
+  config: SyncifyConfig,
+  installId: string,
+  action: "approve" | "reject",
+): Promise<void> {
+  await answerInstall(requireWorkerUrl(config), await getUserIdentity(), installId, action);
 }
 
 /** Cancels the pending claim on this Spotify account. */

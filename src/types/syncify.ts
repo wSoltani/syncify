@@ -43,8 +43,11 @@ export interface SyncifySpicetifyConfig {
 
 export interface SyncifyBackupInfo {
   id: string;
-  /** "anchor" is the safety copy. */
-  kind: "rolling" | "anchor" | "pinned";
+  /**
+   * "anchor" is the safety copy. "quarantined" came from an install this
+   * Spotify account hasn't approved.
+   */
+  kind: "rolling" | "anchor" | "pinned" | "quarantined";
 }
 
 export interface SyncifyRemoteState {
@@ -56,6 +59,29 @@ export interface SyncifyRemoteState {
   safetyCopy: SyncifyPayload | null;
   /** A pending claim on this Spotify account, sent with its backups. */
   claim: SyncifyClaim | null;
+  /** Backups from installs this Spotify account hasn't approved, newest first. */
+  unapproved: SyncifyPayload[];
+  /** Whether this Spotify account trusts this install, and who's waiting. */
+  install: SyncifyInstallState | null;
+}
+
+/**
+ * How far this Spotify account trusts this install. Backups from an install
+ * it doesn't trust yet are kept apart until it's approved from a trusted
+ * install or signed in.
+ */
+export interface SyncifyInstallState {
+  trusted: boolean;
+  refused: boolean;
+  /** New installs waiting for this one to approve them. Only sent to a trusted install. */
+  waiting: SyncifyWaitingInstall[];
+}
+
+export interface SyncifyWaitingInstall {
+  id: string;
+  device: string | null;
+  /** When it first backed up, in milliseconds. */
+  first_seen_at: number;
 }
 
 /**
