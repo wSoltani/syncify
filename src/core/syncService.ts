@@ -122,6 +122,20 @@ async function withCurrentHash(
   };
 }
 
+/**
+ * The claim on this Spotify account, read with its backups but without
+ * rehashing them, for the daily launch check.
+ */
+export async function fetchPendingClaim(
+  config: SyncifyConfig,
+): Promise<SyncifyRemoteState["claim"]> {
+  const remote = await downloadPayload(
+    requireWorkerUrl(config),
+    await getUserIdentity(),
+  );
+  return remote.claim;
+}
+
 /** With `linkedHash`, the backup is one of that linked Spotify account's. */
 export async function restoreNow(
   config: SyncifyConfig,

@@ -19,8 +19,12 @@ Syncify runs on Cloudflare. Its usage analytics keep your username hash with eac
 ## Securing your backup
 
 1. In Syncify, open **Account**, press **Secure your backup** and sign in with the code sent to your email.
-2. The claim stays pending for 7 days. Syncify on that Spotify account shows it with your email partly hidden, like a\*\*\*@gmail.com, and anyone signed in to that Spotify account can cancel it.
-3. If nobody cancels, the backup is secured to your account, and only your signed-in devices can restore it.
+2. The claim stays pending for 7 days. Syncify on that Spotify account shows it with your email partly hidden, like a\*\*\*@gmail.com, and anyone signed in to that Spotify account can press **Not me**.
+3. If Syncify was used on that Spotify account from another device lately, or someone presses **Not me**, the claim waits until Syncify checks it manually. Otherwise, after the 7 days the backup is secured to your account, and only your signed-in devices can restore it.
+
+Syncify can undo a secured claim if it turns out to be wrong. Your backups stay as they are.
+
+For this, Syncify keeps when each claim was made, when it was held for a check and why, and when it was secured or undone.
 
 You can link more than one Spotify account to the same Syncify account.
 
