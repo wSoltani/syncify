@@ -37,6 +37,8 @@ You can link more than one Spotify account to the same Syncify account.
 - **One share code:** delete it in Syncify or on your account page. Its link stops working, and who imported it goes with it.
 - **Data you stop using:** a Spotify account without a Syncify account that hasn't used Syncify for 12 months is deleted with all its backups and the codes it imported. A Syncify account with no sign-in for 12 months, and none of its linked Spotify accounts using Syncify in that time, is deleted entirely, the same as Delete everything.
 
+Backups that are deleted or replaced by newer ones stay in storage for about 9 more days, out of reach in Syncify, so they can be brought back if Syncify is ever attacked. After that they're erased.
+
 If an admin ever changed your account manually, for example by signing out your devices, that log entry keeps a one-way hash of your email after the account is deleted, so a later question about it can still be answered. Usage analytics drop your username hash within 3 months.
 
 This note is updated before Syncify starts storing anything new.
