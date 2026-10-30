@@ -32,6 +32,8 @@ import {
 import {
   checkShareItems,
   displayCode,
+  HANDLE_MAX,
+  handleProblem,
   NAME_MAX,
   parseCode,
   previewShare,
@@ -46,9 +48,11 @@ import {
   describeShareError,
   fetchShare,
   listShares,
+  profileUrl,
   updateShare,
   type SavedShare,
   type ShareCode,
+  type ShareProfile,
 } from "../api/sharesApi";
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
 import {
@@ -130,6 +134,9 @@ interface MessageState {
 // closed row shows it without asking the service. Forgotten on sign-out.
 const CODE_COUNT_KEY = "syncify:share-code-count";
 
+// How long typing pauses before a handle's form is checked.
+const HANDLE_CHECK_DELAY_MS = 600;
+
 function readCodeCount(): number | null {
   const value = Number(Spicetify.LocalStorage?.get(CODE_COUNT_KEY) ?? NaN);
   return Number.isInteger(value) && value >= 0 ? value : null;
@@ -138,6 +145,21 @@ function readCodeCount(): number | null {
 function saveCodeCount(count: number | null): void {
   if (count === null) Spicetify.LocalStorage?.remove(CODE_COUNT_KEY);
   else Spicetify.LocalStorage?.set(CODE_COUNT_KEY, String(count));
+}
+
+// The account's handle when Share last listed its codes, for Account: an
+// empty value is none yet. Forgotten on sign-out.
+const HANDLE_KEY = "syncify:handle";
+
+/** undefined: not listed yet. */
+function readHandle(): string | null | undefined {
+  const value = Spicetify.LocalStorage?.get(HANDLE_KEY);
+  return value === null || value === undefined ? undefined : value || null;
+}
+
+function saveHandle(handle: string | null | undefined): void {
+  if (handle === undefined) Spicetify.LocalStorage?.remove(HANDLE_KEY);
+  else Spicetify.LocalStorage?.set(HANDLE_KEY, handle ?? "");
 }
 
 // The last check of this Spotify account's backups, kept until Spotify
@@ -212,6 +234,9 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   const [isUnsupported, setIsUnsupported] = useState(false);
   const [newerVersion, setNewerVersion] = useState<string | null>(null);
   const [codeCount, setCodeCount] = useState<number | null>(() => readCodeCount());
+  const [handle, setHandle] = useState<string | null | undefined>(() =>
+    readHandle(),
+  );
   // undefined until the stored session has been read.
   const [session, setSession] = useState<AccountSession | null | undefined>(
     undefined,
@@ -566,6 +591,8 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   function handleSignedOut() {
     saveCodeCount(null);
     setCodeCount(null);
+    saveHandle(undefined);
+    setHandle(undefined);
     setSession(null);
     setClaims(null);
     setSecureError(null);
@@ -1394,6 +1421,10 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
               saveCodeCount(count);
               setCodeCount(count);
             }}
+            onHandle={(next) => {
+              saveHandle(next);
+              setHandle(next);
+            }}
           />
         </AccordionSection>
         <AccordionSection
@@ -1413,6 +1444,11 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
             onSignedIn={handleSignedIn}
             onSignedOut={handleSignedOut}
             onOpenWebsite={openExternal}
+            handle={handle}
+            onHandle={(next) => {
+              saveHandle(next);
+              setHandle(next);
+            }}
           />
         </AccordionSection>
         <AccordionSection
@@ -1839,6 +1875,9 @@ function AccountPanel(props: {
   onSignedIn(session: AccountSession): void;
   onSignedOut(): void;
   onOpenWebsite(url: string): void;
+  /** The account's handle, picked with its first code; undefined until listed. */
+  handle: string | null | undefined;
+  onHandle(handle: string | null): void;
 }) {
   const React = Spicetify.React;
   const useEffect = React.useEffect as typeof useEffectType;
@@ -1851,6 +1890,21 @@ function AccountPanel(props: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<MessageState | null>(null);
   const [now, setNow] = useState(() => Date.now());
+
+  // Without a listing yet (another device made the codes), asks once.
+  const { handle, onHandle } = props;
+  useEffect(() => {
+    if (!session || handle !== undefined) return;
+    let current = true;
+    listShares()
+      .then((result) => {
+        if (current) onHandle(result.profile?.handle ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [session, handle]);
 
   const codeSent = Boolean(
     draft.codeSentAt && now - draft.codeSentAt < CODE_VALID_MS,
@@ -2070,6 +2124,23 @@ function AccountPanel(props: {
             </button>
           </span>
         </div>
+        {handle ? (
+          <div className="syncify-setting">
+            <span className="syncify-setting-text">
+              <span>@{handle}</span>
+              <span className="syncify-muted">Your handle</span>
+            </span>
+            <button
+              className="syncify-text-button syncify-disclosure"
+              type="button"
+              aria-label="Open your profile"
+              onClick={() => props.onOpenWebsite(profileUrl(handle))}
+            >
+              Profile
+              <ExternalIcon />
+            </button>
+          </div>
+        ) : null}
         {canSecure ? (
           <div className="syncify-setting">
             <span className="syncify-setting-text">
@@ -2261,6 +2332,8 @@ function SharePanel(props: {
   onSignedOut(): void;
   /** How many codes the account has, each time they're listed. */
   onCodeCount(count: number): void;
+  /** The account's handle, each time the codes are listed. */
+  onHandle(handle: string | null): void;
 }) {
   const React = Spicetify.React;
   const useEffect = React.useEffect as typeof useEffectType;
@@ -2292,6 +2365,11 @@ function SharePanel(props: {
   // Sharing, signed in.
   const [codes, setCodes] = useState<ShareCode[] | null>(null);
   const [maxCodes, setMaxCodes] = useState<number | null>(null);
+  // The account's handle; without one, a first code asks for it, filled
+  // with the service's suggestion.
+  const [profile, setProfile] = useState<ShareProfile | null>(null);
+  const [suggestedHandle, setSuggestedHandle] = useState<string | null>(null);
+  const [handle, setHandle] = useState("");
   const [codesError, setCodesError] = useState<string | null>(null);
   // The code being made (code null) or updated.
   const [compose, setCompose] = useState<{ code: ShareCode | null } | null>(
@@ -2386,6 +2464,25 @@ function SharePanel(props: {
     ? draft.items.filter((item) => !draft.leftOut.has(item.key))
     : [];
   const atMax = Boolean(codes && maxCodes !== null && codes.length >= maxCodes);
+  // A new code from an account without a handle picks one.
+  const askHandle = compose !== null && compose.code === null && !profile;
+  const handleError = askHandle ? handleProblem(handle) : null;
+  // Shown once typing pauses, so a handle isn't called wrong mid-word; gone
+  // as soon as it's fixed.
+  const [shownHandleError, setShownHandleError] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!handleError) {
+      setShownHandleError(null);
+      return;
+    }
+    const timer = window.setTimeout(
+      () => setShownHandleError(handleError),
+      HANDLE_CHECK_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [handleError]);
 
   // Any warning opens the list, so the item can't be missed.
   useEffect(() => {
@@ -2471,6 +2568,9 @@ function SharePanel(props: {
       setCodes(result.codes);
       props.onCodeCount(result.codes.length);
       setMaxCodes(result.max);
+      setProfile(result.profile);
+      props.onHandle(result.profile?.handle ?? null);
+      setSuggestedHandle(result.suggestedHandle);
     } catch (error) {
       showShareFailure(error, setCodesError);
     }
@@ -2489,6 +2589,7 @@ function SharePanel(props: {
     const run = ++composeRun.current;
     setCompose({ code });
     setName(code?.name ?? "");
+    setHandle(suggestedHandle ?? "");
     setDraft(null);
     setShowItems(false);
     setShareError(null);
@@ -2522,7 +2623,11 @@ function SharePanel(props: {
     try {
       const result = compose.code
         ? await updateShare(compose.code.code, name.trim(), keys)
-        : await createShare(name.trim(), keys);
+        : await createShare(
+            name.trim(),
+            keys,
+            askHandle ? handle.trim() : undefined,
+          );
       setSaved({ ...result, outcome: compose.code ? "updated" : "created" });
       setCompose(null);
       setDraft(null);
@@ -2612,9 +2717,27 @@ function SharePanel(props: {
 
       {shared && preview ? (
         <div className="syncify-confirm">
-          <p className="syncify-confirm-title">
-            Load {shared.file.name ?? displayCode(shared.file.code)}?
-          </p>
+          <span className="syncify-share-title">
+            <p className="syncify-confirm-title">
+              Load {shared.file.name ?? displayCode(shared.file.code)}?
+            </p>
+            {shared.file.creator ? (
+              <button
+                className="syncify-text-button"
+                type="button"
+                title="Open their profile"
+                onClick={() =>
+                  window.open(
+                    profileUrl(shared.file.creator!),
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+              >
+                by @{shared.file.creator}
+              </button>
+            ) : null}
+          </span>
           <div
             className="syncify-share-modes"
             role="radiogroup"
@@ -2757,16 +2880,64 @@ function SharePanel(props: {
                   {showItems ? (
                     <ShareItems items={draft.items} leftOut={draft.leftOut} />
                   ) : null}
-                  <input
-                    className="syncify-input"
-                    type="text"
-                    aria-label="Name"
-                    placeholder="Name (optional)"
-                    maxLength={NAME_MAX}
-                    value={name}
-                    onChange={(event) => setName(event.currentTarget.value)}
-                    disabled={saving}
-                  />
+                  <div className="syncify-share-fields">
+                    <label
+                      className="syncify-share-load-label"
+                      htmlFor="syncify-share-name"
+                    >
+                      Setup name
+                    </label>
+                    <input
+                      id="syncify-share-name"
+                      className="syncify-input"
+                      type="text"
+                      placeholder="Optional"
+                      maxLength={NAME_MAX}
+                      value={name}
+                      onChange={(event) => setName(event.currentTarget.value)}
+                      disabled={saving}
+                    />
+                    {askHandle ? (
+                      <>
+                        <p className="syncify-muted syncify-share-handle-note">
+                          It's your first time creating a share code. Pick a
+                          handle for your profile:
+                        </p>
+                        <label
+                          className="syncify-share-load-label"
+                          htmlFor="syncify-share-handle"
+                        >
+                          Your handle
+                        </label>
+                        <span className="syncify-input syncify-handle-input">
+                          <span aria-hidden="true">@</span>
+                          <input
+                            id="syncify-share-handle"
+                            type="text"
+                            placeholder="handle"
+                            autoComplete="off"
+                            spellCheck={false}
+                            maxLength={HANDLE_MAX}
+                            value={handle}
+                            onChange={(event) =>
+                              setHandle(
+                                event.currentTarget.value.replace(/^@/, ""),
+                              )
+                            }
+                            disabled={saving}
+                          />
+                        </span>
+                        {handle && shownHandleError ? (
+                          <span
+                            className="syncify-share-handle-problem"
+                            role="alert"
+                          >
+                            {shownHandleError}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
                 </>
               ) : (
                 <p className="syncify-muted">Checking your items…</p>
@@ -2784,7 +2955,12 @@ function SharePanel(props: {
                   className="syncify-button"
                   type="button"
                   onClick={() => void saveCode()}
-                  disabled={!draft || included.length === 0 || saving}
+                  disabled={
+                    !draft ||
+                    included.length === 0 ||
+                    saving ||
+                    (askHandle && handleError !== null)
+                  }
                 >
                   {!draft
                     ? "Checking…"

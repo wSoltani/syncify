@@ -34,6 +34,8 @@ const CODE_LENGTH = 6;
 const PREFIX = "SYN-";
 /** A code's optional name, which is public. */
 export const NAME_MAX = 60;
+/** The longest handle, the name an account's codes show. */
+export const HANDLE_MAX = 20;
 
 const LISTS: [string, ItemType][] = [
   ["marketplace:installed-extensions", "extension"],
@@ -55,8 +57,31 @@ const CHANGE_ORDER: Record<ItemChange, number> = {
 export interface ShareFile {
   code: string;
   name: string | null;
+  /** Its owner's handle, null without one. */
+  creator: string | null;
   updated_at: number;
   keys: Record<string, string>;
+}
+
+// A handle as the service stores them: lowercase, 3 to HANDLE_MAX
+// characters.
+const HANDLE_PATTERN = new RegExp(
+  `^[a-z0-9][a-z0-9_-]{1,${HANDLE_MAX - 2}}[a-z0-9]$`,
+);
+
+/**
+ * What's wrong with a handle as typed (an @ in front and its case don't
+ * matter), so the field can say it before anything is sent. null when its
+ * form is fine; the service still refuses taken and blocked ones.
+ */
+export function handleProblem(input: string): string | null {
+  const handle = input.trim().replace(/^@/, "").toLowerCase();
+  if (/[^a-z0-9_-]/.test(handle)) return "Only letters, digits, _ and -";
+  if (handle.length < 3) return "At least 3 characters";
+  if (!/^[a-z0-9]/.test(handle) || !/[a-z0-9]$/.test(handle)) {
+    return "Start and end with a letter or digit";
+  }
+  return null;
 }
 
 /** "Add to my setup" keeps what's here; "Replace my setup" removes it. */
@@ -100,6 +125,10 @@ export function readShareFile(value: unknown): ShareFile | null {
   return {
     code: file.code,
     name: typeof file.name === "string" && file.name ? file.name : null,
+    creator:
+      typeof file.creator === "string" && HANDLE_PATTERN.test(file.creator)
+        ? file.creator
+        : null,
     updated_at: typeof file.updated_at === "number" ? file.updated_at : 0,
     keys: file.keys,
   };

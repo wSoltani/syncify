@@ -32,6 +32,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   publish_failed: "Couldn't publish the code. Press Update on it to try again.",
   delete_failed: "Couldn't delete the code. Try again.",
   same_setup: "You already shared this setup.",
+  invalid_handle:
+    "Handles are 3 to 20 letters, digits, _ or -, starting and ending with a letter or digit.",
+  reserved_handle: "That handle isn't allowed. Pick another.",
+  handle_taken: "That handle is taken. Pick another.",
   unavailable: "Share codes aren't available yet.",
 };
 // Refusals sign-in's own copy already explains.
@@ -54,6 +58,13 @@ export interface ShareCode {
   imports: number;
   created_at: number;
   updated_at: number;
+}
+
+/** The handle the account's codes show, "by @handle". */
+export interface ShareProfile {
+  handle: string;
+  /** Its profile page on the share host. */
+  link: string | null;
 }
 
 /** A code as making or updating it answers. */
@@ -89,16 +100,21 @@ export function describeShareError(
 }
 
 /**
- * The signed-in account's codes, oldest first, and how many it may have
- * (null when the service doesn't say).
+ * The signed-in account's codes, oldest first, how many it may have (null
+ * when the service doesn't say), its handle, and without one a free one to
+ * suggest.
  */
 export async function listShares(): Promise<{
   codes: ShareCode[];
   max: number | null;
+  profile: ShareProfile | null;
+  suggestedHandle: string | null;
 }> {
   const result = (await signedRequest(SHARES_PATH, "GET")) as {
     codes?: unknown;
     max?: unknown;
+    profile?: { handle?: unknown; link?: unknown } | null;
+    suggested_handle?: unknown;
   } | null;
   return {
     codes: Array.isArray(result?.codes)
@@ -108,15 +124,44 @@ export async function listShares(): Promise<{
         })
       : [],
     max: typeof result?.max === "number" ? result.max : null,
+    profile:
+      typeof result?.profile?.handle === "string"
+        ? {
+            handle: result.profile.handle,
+            link:
+              typeof result.profile.link === "string"
+                ? result.profile.link
+                : null,
+          }
+        : null,
+    suggestedHandle:
+      typeof result?.suggested_handle === "string"
+        ? result.suggested_handle
+        : null,
   };
 }
 
-/** Makes a code from these keys. */
+/**
+ * Makes a code from these keys. `handle` sets the account's handle first,
+ * when it has none yet.
+ */
 export async function createShare(
   name: string,
   keys: Record<string, string>,
+  handle?: string,
 ): Promise<SavedShare> {
-  return readSaved(await signedRequest(SHARES_PATH, "POST", { name, keys }));
+  return readSaved(
+    await signedRequest(SHARES_PATH, "POST", {
+      name,
+      keys,
+      ...(handle === undefined ? {} : { handle }),
+    }),
+  );
+}
+
+/** A creator's profile page on the share host. */
+export function profileUrl(handle: string): string {
+  return `${getProjectConfig().shareUrl.replace(/\/+$/, "")}/@${handle}`;
 }
 
 /** Replaces a code's items and name, keeping the code. */
