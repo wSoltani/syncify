@@ -770,6 +770,62 @@
     color: var(--syncify-text);
 }
 
+.syncify-share-title {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+/* A first code's handle and the code's name: labels in one column, inputs
+   sized for what they hold rather than the whole row. */
+.syncify-share-handle-note {
+    grid-column: 1 / -1;
+    /* Wraps within the columns instead of widening them. */
+    contain: inline-size;
+    margin: 4px 0 0;
+}
+
+.syncify-share-handle-problem {
+    grid-column: 2;
+    color: var(--syncify-error);
+}
+
+.syncify-share-fields {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 260px);
+    justify-content: start;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+/* A first code's handle: the @ stays put in front of what's typed. */
+.syncify-handle-input {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--syncify-muted);
+}
+
+.syncify-handle-input:has(input:focus-visible) {
+    outline: 2px solid var(--syncify-text);
+    outline-offset: 2px;
+}
+
+.syncify-handle-input input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    color: var(--syncify-text);
+    background: none;
+    font: inherit;
+}
+
+.syncify-panel .syncify-handle-input input:focus-visible {
+    outline: 0;
+}
+
 .syncify-share-part {
     margin-top: 4px;
     padding-top: 12px;
