@@ -2396,7 +2396,7 @@ function SharePanel(props: {
 
   // A session refused along the way signs this device out.
   function showShareFailure(error: unknown, show: (text: string) => void) {
-    show(describeShareError(error));
+    show(describeShareError(error, maxCodes));
     if (error instanceof AccountError && error.code === "signed_out") {
       props.onSignedOut();
     }

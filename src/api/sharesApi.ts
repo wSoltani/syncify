@@ -63,10 +63,23 @@ export interface SavedShare {
   leftOut: number;
 }
 
-/** Short copy for a failed share code request. */
-export function describeShareError(error: unknown): string {
+/**
+ * Short copy for a failed share code request. `maxCodes`, from the list of
+ * codes, names the limit when the account is at it.
+ */
+export function describeShareError(
+  error: unknown,
+  maxCodes: number | null = null,
+): string {
   if (error instanceof AccountError && ACCOUNT_CODES.has(error.code)) {
     return describeAccountError(error);
+  }
+  if (
+    error instanceof AccountError &&
+    error.code === "too_many_codes" &&
+    maxCodes !== null
+  ) {
+    return `You have ${maxCodes} share codes already. Delete one to make another.`;
   }
   return (
     (error instanceof AccountError ? ERROR_MESSAGES[error.code] : undefined) ??
