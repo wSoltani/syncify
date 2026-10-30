@@ -311,14 +311,15 @@ export async function applyShare(
 }
 
 // Marketplace's current CSS for the snippet's title, as Marketplace installs
-// it. Without the list, this device's own copy, if it has one.
+// it. When the list can't be read or no longer has that title, this device's
+// own copy, if it has one.
 function snippetEntry(
   item: InstalledItem,
   catalog: SnippetCatalog | null,
   local: string | undefined,
 ): string | undefined {
   const listed = catalog ? findSnippet(catalog, item.name) : undefined;
-  if (!listed) return catalog ? undefined : local;
+  if (!listed) return local;
   return JSON.stringify({
     code: listed.code,
     title: listed.title,
