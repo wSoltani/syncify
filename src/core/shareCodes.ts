@@ -1,5 +1,6 @@
 import {
   collectMarketplaceKeys,
+  leftoverKeys,
   writeMarketplaceKeys,
 } from "./marketplace";
 import {
@@ -252,8 +253,8 @@ export function unloadableSnippets(
 /**
  * Writes a code into Marketplace's storage, as `previewShare` describes it.
  * Items in `skipped` stay as they are on this device. Only the installed
- * lists, their entries and the active theme are touched. Returns how many
- * keys were written.
+ * lists, their entries and the active theme are touched; replacing deletes
+ * the entries of the items it removes. Returns how many keys were written.
  */
 export async function applyShare(
   file: ShareFile,
@@ -295,16 +296,14 @@ export async function applyShare(
     writes[listKey] = JSON.stringify(list);
   }
 
-  const removed: string[] = [];
   const theme = activeTheme(file.keys[THEME_KEY]);
   const themes = parseList(writes["marketplace:installed-themes"]);
   if (theme && themes.includes(theme) && !skipped.includes(theme)) {
     writes[THEME_KEY] = file.keys[THEME_KEY];
-  } else {
-    // Replacing can remove the active theme; Marketplace then has none.
-    const current = activeTheme(local[THEME_KEY]);
-    if (current && !themes.includes(current)) removed.push(THEME_KEY);
   }
+  // Replacing deletes the entries of what it removes, and the active theme
+  // when it was one of them, as Marketplace does.
+  const removed = leftoverKeys(local, writes);
 
   await writeMarketplaceKeys(writes, removed);
   return Object.keys(writes).length + removed.length;
