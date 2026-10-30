@@ -31,6 +31,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   unchecked: "Couldn't check Marketplace's block list. Try again in a minute.",
   publish_failed: "Couldn't publish the code. Press Update on it to try again.",
   delete_failed: "Couldn't delete the code. Try again.",
+  same_setup: "You already shared this setup.",
   unavailable: "Share codes aren't available yet.",
 };
 // Refusals sign-in's own copy already explains.
