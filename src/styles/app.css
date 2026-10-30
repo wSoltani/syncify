@@ -654,6 +654,49 @@
     flex: 1 1 200px;
 }
 
+/* Share codes */
+
+.syncify-share-input,
+.syncify-share-code code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    letter-spacing: 0.05em;
+}
+
+/* Add to my setup and Replace my setup, side by side. */
+.syncify-share-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.syncify-share-modes .syncify-backup {
+    flex: 1 1 160px;
+    width: auto;
+}
+
+/* Sharing sits apart from loading a code. */
+.syncify-share-part {
+    margin-top: 8px;
+}
+
+.syncify-share-code {
+    align-items: center;
+}
+
+.syncify-share-code code {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.syncify-text-button[data-danger="true"],
+.syncify-text-button[data-danger="true"]:hover:not(:disabled) {
+    color: var(--syncify-error);
+}
+
+.syncify-share-codes {
+    gap: 4px;
+}
+
 /* Buttons */
 
 .syncify-button {
@@ -941,5 +984,9 @@ label.syncify-setting {
 
     .syncify-select {
         max-width: none;
+    }
+
+    .syncify-share-codes {
+        gap: 12px;
     }
 }

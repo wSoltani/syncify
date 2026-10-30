@@ -3,12 +3,16 @@ import { listItems, type InstalledItem, type ManualItem } from "./restorePreview
 
 /** What Syncify found after the reload that followed a restore. */
 export interface RestoreResult {
+  /** A backup was restored, or a share code was loaded. */
+  kind: RestoreKind;
   at: number;
   loaded: number;
   total: number;
   /** In the backup's Spicetify config but not this device's. */
   manual: ManualItem[];
 }
+
+export type RestoreKind = "restore" | "share";
 
 const PENDING_KEY = "syncify:pending-restore";
 // A restore reloads Spotify straight away; an older record is left over
@@ -41,12 +45,15 @@ export function dismissManualItems(): void {
   if (result) setResult({ ...result, manual: [] });
 }
 
-/** Called right before the reload that follows a restore. */
-export function savePendingRestore(manual: ManualItem[]): void {
+/** Called right before the reload that follows a restore or a loaded code. */
+export function savePendingRestore(
+  manual: ManualItem[],
+  kind: RestoreKind = "restore",
+): void {
   try {
     localStorage.setItem(
       PENDING_KEY,
-      JSON.stringify({ at: Date.now(), manual }),
+      JSON.stringify({ at: Date.now(), manual, kind }),
     );
   } catch {
     // no summary after the reload, the restore itself is unaffected
@@ -55,7 +62,7 @@ export function savePendingRestore(manual: ManualItem[]): void {
 
 /** Reloads Spotify and checks again afterwards. */
 export function reloadAndCheck(): void {
-  savePendingRestore(result?.manual ?? []);
+  savePendingRestore(result?.manual ?? [], result?.kind);
   window.location.reload();
 }
 
@@ -99,12 +106,19 @@ export async function checkRestore(): Promise<void> {
     count = await countLoaded();
   }
 
-  setResult({ at: Date.now(), ...count, manual: pending.manual });
+  setResult({
+    kind: pending.kind,
+    at: Date.now(),
+    ...count,
+    manual: pending.manual,
+  });
   const complete = count.loaded === count.total && pending.manual.length === 0;
+  const done = pending.kind === "share" ? "setup loaded" : "backup restored";
+  const partly = pending.kind === "share" ? "loaded" : "restored";
   Spicetify.showNotification(
     complete
-      ? `Syncify: backup restored. ${describeLoaded(count)}.`
-      : `Syncify: restored ${count.loaded} of ${count.total}. Open Syncify for details.`,
+      ? `Syncify: ${done}. ${describeLoaded(count)}.`
+      : `Syncify: ${partly} ${count.loaded} of ${count.total}. Open Syncify for details.`,
     false,
     8000,
   );
@@ -137,11 +151,14 @@ function setResult(next: RestoreResult | null): void {
   for (const listener of listeners) listener(next);
 }
 
-function readPending(): { manual: ManualItem[] } | null {
+function readPending(): { manual: ManualItem[]; kind: RestoreKind } | null {
   try {
     const pending = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null");
     if (!pending || Date.now() - pending.at > PENDING_MAX_AGE_MS) return null;
-    return { manual: Array.isArray(pending.manual) ? pending.manual : [] };
+    return {
+      manual: Array.isArray(pending.manual) ? pending.manual : [],
+      kind: pending.kind === "share" ? "share" : "restore",
+    };
   } catch {
     return null;
   }

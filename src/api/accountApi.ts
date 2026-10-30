@@ -160,10 +160,47 @@ export async function createManageLink(): Promise<string> {
   return url;
 }
 
+/**
+ * A request to the website's API signed with this device's session. Rejects
+ * with an AccountError carrying the service's code, `signed_out` when there's
+ * no session.
+ */
+export async function signedRequest(
+  path: string,
+  method: "GET" | "POST",
+  body?: unknown,
+): Promise<unknown> {
+  const session = await loadSession();
+  if (!session) throw new AccountError("signed_out");
+  return signedSessionRequest(session, path, method, body);
+}
+
+/**
+ * A request to the website's API that's signed when this device is signed
+ * in, and sent as it is otherwise. Uses keepalive, so it finishes while
+ * Spotify reloads.
+ */
+export async function sendSignedIfPossible(
+  path: string,
+  body: unknown,
+  headers: Record<string, string>,
+): Promise<void> {
+  const session = await loadSession().catch(() => null);
+  const keys = session ? await getDeviceKey(false).catch(() => null) : null;
+  await request(path, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers,
+    keepalive: true,
+    ...(session && keys ? { token: session.token, keys } : {}),
+  });
+}
+
 async function signedSessionRequest(
   session: AccountSession,
   path: string,
   method: "GET" | "POST",
+  body?: unknown,
 ): Promise<unknown> {
   const keys = await getDeviceKey(false);
   // Without its key the token can't be used: sign in again.
@@ -172,7 +209,12 @@ async function signedSessionRequest(
     throw new AccountError("signed_out");
   }
 
-  return request(path, { method, token: session.token, keys });
+  return request(path, {
+    method,
+    token: session.token,
+    keys,
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
 }
 
 interface RequestOptions {
@@ -183,6 +225,8 @@ interface RequestOptions {
   keys?: CryptoKeyPair;
   /** Sends the public key, for signing in. */
   sendPublicKey?: boolean;
+  headers?: Record<string, string>;
+  keepalive?: boolean;
 }
 
 async function request(
@@ -191,7 +235,7 @@ async function request(
   isRetry = false,
 ): Promise<unknown> {
   const url = `${getProjectConfig().webUrl.replace(/\/+$/, "")}${path}`;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) headers["content-type"] = "application/json";
   if (options.token) headers.authorization = `Bearer ${options.token}`;
   if (options.keys) {
@@ -217,6 +261,7 @@ async function request(
       method: options.method,
       headers,
       body: options.body,
+      keepalive: options.keepalive,
     });
   } catch {
     throw new AccountError("offline");

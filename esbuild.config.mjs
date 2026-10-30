@@ -53,6 +53,7 @@ const options = {
     "process.env.SYNCIFY_RELEASES_URL": defineEnvValue(
       env.SYNCIFY_RELEASES_URL,
     ),
+    "process.env.SYNCIFY_SHARE_URL": defineEnvValue(env.SYNCIFY_SHARE_URL),
     "process.env.SYNCIFY_EXTENSION_NAME": JSON.stringify(extensionName),
   },
   external: ["react", "react-dom"],

@@ -46,6 +46,7 @@ export async function collectMarketplaceKeys(): Promise<
 // hash stops them from triggering a new upload on their own.
 const UI_STATE_KEYS = new Set(["marketplace:active-tab", "marketplace:sort"]);
 const INSTALLED_ITEM_PREFIX = "marketplace:installed:";
+const ACTIVE_THEME_KEY = "marketplace:theme-installed";
 const REFRESHED_ITEM_FIELDS = ["stars", "tags", "lastUpdated", "created"];
 
 // The Spicetify config counts too, when there is one. Backups from before it
@@ -135,23 +136,65 @@ export async function restoreMarketplaceKeys(
   if (Object.keys(restored).length === 0) return 0;
   await keepOwnEntry(restored);
   if (skipped.length > 0) await keepSkipped(restored, skipped);
-  const restoredKeys = Object.keys(restored);
+  const removed = leftoverKeys(await collectMarketplaceKeys(), restored);
+  await writeMarketplaceKeys(restored, removed);
+  return Object.keys(restored).length;
+}
 
-  // Write both stores: IndexedDB is what Marketplace >= 1.0.9 reads, and
-  // localStorage is the only store older versions know about.
-  for (const key of restoredKeys) {
-    window.localStorage.setItem(key, restored[key]);
+/**
+ * Writes Marketplace keys and deletes the `removed` ones in both stores:
+ * IndexedDB is what Marketplace >= 1.0.9 reads, and localStorage is the only
+ * store older versions know about.
+ */
+export async function writeMarketplaceKeys(
+  keys: Record<string, string>,
+  removed: string[] = [],
+): Promise<void> {
+  for (const [key, value] of Object.entries(keys)) {
+    window.localStorage.setItem(key, value);
   }
+  for (const key of removed) window.localStorage.removeItem(key);
 
-  const written = await writeMarketplaceStore(restored);
+  const written = await writeMarketplaceStore(keys, removed);
 
   if (written === "failed") {
     throw new Error(
-      "Syncify could not write to Marketplace storage. Restart Spotify and try the restore again.",
+      "Syncify could not write to Marketplace storage. Restart Spotify and try again.",
     );
   }
+}
 
-  return restoredKeys.length;
+/**
+ * What a write leaves behind of the items it takes off this device's
+ * installed lists: their entries, and the active theme when it was one of
+ * them and the write doesn't set another. Marketplace deletes these when an
+ * item is removed; left in place, its browse pages show the item as
+ * installed though it no longer loads.
+ */
+export function leftoverKeys(
+  local: Record<string, string>,
+  written: Record<string, string>,
+): string[] {
+  const kept = new Set(
+    INSTALLED_LIST_KEYS.flatMap((listKey) =>
+      parseStoredArray(written[listKey] ?? local[listKey]).map(String),
+    ),
+  );
+  const gone = listInstalledItems(local).filter(
+    (key) => key.startsWith(INSTALLED_ITEM_PREFIX) && !kept.has(key),
+  );
+  const removed = gone.filter(
+    (key) => local[key] !== undefined && written[key] === undefined,
+  );
+  const theme = local[ACTIVE_THEME_KEY];
+  if (
+    theme &&
+    written[ACTIVE_THEME_KEY] === undefined &&
+    gone.some((key) => theme.includes(key))
+  ) {
+    removed.push(ACTIVE_THEME_KEY);
+  }
+  return removed;
 }
 
 // Restoring replaces Marketplace's list of installed extensions, so a backup

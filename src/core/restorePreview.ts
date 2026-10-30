@@ -127,7 +127,8 @@ export function keepsSyncify(
   );
 }
 
-function isSyncify(item: InstalledItem): boolean {
+/** Syncify's own Marketplace entry. */
+export function isSyncify(item: InstalledItem): boolean {
   return item.repo?.toLowerCase() === SYNCIFY_REPO;
 }
 

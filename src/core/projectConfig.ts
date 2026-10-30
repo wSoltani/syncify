@@ -14,6 +14,7 @@ const DEFAULT_PROJECT_CONFIG: SyncifyProjectConfig = {
     "https://github.com/wSoltani/Syncify/issues/new",
   releasesUrl:
     process.env.SYNCIFY_RELEASES_URL ?? "https://syncify-releases.wsoltani.com",
+  shareUrl: process.env.SYNCIFY_SHARE_URL ?? "https://syncs.wsoltani.com",
 };
 
 export function getProjectConfig(): SyncifyProjectConfig {
@@ -44,6 +45,8 @@ export function getProjectConfig(): SyncifyProjectConfig {
     releasesUrl:
       normalizeUrl(runtimeConfig?.releasesUrl) ??
       DEFAULT_PROJECT_CONFIG.releasesUrl,
+    shareUrl:
+      normalizeUrl(runtimeConfig?.shareUrl) ?? DEFAULT_PROJECT_CONFIG.shareUrl,
   };
 }
 
