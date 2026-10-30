@@ -135,23 +135,31 @@ export async function restoreMarketplaceKeys(
   if (Object.keys(restored).length === 0) return 0;
   await keepOwnEntry(restored);
   if (skipped.length > 0) await keepSkipped(restored, skipped);
-  const restoredKeys = Object.keys(restored);
+  await writeMarketplaceKeys(restored);
+  return Object.keys(restored).length;
+}
 
-  // Write both stores: IndexedDB is what Marketplace >= 1.0.9 reads, and
-  // localStorage is the only store older versions know about.
-  for (const key of restoredKeys) {
-    window.localStorage.setItem(key, restored[key]);
+/**
+ * Writes Marketplace keys and deletes the `removed` ones in both stores:
+ * IndexedDB is what Marketplace >= 1.0.9 reads, and localStorage is the only
+ * store older versions know about.
+ */
+export async function writeMarketplaceKeys(
+  keys: Record<string, string>,
+  removed: string[] = [],
+): Promise<void> {
+  for (const [key, value] of Object.entries(keys)) {
+    window.localStorage.setItem(key, value);
   }
+  for (const key of removed) window.localStorage.removeItem(key);
 
-  const written = await writeMarketplaceStore(restored);
+  const written = await writeMarketplaceStore(keys, removed);
 
   if (written === "failed") {
     throw new Error(
-      "Syncify could not write to Marketplace storage. Restart Spotify and try the restore again.",
+      "Syncify could not write to Marketplace storage. Restart Spotify and try again.",
     );
   }
-
-  return restoredKeys.length;
 }
 
 // Restoring replaces Marketplace's list of installed extensions, so a backup

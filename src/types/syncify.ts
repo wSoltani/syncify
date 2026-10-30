@@ -136,6 +136,8 @@ export interface SyncifyProjectConfig {
   issueUrl: string;
   /** Where the release pointers (latest.json) are served. */
   releasesUrl: string;
+  /** Where share codes' pages and items are served (the share host). */
+  shareUrl: string;
 }
 
 export interface SyncifySnapshotSummary {

@@ -4,6 +4,7 @@ import {
   reportRestore,
   uploadPayload,
 } from "../api/syncifyApi";
+import { reportShareImport } from "../api/sharesApi";
 import {
   cancelClaim,
   claimBackup,
@@ -23,6 +24,8 @@ import {
   hashSnapshot,
   restoreMarketplaceKeys,
 } from "./marketplace";
+import { applyShare, type ShareFile, type ShareMode } from "./shareCodes";
+import type { SnippetCatalog } from "./sourceChecks";
 
 /**
  * `unapproved`: the backup is kept apart until this install is approved from
@@ -179,6 +182,42 @@ export async function restoreNow(
   }
 
   return { payload, restoredCount };
+}
+
+/** A safety backup failed, so a code wasn't loaded. */
+export class SafetyBackupError extends Error {
+  constructor(readonly reason: unknown) {
+    super("Couldn't back up your setup first, so nothing changed.");
+    this.name = "SafetyBackupError";
+  }
+}
+
+/**
+ * Loads a share code: a backup of this setup first, then the code's items.
+ * When the backup can't be made, nothing changes. A backup that's unchanged,
+ * or kept apart until this install is approved, is saved all the same.
+ */
+export async function loadShare(
+  config: SyncifyConfig,
+  file: ShareFile,
+  mode: ShareMode,
+  skipped: string[],
+  catalog: SnippetCatalog | null,
+): Promise<number> {
+  try {
+    await backupNow(config);
+  } catch (error) {
+    throw new SafetyBackupError(error);
+  }
+
+  const written = await applyShare(file, mode, skipped, catalog);
+
+  // Counted by the service. Not awaited: it finishes on its own while
+  // Spotify reloads, and a failure doesn't matter to the load.
+  void getUserIdentity()
+    .then((identity) => reportShareImport(file.code, identity))
+    .catch(() => {});
+  return written;
 }
 
 /** The claim on this Spotify account, with its hash to find it in `accounts`. */

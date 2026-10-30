@@ -49,8 +49,10 @@ export async function readMarketplaceStore(): Promise<Record<
   }
 }
 
+/** Writes `entries` and deletes the `removed` keys, in one transaction. */
 export async function writeMarketplaceStore(
   entries: Record<string, string>,
+  removed: string[] = [],
 ): Promise<MarketplaceWriteResult> {
   const opened = await openExistingDatabase();
   if (opened.kind === "unavailable") return "unavailable";
@@ -59,14 +61,15 @@ export async function writeMarketplaceStore(
   if (!db) return "failed";
 
   try {
-    const written = await runStoreRequest<IDBValidKey>(
+    const written = await runStoreRequest<unknown>(
       db,
       "readwrite",
       (store) => {
-        let request: IDBRequest<IDBValidKey> | undefined;
+        let request: IDBRequest | undefined;
         for (const [key, value] of Object.entries(entries)) {
           request = store.put({ key, value } satisfies StoredRecord);
         }
+        for (const key of removed) request = store.delete(key);
         return request;
       },
     );

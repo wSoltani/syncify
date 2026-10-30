@@ -1,6 +1,9 @@
 import { loadConfig, saveConfig } from "../core/config";
 import { getProjectConfig } from "../core/projectConfig";
-import { summarizeMarketplaceState } from "../core/marketplace";
+import {
+  collectMarketplaceKeys,
+  summarizeMarketplaceState,
+} from "../core/marketplace";
 import {
   listItems,
   previewRestore,
@@ -20,10 +23,33 @@ import {
 import {
   checkCatalog,
   checkSources,
+  fetchSnippetCatalog,
   isWarning,
+  type SnippetCatalog,
   type SourceCheck,
   type SourceChecks,
 } from "../core/sourceChecks";
+import {
+  checkShareItems,
+  displayCode,
+  NAME_MAX,
+  parseCode,
+  previewShare,
+  shareKeys,
+  unloadableSnippets,
+  type ShareFile,
+  type ShareMode,
+} from "../core/shareCodes";
+import {
+  createShare,
+  deleteShare,
+  describeShareError,
+  fetchShare,
+  listShares,
+  updateShare,
+  type SavedShare,
+  type ShareCode,
+} from "../api/sharesApi";
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
 import {
   InstallRefusedError,
@@ -60,7 +86,9 @@ import {
   cancelPendingClaim,
   fetchClaims,
   fetchRemoteState,
+  loadShare,
   restoreNow,
+  SafetyBackupError,
   secureBackup,
 } from "../core/syncService";
 import {
@@ -728,15 +756,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   }
 
   async function copyCommands(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const clipboard = Spicetify.Platform?.ClipboardAPI as
-        | { copy?: (text: string) => unknown }
-        | undefined;
-      if (!clipboard?.copy) return;
-      await clipboard.copy(text);
-    }
+    if (!(await copyToClipboard(text))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -1044,9 +1064,13 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
         {showResult && restoreResult ? (
           <div className="syncify-status-text">
             <h3 className="syncify-status-title">
-              {allLoaded
-                ? "Backup restored"
-                : `Restored ${restoreResult.loaded} of ${restoreResult.total}`}
+              {restoreResult.kind === "share"
+                ? allLoaded
+                  ? "Setup loaded"
+                  : `Loaded ${restoreResult.loaded} of ${restoreResult.total}`
+                : allLoaded
+                  ? "Backup restored"
+                  : `Restored ${restoreResult.loaded} of ${restoreResult.total}`}
             </h3>
             <p className="syncify-muted">
               {!allLoaded
@@ -1055,7 +1079,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
                   ? "Nothing from Marketplace to load"
                   : `${restoreResult.loaded} of ${restoreResult.total} loaded`}
             </p>
-            {allLoaded ? (
+            {allLoaded && restoreResult.kind === "restore" ? (
               <p className="syncify-muted">
                 Syncify saved your setup?{" "}
                 <button
@@ -1285,6 +1309,23 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
 
       <div className="syncify-accordion">
         <AccordionSection
+          id="share"
+          title="Share"
+          openSection={openSection}
+          onToggle={toggleSection}
+        >
+          <SharePanel
+            config={config}
+            session={session}
+            localItems={localItemDetails}
+            localConfig={localConfig}
+            marketplaceAvailable={marketplaceAvailable}
+            busy={isBusy}
+            onSignIn={() => toggleSection("account")}
+            onSignedOut={handleSignedOut}
+          />
+        </AccordionSection>
+        <AccordionSection
           id="account"
           title="Account"
           openSection={openSection}
@@ -1485,6 +1526,10 @@ function RestoreChanges(props: {
   checks: SourceChecks;
   /** Items left off unless turned on, and those turned on. */
   off: Set<string>;
+  /** Items left off that can't be turned on. */
+  fixed?: Set<string>;
+  /** The switch that turns an item on. */
+  switchLabel?: string;
   allowed: Set<string>;
   /** The backup came from an install this Spotify account hasn't approved. */
   unapproved: boolean;
@@ -1574,7 +1619,7 @@ function RestoreChanges(props: {
                           Not approved
                         </span>
                       ) : null}
-                      {props.off.has(item.key) ? (
+                      {props.off.has(item.key) && !props.fixed?.has(item.key) ? (
                         <label className="syncify-item-switch">
                           <input
                             type="checkbox"
@@ -1583,7 +1628,7 @@ function RestoreChanges(props: {
                               props.onAllow(item.key, event.currentTarget.checked)
                             }
                           />
-                          Restore
+                          {props.switchLabel ?? "Restore"}
                         </label>
                       ) : null}
                     </li>
@@ -2117,6 +2162,784 @@ function AccountPanel(props: {
   );
 }
 
+const SHARE_MODES: [ShareMode, string][] = [
+  ["add", "Add to my setup"],
+  ["replace", "Replace my setup"],
+];
+
+/**
+ * The Share section: load a code anyone shared, and signed in, share this
+ * setup as a code and keep the account's codes up to date.
+ */
+function SharePanel(props: {
+  config: SyncifyConfig;
+  /** undefined until the stored session has been read. */
+  session: AccountSession | null | undefined;
+  localItems: InstalledItem[];
+  localConfig: SyncifySpicetifyConfig | null;
+  marketplaceAvailable: boolean | null;
+  /** A backup or a restore is running. */
+  busy: boolean;
+  onSignIn(): void;
+  onSignedOut(): void;
+}) {
+  const React = Spicetify.React;
+  const useEffect = React.useEffect as typeof useEffectType;
+  const useMemo = React.useMemo as typeof useMemoType;
+  const useRef = React.useRef as typeof useRefType;
+  const useState = React.useState as typeof useStateType;
+  const { session } = props;
+
+  // Loading a code.
+  const [input, setInput] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [shared, setShared] = useState<{
+    file: ShareFile;
+    items: InstalledItem[];
+  } | null>(null);
+  const [mode, setMode] = useState<ShareMode>("add");
+  const [showChanges, setShowChanges] = useState(false);
+  const [allowed, setAllowed] = useState<Set<string>>(() => new Set());
+  const [catalogChecks, setCatalogChecks] = useState<SourceChecks | null>(
+    null,
+  );
+  // undefined until Marketplace's snippet list has been asked for.
+  const [snippets, setSnippets] = useState<SnippetCatalog | null | undefined>(
+    undefined,
+  );
+  const [applying, setApplying] = useState(false);
+
+  // Sharing, signed in.
+  const [codes, setCodes] = useState<ShareCode[] | null>(null);
+  const [maxCodes, setMaxCodes] = useState<number | null>(null);
+  const [codesError, setCodesError] = useState<string | null>(null);
+  // The code being made (code null) or updated.
+  const [compose, setCompose] = useState<{ code: ShareCode | null } | null>(
+    null,
+  );
+  const [name, setName] = useState("");
+  const [draft, setDraft] = useState<{
+    keys: Record<string, string>;
+    items: InstalledItem[];
+    leftOut: SourceChecks;
+  } | null>(null);
+  const [showItems, setShowItems] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<(SavedShare & { updated: boolean }) | null>(
+    null,
+  );
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  // Only the latest check of this setup may fill the box.
+  const composeRun = useRef(0);
+
+  const preview = useMemo(
+    () =>
+      shared
+        ? previewShare(
+            shared.file,
+            shared.items,
+            props.localItems,
+            props.localConfig,
+            mode,
+          )
+        : null,
+    [shared, props.localItems, props.localConfig, mode],
+  );
+  // Only what the code writes is checked: what it adds, and when replacing,
+  // its copy of what's here too. Adding keeps this device's copies as they are.
+  const writtenItems = useMemo(() => {
+    if (!preview || !shared) return null;
+    const inCode = new Set(shared.items.map((item) => item.key));
+    return preview.items.filter(
+      (item) =>
+        item.change !== "removed" &&
+        inCode.has(item.key) &&
+        (mode === "replace" || item.isNew),
+    );
+  }, [preview, shared, mode]);
+  const localChecks = useMemo(
+    () => (writtenItems ? checkSources(writtenItems) : null),
+    [writtenItems],
+  );
+  const sourceChecks = useMemo<SourceChecks>(
+    () => new Map([...(catalogChecks ?? []), ...(localChecks ?? [])]),
+    [catalogChecks, localChecks],
+  );
+  // Snippets whose CSS Marketplace's list doesn't have stay off for good.
+  const unloadable = useMemo(
+    () =>
+      preview && snippets !== undefined
+        ? unloadableSnippets(preview, snippets)
+        : new Set<string>(),
+    [preview, snippets],
+  );
+  // Off unless turned on, as in a restore: an item whose code would come
+  // from the code with a warning, or a check that couldn't be done.
+  const offByDefault = useMemo(
+    () =>
+      new Set([
+        ...(preview?.items ?? [])
+          .filter(
+            (item) =>
+              item.change !== "removed" &&
+              item.isNew &&
+              (isWarning(sourceChecks.get(item.key)) ||
+                sourceChecks.get(item.key)?.kind === "unchecked"),
+          )
+          .map((item) => item.key),
+        ...unloadable,
+      ]),
+    [preview, sourceChecks, unloadable],
+  );
+  const skippedItems = [...offByDefault].filter(
+    (key) => unloadable.has(key) || !allowed.has(key),
+  );
+  // Apply waits for every check, so nothing unchecked slips through.
+  const checkingCode =
+    preview !== null && (catalogChecks === null || snippets === undefined);
+  const included = draft
+    ? draft.items.filter((item) => !draft.leftOut.has(item.key))
+    : [];
+  const atMax = Boolean(codes && maxCodes !== null && codes.length >= maxCodes);
+
+  // Any warning opens the list, so the item can't be missed.
+  useEffect(() => {
+    setCatalogChecks(null);
+    if (!writtenItems || !localChecks) return;
+    if ([...localChecks.values()].some(isWarning)) setShowChanges(true);
+
+    let current = true;
+    void checkCatalog(writtenItems, localChecks).then((checks) => {
+      if (!current) return;
+      setCatalogChecks(checks);
+      if ([...checks.values()].some(isWarning)) setShowChanges(true);
+    });
+    return () => {
+      current = false;
+    };
+  }, [writtenItems, localChecks]);
+
+  // The account's codes, read when this section opens, never at startup.
+  useEffect(() => {
+    setCodes(null);
+    setCompose(null);
+    setSaved(null);
+    if (session) void loadCodes();
+  }, [session?.token]);
+
+  async function previewCode() {
+    const code = parseCode(input);
+    setLoadError(null);
+    setShared(null);
+    if (!code) {
+      setLoadError(describeShareError(new AccountError("no_code")));
+      return;
+    }
+
+    setFetching(true);
+    try {
+      const file = await fetchShare(code);
+      setMode("add");
+      setAllowed(new Set());
+      setShowChanges(false);
+      setShared({ file, items: listItems(file.keys) });
+      void fetchSnippetCatalog().then(setSnippets);
+    } catch (error) {
+      setLoadError(describeShareError(error));
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  async function applyCode() {
+    if (!shared || !preview) return;
+    setApplying(true);
+    setLoadError(null);
+    try {
+      await loadShare(
+        props.config,
+        shared.file,
+        mode,
+        skippedItems,
+        snippets ?? null,
+      );
+      Spicetify.showNotification("Syncify: setup loaded. Reloading…");
+      // What to add manually is shown after the reload, with the commands.
+      savePendingRestore(preview.manual, "share");
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      setApplying(false);
+      setLoadError(
+        error instanceof SafetyBackupError
+          ? `${error.message} ${describeBackupFailure(error.reason)}`
+          : error instanceof Error
+            ? error.message
+            : String(error),
+      );
+    }
+  }
+
+  async function loadCodes() {
+    setCodesError(null);
+    try {
+      const result = await listShares();
+      setCodes(result.codes);
+      setMaxCodes(result.max);
+    } catch (error) {
+      showShareFailure(error, setCodesError);
+    }
+  }
+
+  // A session refused along the way signs this device out.
+  function showShareFailure(error: unknown, show: (text: string) => void) {
+    show(describeShareError(error));
+    if (error instanceof AccountError && error.code === "signed_out") {
+      props.onSignedOut();
+    }
+  }
+
+  /** Checks this setup for a new code, or for an update of `code`. */
+  async function startCompose(code: ShareCode | null) {
+    const run = ++composeRun.current;
+    setCompose({ code });
+    setName(code?.name ?? "");
+    setDraft(null);
+    setShowItems(false);
+    setShareError(null);
+    setSaved(null);
+    setConfirmDelete(null);
+    try {
+      const keys = await collectMarketplaceKeys();
+      const checked = await checkShareItems(listItems(keys), keys);
+      if (run !== composeRun.current) return;
+      setDraft({ keys, ...checked });
+      // What's left out is shown, so it can't be missed.
+      if (checked.leftOut.size > 0) setShowItems(true);
+    } catch (error) {
+      if (run !== composeRun.current) return;
+      setCompose(null);
+      setShareError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function cancelCompose() {
+    composeRun.current += 1;
+    setCompose(null);
+    setDraft(null);
+  }
+
+  async function saveCode() {
+    if (!compose || !draft) return;
+    setSaving(true);
+    setShareError(null);
+    const keys = shareKeys(draft.keys, included);
+    try {
+      const result = compose.code
+        ? await updateShare(compose.code.code, name.trim(), keys)
+        : await createShare(name.trim(), keys);
+      setSaved({ ...result, updated: compose.code !== null });
+      setCompose(null);
+      setDraft(null);
+      await loadCodes();
+    } catch (error) {
+      showShareFailure(error, setShareError);
+      // A code made but not published yet is listed, for Update to finish.
+      if (error instanceof AccountError && error.code === "publish_failed") {
+        setCompose(null);
+        void loadCodes();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeCode(code: string) {
+    setDeleting(true);
+    setCodesError(null);
+    try {
+      await deleteShare(code);
+      setConfirmDelete(null);
+      if (saved?.code === code) setSaved(null);
+      await loadCodes();
+    } catch (error) {
+      showShareFailure(error, setCodesError);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function copy(text: string, id: string) {
+    if (!(await copyToClipboard(text))) return;
+    setCopied(id);
+    setTimeout(() => setCopied((current) => (current === id ? null : current)), 2000);
+  }
+
+  return (
+    <>
+      <div className="syncify-setting">
+        <span className="syncify-setting-text">
+          <span>Have a code?</span>
+          <span className="syncify-muted">Load a setup someone shared</span>
+        </span>
+      </div>
+      <form
+        className="syncify-field"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!fetching && !applying && input.trim()) void previewCode();
+        }}
+      >
+        <input
+          className="syncify-input syncify-share-input"
+          type="text"
+          aria-label="Share code or link"
+          placeholder="SYN-7KQ2M9"
+          autoComplete="off"
+          spellCheck={false}
+          value={input}
+          onChange={(event) => setInput(event.currentTarget.value)}
+          disabled={applying}
+        />
+        <button
+          className="syncify-button secondary"
+          type="submit"
+          disabled={fetching || applying || !input.trim()}
+        >
+          {fetching ? "Loading…" : "Preview"}
+        </button>
+      </form>
+      {loadError ? (
+        <div className="syncify-alert" data-kind="error" role="alert">
+          {loadError}
+        </div>
+      ) : null}
+
+      {shared && preview ? (
+        <div className="syncify-confirm">
+          <p className="syncify-confirm-title">
+            Load {shared.file.name ?? displayCode(shared.file.code)}?
+          </p>
+          <div
+            className="syncify-share-modes"
+            role="radiogroup"
+            aria-label="How to load it"
+          >
+            {SHARE_MODES.map(([value, label]) => (
+              <button
+                className="syncify-backup"
+                role="radio"
+                aria-checked={mode === value}
+                data-selected={mode === value ? "true" : "false"}
+                type="button"
+                key={value}
+                onClick={() => setMode(value)}
+                disabled={applying}
+              >
+                <span className="syncify-radio" aria-hidden="true" />
+                <span className="syncify-backup-text">
+                  <span>{label}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <RestoreChanges
+            preview={preview}
+            checks={sourceChecks}
+            off={offByDefault}
+            fixed={unloadable}
+            switchLabel="Load"
+            allowed={allowed}
+            unapproved={false}
+            onAllow={(key, on) => {
+              const next = new Set(allowed);
+              if (on) next.add(key);
+              else next.delete(key);
+              setAllowed(next);
+            }}
+            expanded={showChanges}
+            onToggle={() => setShowChanges(!showChanges)}
+          />
+          {props.marketplaceAvailable === false ? (
+            <p className="syncify-muted">
+              Install Spicetify Marketplace to load a setup.
+            </p>
+          ) : (
+            <div className="syncify-actions">
+              <button
+                className="syncify-button secondary"
+                type="button"
+                onClick={() => setShared(null)}
+                disabled={applying}
+              >
+                Cancel
+              </button>
+              <button
+                className="syncify-button"
+                type="button"
+                onClick={() => void applyCode()}
+                disabled={applying || checkingCode || props.busy}
+              >
+                {applying ? "Applying…" : checkingCode ? "Checking…" : "Apply"}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {session === undefined ? null : !session ? (
+        <div className="syncify-setting syncify-share-part">
+          <span className="syncify-setting-text">
+            <span>Share this setup</span>
+            <span className="syncify-muted">Get a code anyone can load</span>
+          </span>
+          <button
+            className="syncify-button secondary"
+            type="button"
+            onClick={props.onSignIn}
+          >
+            Sign in to share
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="syncify-setting syncify-share-part">
+            <span className="syncify-setting-text">
+              <span>Share this setup</span>
+              <span className="syncify-muted">
+                {codes && codes.length > 0 && maxCodes !== null
+                  ? `${codes.length} of ${maxCodes} codes`
+                  : "Get a code anyone can load"}
+              </span>
+            </span>
+            <button
+              className="syncify-button secondary"
+              type="button"
+              onClick={() => void startCompose(null)}
+              disabled={
+                compose !== null ||
+                codes === null ||
+                atMax ||
+                props.marketplaceAvailable === false
+              }
+              title={atMax ? "Delete a code to make another" : undefined}
+            >
+              Share
+            </button>
+          </div>
+
+          {compose ? (
+            <div className="syncify-confirm">
+              <p className="syncify-confirm-title">
+                {compose.code
+                  ? `Update ${displayCode(compose.code.code)} with this setup?`
+                  : "Share this setup?"}
+              </p>
+              {draft ? (
+                <>
+                  <div className="syncify-chips" aria-label="What goes in">
+                    <span className="syncify-chip">
+                      {included.length} going in
+                    </span>
+                    {draft.leftOut.size ? (
+                      <span className="syncify-chip" data-change="off">
+                        {draft.leftOut.size} left out
+                      </span>
+                    ) : null}
+                  </div>
+                  {draft.items.length ? (
+                    <button
+                      className="syncify-text-button syncify-disclosure"
+                      type="button"
+                      aria-expanded={showItems}
+                      aria-controls="syncify-share-items"
+                      onClick={() => setShowItems(!showItems)}
+                    >
+                      {showItems ? "Hide items" : "Show items"}
+                      <ChevronIcon />
+                    </button>
+                  ) : null}
+                  {showItems ? (
+                    <ShareItems items={draft.items} leftOut={draft.leftOut} />
+                  ) : null}
+                  <input
+                    className="syncify-input"
+                    type="text"
+                    aria-label="Name"
+                    placeholder="Name (optional)"
+                    maxLength={NAME_MAX}
+                    value={name}
+                    onChange={(event) => setName(event.currentTarget.value)}
+                    disabled={saving}
+                  />
+                </>
+              ) : (
+                <p className="syncify-muted">Checking your items…</p>
+              )}
+              <div className="syncify-actions">
+                <button
+                  className="syncify-button secondary"
+                  type="button"
+                  onClick={cancelCompose}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="syncify-button"
+                  type="button"
+                  onClick={() => void saveCode()}
+                  disabled={!draft || included.length === 0 || saving}
+                >
+                  {!draft
+                    ? "Checking…"
+                    : saving
+                      ? compose.code
+                        ? "Updating…"
+                        : "Creating…"
+                      : compose.code
+                        ? "Update"
+                        : "Create code"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {shareError ? (
+            <div className="syncify-alert" data-kind="error" role="alert">
+              {shareError}
+            </div>
+          ) : null}
+
+          {saved ? (
+            <div className="syncify-confirm">
+              <span className="syncify-manual-header">
+                <span className="syncify-confirm-title">
+                  {saved.updated ? "Code updated" : "Your code is ready"}
+                </span>
+                <button
+                  className="syncify-icon-button"
+                  type="button"
+                  aria-label="Dismiss"
+                  title="Dismiss"
+                  onClick={() => setSaved(null)}
+                >
+                  <CloseIcon />
+                </button>
+              </span>
+              <span className="syncify-code syncify-share-code">
+                <code>{displayCode(saved.code)}</code>
+                <button
+                  className="syncify-text-button"
+                  type="button"
+                  onClick={() => void copy(displayCode(saved.code), "saved-code")}
+                >
+                  {copied === "saved-code" ? "Copied" : "Copy code"}
+                </button>
+                {saved.link ? (
+                  <button
+                    className="syncify-text-button"
+                    type="button"
+                    onClick={() => void copy(saved.link!, "saved-link")}
+                  >
+                    {copied === "saved-link" ? "Copied" : "Copy link"}
+                  </button>
+                ) : null}
+              </span>
+              {saved.leftOut ? (
+                <p className="syncify-muted">
+                  {saved.leftOut === 1
+                    ? "1 snippet isn't in Marketplace's list anymore, so it was left out."
+                    : `${saved.leftOut} snippets aren't in Marketplace's list anymore, so they were left out.`}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {codesError ? (
+            <div className="syncify-alert" data-kind="error" role="alert">
+              <span>{codesError}</span>
+              <span className="syncify-alert-actions">
+                <button
+                  className="syncify-text-button"
+                  type="button"
+                  onClick={() => void loadCodes()}
+                >
+                  Try again
+                </button>
+              </span>
+            </div>
+          ) : null}
+
+          {codes && codes.length > 0 ? (
+            <section aria-label="Your codes">
+              <h5 className="syncify-change-group">Your codes</h5>
+              <ul className="syncify-change-list syncify-share-codes">
+                {codes.map((code) => (
+                  <li className="syncify-setting" key={code.code}>
+                    <span className="syncify-setting-text">
+                      <span className="syncify-account-email">
+                        {code.name ?? displayCode(code.code)}
+                      </span>
+                      <span className="syncify-muted">
+                        {confirmDelete === code.code
+                          ? "Delete it? Its link stops working."
+                          : [
+                              code.name ? displayCode(code.code) : null,
+                              formatCount(code.item_count, "item"),
+                              formatCount(code.imports, "import"),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                      </span>
+                    </span>
+                    <span className="syncify-account-actions">
+                      {confirmDelete === code.code ? (
+                        <>
+                          <button
+                            className="syncify-text-button"
+                            type="button"
+                            onClick={() => setConfirmDelete(null)}
+                            disabled={deleting}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="syncify-text-button"
+                            data-danger="true"
+                            type="button"
+                            onClick={() => void removeCode(code.code)}
+                            disabled={deleting}
+                          >
+                            {deleting ? "Deleting…" : "Delete"}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="syncify-text-button"
+                            type="button"
+                            onClick={() => void startCompose(code)}
+                            disabled={compose !== null || deleting}
+                          >
+                            Update
+                          </button>
+                          {code.link ? (
+                            <button
+                              className="syncify-text-button"
+                              type="button"
+                              onClick={() => void copy(code.link!, code.code)}
+                            >
+                              {copied === code.code ? "Copied" : "Copy link"}
+                            </button>
+                          ) : null}
+                          <button
+                            className="syncify-text-button"
+                            type="button"
+                            onClick={() => setConfirmDelete(code.code)}
+                            disabled={deleting}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </>
+      )}
+    </>
+  );
+}
+
+const SHARE_MARKS = {
+  in: { mark: "+", label: "Goes in" },
+  out: { mark: "−", label: "Left out" },
+};
+
+/** What a new code holds, grouped by type, with why anything is left out. */
+function ShareItems(props: { items: InstalledItem[]; leftOut: SourceChecks }) {
+  const React = Spicetify.React;
+
+  return (
+    <div className="syncify-changes" id="syncify-share-items">
+      {ITEM_GROUPS.map(([type, title]) => {
+        const group = props.items
+          .filter((item) => item.type === type)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        if (group.length === 0) return null;
+
+        return (
+          <section key={type} aria-label={title}>
+            <h5 className="syncify-change-group">{title}</h5>
+            <ul className="syncify-change-list">
+              {group.map((item) => {
+                const check = props.leftOut.get(item.key);
+                const mark = check ? SHARE_MARKS.out : SHARE_MARKS.in;
+                return (
+                  <li className="syncify-change" key={item.key}>
+                    <span
+                      className="syncify-mark"
+                      data-change={check ? "removed" : "added"}
+                      role="img"
+                      aria-label={mark.label}
+                    >
+                      {mark.mark}
+                    </span>
+                    <span className="syncify-change-name">
+                      {item.name}
+                      {item.repo ? (
+                        <span className="syncify-change-detail">
+                          {" "}
+                          · {item.repo}
+                        </span>
+                      ) : null}
+                    </span>
+                    {check ? <SourceLabel check={check} /> : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** "Couldn't back up your setup first…" and why. */
+function describeBackupFailure(reason: unknown): string {
+  if (reason instanceof LockedError) return "Sign in to back up.";
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
+/** Copies text, through Spotify's clipboard when the page's is refused. */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const clipboard = Spicetify.Platform?.ClipboardAPI as
+      | { copy?: (text: string) => unknown }
+      | undefined;
+    if (!clipboard?.copy) return false;
+    await clipboard.copy(text);
+    return true;
+  }
+}
+
+/** "1 item", "3 imports" */
+function formatCount(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 // Codes are 6 digits and work for 10 minutes.
 const CODE_LENGTH = 6;
 const CODE_VALID_MS = 10 * 60 * 1000;
@@ -2142,7 +2965,7 @@ function formatCountdown(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-type AccordionSectionId = "account" | "settings";
+type AccordionSectionId = "share" | "account" | "settings";
 
 /**
  * One section of the accordion: an uppercase title with a chevron. Only one

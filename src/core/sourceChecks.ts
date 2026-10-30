@@ -18,6 +18,17 @@ export type SourceCheck =
 
 export type SourceChecks = Map<string, SourceCheck>;
 
+/** A snippet in Marketplace's list, as Marketplace installs it. */
+export interface CatalogSnippet {
+  title: string;
+  code: string;
+  description: string;
+  imageURL?: string;
+}
+
+/** Marketplace's snippets by title, compared the way Marketplace does. */
+export type SnippetCatalog = Map<string, CatalogSnippet>;
+
 const TOPICS: Partial<Record<ItemType, string>> = {
   extension: "spicetify-extensions",
   theme: "spicetify-themes",
@@ -27,6 +38,9 @@ const BLOCK_LIST_URL =
   "https://raw.githubusercontent.com/spicetify/marketplace/main/resources/blacklist.json";
 const SNIPPETS_URL =
   "https://raw.githubusercontent.com/spicetify/marketplace/main/resources/snippets.json";
+// Snippet previews, as Marketplace's own list builds their addresses.
+const SNIPPET_IMAGE_BASE =
+  "https://raw.githubusercontent.com/spicetify/spicetify-marketplace/main/";
 const REPO_API_URL = "https://api.github.com/repos";
 const REQUEST_TIMEOUT_MS = 5000;
 // GitHub allows 60 requests an hour per IP without signing in, shared with
@@ -86,10 +100,10 @@ export async function checkCatalog(
   const repos = pending.filter((item) => item.type !== "snippet");
 
   if (snippets.length > 0) {
-    const titles = await fetchSnippetTitles();
+    const catalog = await fetchSnippetCatalog();
     for (const item of snippets) {
-      if (!titles) checks.set(item.key, { kind: "unchecked" });
-      else if (!titles.has(normalizeTitle(item.name))) {
+      if (!catalog) checks.set(item.key, { kind: "unchecked" });
+      else if (!findSnippet(catalog, item.name)) {
         checks.set(item.key, { kind: "catalog" });
       }
     }
@@ -186,8 +200,16 @@ function normalizeTitle(title: string): string {
   return title.replace(/\n/g, "").trim().toLowerCase();
 }
 
+/** The snippet Marketplace lists under this title, if any. */
+export function findSnippet(
+  catalog: SnippetCatalog,
+  title: string,
+): CatalogSnippet | undefined {
+  return catalog.get(normalizeTitle(title));
+}
+
 let blockListRequest: Promise<string[] | null> | null = null;
-let snippetTitlesRequest: Promise<Set<string> | null> | null = null;
+let snippetCatalogRequest: Promise<SnippetCatalog | null> | null = null;
 
 // Each list is fetched once per session; a failure is retried next time.
 function fetchBlockList(): Promise<string[] | null> {
@@ -205,21 +227,37 @@ function fetchBlockList(): Promise<string[] | null> {
   return blockListRequest;
 }
 
-function fetchSnippetTitles(): Promise<Set<string> | null> {
-  snippetTitlesRequest ??= fetchJson(SNIPPETS_URL).then((body) => {
+/** Marketplace's snippet list, or null when it couldn't be read. */
+export function fetchSnippetCatalog(): Promise<SnippetCatalog | null> {
+  snippetCatalogRequest ??= fetchJson(SNIPPETS_URL).then((body) => {
     if (!Array.isArray(body)) {
-      snippetTitlesRequest = null;
+      snippetCatalogRequest = null;
       return null;
     }
-    return new Set(
-      body.flatMap((snippet) =>
-        typeof snippet?.title === "string"
-          ? [normalizeTitle(snippet.title)]
-          : [],
-      ),
-    );
+    const catalog: SnippetCatalog = new Map();
+    for (const snippet of body) {
+      if (typeof snippet?.title !== "string" || typeof snippet.code !== "string") {
+        continue;
+      }
+      const preview =
+        typeof snippet.preview === "string" ? snippet.preview : null;
+      catalog.set(normalizeTitle(snippet.title), {
+        title: snippet.title,
+        code: snippet.code,
+        description:
+          typeof snippet.description === "string" ? snippet.description : "",
+        ...(preview
+          ? {
+              imageURL: preview.startsWith("http")
+                ? preview
+                : `${SNIPPET_IMAGE_BASE}${preview}`,
+            }
+          : {}),
+      });
+    }
+    return catalog;
   });
-  return snippetTitlesRequest;
+  return snippetCatalogRequest;
 }
 
 /** The repo's topics, null if it doesn't exist, undefined if GitHub didn't answer. */
