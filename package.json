@@ -1,6 +1,6 @@
 {
   "name": "syncify",
-  "version": "1.13.1",
+  "version": "1.13.2",
   "private": true,
   "description": "Synchronize Spicetify Marketplace state across devices.",
   "type": "module",
