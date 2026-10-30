@@ -126,6 +126,29 @@ interface MessageState {
   text: string;
 }
 
+// How many codes the account had when Share last listed them, so Share's
+// closed row shows it without asking the service. Forgotten on sign-out.
+const CODE_COUNT_KEY = "syncify:share-code-count";
+
+function readCodeCount(): number | null {
+  const value = Number(Spicetify.LocalStorage?.get(CODE_COUNT_KEY) ?? NaN);
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function saveCodeCount(count: number | null): void {
+  if (count === null) Spicetify.LocalStorage?.remove(CODE_COUNT_KEY);
+  else Spicetify.LocalStorage?.set(CODE_COUNT_KEY, String(count));
+}
+
+// The last check of this Spotify account's backups, kept until Spotify
+// restarts, so reopening Syncify shows them at once while a quiet check
+// brings them up to date.
+let lastCheck: {
+  remote: SyncifyRemoteState;
+  lockedBy: LockedError["code"] | null;
+  claims: (ClaimStatus & { hash: string }) | null;
+} | null = null;
+
 /** section: the part to open with, as That's me, sign in opens Account. */
 export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   const React = Spicetify.React;
@@ -135,7 +158,9 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   const useRef = React.useRef as typeof useRefType;
 
   const [config, setConfig] = useState<SyncifyConfig>(() => loadConfig());
-  const [status, setStatus] = useState<SyncifyStatus>("idle");
+  const [status, setStatus] = useState<SyncifyStatus>(() =>
+    lastCheck?.remote.exists ? "success" : "idle",
+  );
   const [message, setMessage] = useState<MessageState | null>(null);
   const [installedItemCount, setInstalledItemCount] = useState(0);
   const [localItems, setLocalItems] = useState<string[]>([]);
@@ -149,20 +174,26 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   >(null);
   const [localHash, setLocalHash] = useState<string | null>(null);
   const [remotePayload, setRemotePayload] = useState<SyncifyPayload | null>(
-    null,
+    () => lastCheck?.remote.payload ?? null,
   );
-  const [remoteBackups, setRemoteBackups] = useState<SyncifyPayload[]>([]);
-  const [safetyCopy, setSafetyCopy] = useState<SyncifyPayload | null>(null);
+  const [remoteBackups, setRemoteBackups] = useState<SyncifyPayload[]>(
+    () => lastCheck?.remote.backups ?? [],
+  );
+  const [safetyCopy, setSafetyCopy] = useState<SyncifyPayload | null>(
+    () => lastCheck?.remote.safetyCopy ?? null,
+  );
   // Backups from installs this Spotify account hasn't approved.
-  const [unapproved, setUnapproved] = useState<SyncifyPayload[]>([]);
+  const [unapproved, setUnapproved] = useState<SyncifyPayload[]>(
+    () => lastCheck?.remote.unapproved ?? [],
+  );
   const [installState, setInstallState] =
-    useState<SyncifyInstallState | null>(null);
+    useState<SyncifyInstallState | null>(() => lastCheck?.remote.install ?? null);
   const [answering, setAnswering] = useState(false);
   // Items off by default in a restore that were turned on.
   const [allowed, setAllowed] = useState<Set<string>>(() => new Set());
   const [selectedRestorePayload, setSelectedRestorePayload] =
-    useState<SyncifyPayload | null>(null);
-  const [remoteChecked, setRemoteChecked] = useState(false);
+    useState<SyncifyPayload | null>(() => lastCheck?.remote.payload ?? null);
+  const [remoteChecked, setRemoteChecked] = useState(lastCheck !== null);
   const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
   const [showChanges, setShowChanges] = useState(false);
   const [catalogChecks, setCatalogChecks] = useState<SourceChecks | null>(
@@ -180,18 +211,23 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   // The backup service refused this version (HTTP 426).
   const [isUnsupported, setIsUnsupported] = useState(false);
   const [newerVersion, setNewerVersion] = useState<string | null>(null);
+  const [codeCount, setCodeCount] = useState<number | null>(() => readCodeCount());
   // undefined until the stored session has been read.
   const [session, setSession] = useState<AccountSession | null | undefined>(
     undefined,
   );
   // A secured backup this device can't read: signed out, or another account.
-  const [locked, setLocked] = useState<LockedError["code"] | null>(null);
+  const [locked, setLocked] = useState<LockedError["code"] | null>(
+    () => lastCheck?.lockedBy ?? null,
+  );
   // A pending claim on this Spotify account, from its backups.
-  const [remoteClaim, setRemoteClaim] = useState<SyncifyClaim | null>(null);
+  const [remoteClaim, setRemoteClaim] = useState<SyncifyClaim | null>(
+    () => lastCheck?.remote.claim ?? null,
+  );
   // Signed in: the claim on this Spotify account and the account's claims.
   const [claims, setClaims] = useState<
     (ClaimStatus & { hash: string }) | null
-  >(null);
+  >(() => lastCheck?.claims ?? null);
   const [securing, setSecuring] = useState(false);
   const [secureError, setSecureError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -432,7 +468,8 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   async function refreshStatus(options?: { silent?: boolean }) {
     try {
       setIsConfirmingRestore(false);
-      setStatus("loading");
+      // A quiet check behind the last one shown changes nothing until done.
+      if (!options?.silent || !lastCheck) setStatus("loading");
       if (!options?.silent) {
         setMessage({ kind: "info", text: "Checking your Syncify backup…" });
       }
@@ -455,6 +492,11 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
         : null;
       const current = signedIn ? await loadSession().catch(() => null) : null;
 
+      lastCheck = {
+        remote,
+        lockedBy,
+        claims: current ? claimStatus : null,
+      };
       setSession(current);
       setClaims(current ? claimStatus : null);
       setLocked(lockedBy);
@@ -522,6 +564,8 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   }
 
   function handleSignedOut() {
+    saveCodeCount(null);
+    setCodeCount(null);
     setSession(null);
     setClaims(null);
     setSecureError(null);
@@ -651,15 +695,29 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
         return;
       }
 
+      const backups = [
+        payload,
+        ...remoteBackups.filter(
+          (backup) => backup.payload_hash !== payload.payload_hash,
+        ),
+      ].slice(0, MAX_BACKUPS);
+      if (lastCheck) {
+        lastCheck = {
+          ...lastCheck,
+          remote: {
+            ...lastCheck.remote,
+            exists: true,
+            payload,
+            backups,
+            safetyCopy:
+              lastCheck.remote.safetyCopy?.payload_hash === payload.payload_hash
+                ? null
+                : lastCheck.remote.safetyCopy,
+          },
+        };
+      }
       setRemotePayload(payload);
-      setRemoteBackups((backups) =>
-        [
-          payload,
-          ...backups.filter(
-            (backup) => backup.payload_hash !== payload.payload_hash,
-          ),
-        ].slice(0, MAX_BACKUPS),
-      );
+      setRemoteBackups(backups);
       // Same data as the safety copy: show it once, as the new backup. The
       // Worker may also move the safety copy; the next refresh shows that.
       setSafetyCopy((copy) =>
@@ -1313,6 +1371,15 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
           title="Share"
           openSection={openSection}
           onToggle={toggleSection}
+          status={
+            session && codeCount
+              ? {
+                  kind: "count",
+                  label: `${codeCount} ${codeCount === 1 ? "code" : "codes"}`,
+                  text: String(codeCount),
+                }
+              : null
+          }
         >
           <SharePanel
             config={config}
@@ -1323,6 +1390,10 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
             busy={isBusy}
             onSignIn={() => toggleSection("account")}
             onSignedOut={handleSignedOut}
+            onCodeCount={(count) => {
+              saveCodeCount(count);
+              setCodeCount(count);
+            }}
           />
         </AccordionSection>
         <AccordionSection
@@ -1330,6 +1401,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
           title="Account"
           openSection={openSection}
           onToggle={toggleSection}
+          status={accountStatus(session, locked, secureState)}
         >
           <AccountPanel
             session={session}
@@ -1348,6 +1420,11 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
           title="Settings"
           openSection={openSection}
           onToggle={toggleSection}
+          status={
+            newerVersion
+              ? { kind: "dot", label: `Syncify ${newerVersion} is out` }
+              : null
+          }
         >
 
           <label className="syncify-setting">
@@ -2182,6 +2259,8 @@ function SharePanel(props: {
   busy: boolean;
   onSignIn(): void;
   onSignedOut(): void;
+  /** How many codes the account has, each time they're listed. */
+  onCodeCount(count: number): void;
 }) {
   const React = Spicetify.React;
   const useEffect = React.useEffect as typeof useEffectType;
@@ -2227,7 +2306,9 @@ function SharePanel(props: {
   const [showItems, setShowItems] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<(SavedShare & { updated: boolean }) | null>(
+  const [saved, setSaved] = useState<
+    (SavedShare & { outcome: "created" | "updated" | "existing" }) | null
+  >(
     null,
   );
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -2388,6 +2469,7 @@ function SharePanel(props: {
     try {
       const result = await listShares();
       setCodes(result.codes);
+      props.onCodeCount(result.codes.length);
       setMaxCodes(result.max);
     } catch (error) {
       showShareFailure(error, setCodesError);
@@ -2441,11 +2523,23 @@ function SharePanel(props: {
       const result = compose.code
         ? await updateShare(compose.code.code, name.trim(), keys)
         : await createShare(name.trim(), keys);
-      setSaved({ ...result, updated: compose.code !== null });
+      setSaved({ ...result, outcome: compose.code ? "updated" : "created" });
       setCompose(null);
       setDraft(null);
       await loadCodes();
     } catch (error) {
+      // Another of the account's codes holds this setup already: that code
+      // is shown instead of a copy.
+      if (
+        error instanceof AccountError &&
+        error.code === "same_setup" &&
+        error.share
+      ) {
+        setSaved({ ...error.share, leftOut: 0, outcome: "existing" });
+        setCompose(null);
+        setDraft(null);
+        return;
+      }
       showShareFailure(error, setShareError);
       // A code made but not published yet is listed, for Update to finish.
       if (error instanceof AccountError && error.code === "publish_failed") {
@@ -2480,25 +2574,22 @@ function SharePanel(props: {
 
   return (
     <>
-      <div className="syncify-setting">
-        <span className="syncify-setting-text">
-          <span>Have a code?</span>
-          <span className="syncify-muted">Load a setup someone shared</span>
-        </span>
-      </div>
       <form
-        className="syncify-field"
+        className="syncify-field syncify-share-load"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
           if (!fetching && !applying && input.trim()) void previewCode();
         }}
       >
+        <label className="syncify-share-load-label" htmlFor="syncify-share-input">
+          Load a setup
+        </label>
         <input
           className="syncify-input syncify-share-input"
+          id="syncify-share-input"
           type="text"
-          aria-label="Share code or link"
-          placeholder="SYN-7KQ2M9"
+          placeholder="Paste a code or a link"
           autoComplete="off"
           spellCheck={false}
           value={input}
@@ -2612,7 +2703,7 @@ function SharePanel(props: {
               <span>Share this setup</span>
               <span className="syncify-muted">
                 {codes && codes.length > 0 && maxCodes !== null
-                  ? `${codes.length} of ${maxCodes} codes`
+                  ? codesLeft(maxCodes - codes.length)
                   : "Get a code anyone can load"}
               </span>
             </span>
@@ -2719,7 +2810,11 @@ function SharePanel(props: {
             <div className="syncify-confirm">
               <span className="syncify-manual-header">
                 <span className="syncify-confirm-title">
-                  {saved.updated ? "Code updated" : "Your code is ready"}
+                  {saved.outcome === "existing"
+                    ? "You already shared this setup"
+                    : saved.outcome === "updated"
+                      ? "Code updated"
+                      : "Your code is ready"}
                 </span>
                 <button
                   className="syncify-icon-button"
@@ -2738,7 +2833,7 @@ function SharePanel(props: {
                   type="button"
                   onClick={() => void copy(displayCode(saved.code), "saved-code")}
                 >
-                  {copied === "saved-code" ? "Copied" : "Copy code"}
+                  {copied === "saved-code" ? "Copied" : "Copy"}
                 </button>
                 {saved.link ? (
                   <button
@@ -2746,7 +2841,7 @@ function SharePanel(props: {
                     type="button"
                     onClick={() => void copy(saved.link!, "saved-link")}
                   >
-                    {copied === "saved-link" ? "Copied" : "Copy link"}
+                    {copied === "saved-link" ? "Copied" : "Get link"}
                   </button>
                 ) : null}
               </span>
@@ -2791,7 +2886,7 @@ function SharePanel(props: {
                           : [
                               code.name ? displayCode(code.code) : null,
                               formatCount(code.item_count, "item"),
-                              formatCount(code.imports, "import"),
+                              `Used by ${code.imports}`,
                             ]
                               .filter(Boolean)
                               .join(" · ")}
@@ -2828,13 +2923,22 @@ function SharePanel(props: {
                           >
                             Update
                           </button>
+                          <button
+                            className="syncify-text-button"
+                            type="button"
+                            onClick={() =>
+                              void copy(displayCode(code.code), `code:${code.code}`)
+                            }
+                          >
+                            {copied === `code:${code.code}` ? "Copied" : "Copy"}
+                          </button>
                           {code.link ? (
                             <button
                               className="syncify-text-button"
                               type="button"
-                              onClick={() => void copy(code.link!, code.code)}
+                              onClick={() => void copy(code.link!, `link:${code.code}`)}
                             >
-                              {copied === code.code ? "Copied" : "Copy link"}
+                              {copied === `link:${code.code}` ? "Copied" : "Get link"}
                             </button>
                           ) : null}
                           <button
@@ -2935,7 +3039,13 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** "1 item", "3 imports" */
+/** "4 codes left", or what to do at the limit. */
+function codesLeft(left: number): string {
+  if (left <= 0) return "No codes left, delete one to make another";
+  return `${left} ${left === 1 ? "code" : "codes"} left`;
+}
+
+/** "1 item", "3 items" */
 function formatCount(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
@@ -2976,6 +3086,8 @@ function AccordionSection(props: {
   title: string;
   openSection: AccordionSectionId | null;
   onToggle(section: AccordionSectionId | null): void;
+  /** Shown while closed: what matters there at a glance. */
+  status?: SectionStatus | null;
   children?: ReactNode;
 }) {
   const React = Spicetify.React;
@@ -2992,6 +3104,25 @@ function AccordionSection(props: {
         onClick={() => props.onToggle(isOpen ? null : props.id)}
       >
         <span className="syncify-accordion-title">{props.title}</span>
+        {!isOpen && props.status ? (
+          <span
+            className="syncify-accordion-status"
+            data-kind={props.status.kind}
+            role="img"
+            aria-label={props.status.label}
+            title={props.status.label}
+          >
+            {props.status.kind === "ok" ? (
+              <CircleCheckIcon />
+            ) : props.status.kind === "warning" ? (
+              <CircleAlertIcon />
+            ) : props.status.kind === "pending" ? (
+              <ClockIcon />
+            ) : props.status.kind === "count" ? (
+              props.status.text
+            ) : null}
+          </span>
+        ) : null}
         <ChevronIcon />
       </button>
       {isOpen ? (
@@ -3029,6 +3160,55 @@ function WarningIcon() {
       <path d="M12 3 2 21h20z" />
       <path d="M12 10v5" />
       <path d="M12 18h.01" />
+    </svg>
+  );
+}
+
+/** What a closed section's row shows. */
+interface SectionStatus {
+  kind: "ok" | "warning" | "pending" | "count" | "dot";
+  label: string;
+  /** The number a count shows. */
+  text?: string;
+}
+
+/**
+ * Account's closed row: a check when signed in with this backup secured, a
+ * clock while linking finishes, an alert when something needs a sign-in or
+ * securing.
+ */
+function accountStatus(
+  session: AccountSession | null | undefined,
+  locked: LockedError["code"] | null,
+  secure: SecureState,
+): SectionStatus | null {
+  if (locked) return { kind: "warning", label: "Sign in to see your backups" };
+  if (!session) return null;
+  if (secure.kind === "secured") return { kind: "ok", label: "Signed in, backup secured" };
+  if (secure.kind === "pending") return { kind: "pending", label: "Linking this Spotify account" };
+  if (secure.kind === "open" || secure.kind === "cancelled") {
+    return { kind: "warning", label: "Backup not secured yet" };
+  }
+  return { kind: "ok", label: "Signed in" };
+}
+
+function CircleCheckIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function CircleAlertIcon() {
+  const React = Spicetify.React;
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
     </svg>
   );
 }

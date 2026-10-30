@@ -1,5 +1,6 @@
 import appStyles from "./styles/app.css";
 import syncifyIcon from "../assets/icon.svg";
+import syncifyMark from "../assets/mark.svg";
 import { runStartupSyncCheck } from "./core/startupSync";
 import { checkRestore, watchScriptsIfRestored } from "./core/restoreSummary";
 import { getProjectConfig } from "./core/projectConfig";
@@ -347,6 +348,17 @@ function prepareSyncifyModalShell(container: Element): void {
   requestAnimationFrame(() => {
     const shell = findSyncifyModalShell(container);
     shell?.classList.add("syncify-modal-shell");
+
+    // The mark before the window's title, once per window.
+    const title = shell?.querySelector<HTMLElement>(
+      ".main-trackCreditsModal-header h1",
+    );
+    if (title && !title.querySelector(".syncify-modal-mark")) {
+      const mark = document.createElement("span");
+      mark.className = "syncify-modal-mark";
+      mark.innerHTML = syncifyMark;
+      title.prepend(mark);
+    }
 
     const closeButton = shell?.querySelector<HTMLButtonElement>(
       'button[aria-label*="close" i], button[title*="close" i], .main-trackCreditsModal-header button:last-of-type',

@@ -48,6 +48,8 @@ export class AccountError extends Error {
     readonly code: string,
     /** Seconds until it's worth trying again, from `retry-after`. */
     readonly retryAfter: number | null = null,
+    /** The code a share code refusal points to, such as the one that already holds this setup. */
+    readonly share: { code: string; link: string | null } | null = null,
   ) {
     super(ERROR_MESSAGES[code] ?? "Sign-in failed. Try again.");
     this.name = "AccountError";
@@ -272,6 +274,7 @@ async function request(
 
   const data = (await response.json().catch(() => null)) as {
     code?: unknown;
+    share?: { code?: unknown; link?: unknown };
   } | null;
   if (response.ok) return data;
 
@@ -288,11 +291,15 @@ async function request(
   if (code === "signed_out") await clearSession();
 
   const retryAfter = Number(response.headers.get("retry-after"));
+  const share = data?.share;
   throw new AccountError(
     code,
     Number.isFinite(retryAfter) && retryAfter > 0
       ? retryAfter
       : (RETRY_AFTER_SECONDS[code] ?? null),
+    typeof share?.code === "string"
+      ? { code: share.code, link: typeof share.link === "string" ? share.link : null }
+      : null,
   );
 }
 

@@ -18,6 +18,18 @@
     line-height: 1.25 !important;
 }
 
+/* The mark before the title. */
+.syncify-modal-shell .main-trackCreditsModal-header h1 {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.syncify-modal-mark {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
 .syncify-modal-shell .main-trackCreditsModal-mainSection,
 .syncify-modal-shell .main-trackCreditsModal-content,
 .main-trackCreditsModal-mainSection:has(.syncify-panel),
@@ -42,6 +54,9 @@
     color: var(--spice-subtext) !important;
     background: transparent !important;
     cursor: pointer !important;
+    /* A tall window reaches up under Spotify's title bar, which drags the
+       window and takes the clicks. */
+    -webkit-app-region: no-drag !important;
     transition:
         color 120ms ease,
         background-color 120ms ease,
@@ -284,6 +299,53 @@
     stroke-linecap: round;
     stroke-linejoin: round;
     transition: transform 150ms ease;
+}
+
+/* A closed section's status, as an icon before its chevron. */
+.syncify-accordion-status {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.syncify-accordion-status svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.syncify-accordion-status[data-kind="ok"] {
+    color: var(--syncify-accent);
+}
+
+.syncify-accordion-status[data-kind="warning"],
+.syncify-accordion-status[data-kind="pending"] {
+    color: var(--syncify-warning);
+}
+
+.syncify-accordion-status[data-kind="count"] {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: var(--syncify-text);
+    background: var(--syncify-surface-hover);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.syncify-accordion-status[data-kind="dot"]::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--syncify-accent);
 }
 
 [aria-expanded="true"] > .syncify-chevron {
@@ -656,10 +718,32 @@
 
 /* Share codes */
 
-.syncify-share-input,
 .syncify-share-code code {
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
     letter-spacing: 0.05em;
+}
+
+/* The code field: as tall and round as the Preview button beside it, in the
+   code font once something is typed. */
+.syncify-share-input {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px transparent;
+    transition: box-shadow 120ms ease;
+}
+
+.syncify-share-input:not(:placeholder-shown) {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    letter-spacing: 0.05em;
+}
+
+.syncify-share-input:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 1px var(--syncify-muted);
+}
+
+.syncify-share-input + .syncify-button {
+    height: 40px;
 }
 
 /* Add to my setup and Replace my setup, side by side. */
@@ -674,9 +758,22 @@
     width: auto;
 }
 
-/* Sharing sits apart from loading a code. */
+/* Loading a code, then sharing this setup, split by a dashed line: solid
+   lines only split sections. */
+.syncify-share-load {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+}
+
+.syncify-share-load-label {
+    flex: 0 0 auto;
+    color: var(--syncify-text);
+}
+
 .syncify-share-part {
-    margin-top: 8px;
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--syncify-divider);
 }
 
 .syncify-share-code {
@@ -693,8 +790,28 @@
     color: var(--syncify-error);
 }
 
+/* Your codes, one card with a row per code. */
+section[aria-label="Your codes"] {
+    margin-top: 8px;
+}
+
 .syncify-share-codes {
-    gap: 4px;
+    padding: 0 12px;
+    border-radius: 8px;
+    background: var(--syncify-surface);
+}
+
+.syncify-share-codes > li {
+    padding: 10px 0;
+}
+
+.syncify-share-codes > li + li {
+    border-top: 1px dashed var(--syncify-divider);
+}
+
+/* Spotify turns text selection off; a code's name and code can be selected. */
+.syncify-share-codes .syncify-setting-text {
+    user-select: text;
 }
 
 /* Buttons */
@@ -986,7 +1103,4 @@ label.syncify-setting {
         max-width: none;
     }
 
-    .syncify-share-codes {
-        gap: 12px;
-    }
 }

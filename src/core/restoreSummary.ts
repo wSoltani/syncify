@@ -113,11 +113,11 @@ export async function checkRestore(): Promise<void> {
     manual: pending.manual,
   });
   const complete = count.loaded === count.total && pending.manual.length === 0;
-  const done = pending.kind === "share" ? "setup loaded" : "backup restored";
+  const done = pending.kind === "share" ? "Setup applied" : "Backup restored";
   const partly = pending.kind === "share" ? "loaded" : "restored";
   Spicetify.showNotification(
     complete
-      ? `Syncify: ${done}. ${describeLoaded(count)}.`
+      ? `Syncify: ${done}; ${count.total} ${count.total === 1 ? "item" : "items"}`
       : `Syncify: ${partly} ${count.loaded} of ${count.total}. Open Syncify for details.`,
     false,
     8000,
@@ -134,10 +134,6 @@ export function manualCommands(items: ManualItem[]): string[] {
         : `spicetify config current_theme ${quote(item.name)}${item.scheme ? ` color_scheme ${quote(item.scheme)}` : ""}`,
   );
   return lines.length > 0 ? [...lines, "spicetify apply"] : [];
-}
-
-function describeLoaded(count: { loaded: number; total: number }): string {
-  return count.total === 1 ? "It loaded" : `All ${count.total} loaded`;
 }
 
 // Names are already limited to letters, digits and . _ - + @ / ( ) and
