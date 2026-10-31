@@ -1,6 +1,7 @@
 import {
   collectMarketplaceKeys,
   leftoverKeys,
+  readActiveTheme,
   writeMarketplaceKeys,
 } from "./marketplace";
 import {
@@ -193,7 +194,7 @@ export function shareKeys(
     shared[listKey] = JSON.stringify(list);
     for (const key of list) shared[key] = keys[key];
   }
-  const theme = activeTheme(keys[THEME_KEY]);
+  const theme = readActiveTheme(keys[THEME_KEY]);
   if (theme && included.some((item) => item.key === theme)) {
     shared[THEME_KEY] = keys[THEME_KEY];
   }
@@ -207,28 +208,36 @@ export function shareKeys(
  * with this device's copy of items in both. Replacing works like a restore:
  * items only here are removed, except Syncify itself. Either way the code's
  * theme becomes the active one, which shows only when Spicetify's config
- * uses Marketplace's theme; otherwise that's a step to do manually.
+ * uses Marketplace's theme; otherwise that's a step to do manually. The
+ * preview says so when that theme isn't this device's active one
+ * (localTheme).
  */
 export function previewShare(
   file: ShareFile,
   codeItems: InstalledItem[],
   localItems: InstalledItem[],
   localConfig: SyncifySpicetifyConfig | null,
+  localTheme: string | null,
   mode: ShareMode,
 ): RestorePreview {
   const preview =
     mode === "replace"
       ? previewRestore(codeItems, undefined, localItems, localConfig)
       : previewAdd(codeItems, localItems);
-  const theme = activeTheme(file.keys[THEME_KEY]);
+  const theme = readActiveTheme(file.keys[THEME_KEY]);
   const needsTheme =
     theme !== null &&
     codeItems.some((item) => item.key === theme) &&
     localConfig !== null &&
     localConfig.current_theme !== MARKETPLACE_THEME;
+  const switching =
+    theme !== null && theme !== localTheme
+      ? codeItems.find((item) => item.key === theme)
+      : undefined;
   return {
     ...preview,
     manual: needsTheme ? [{ type: "theme", name: MARKETPLACE_THEME }] : [],
+    ...(switching ? { theme: { key: switching.key, name: switching.name } } : {}),
   };
 }
 
@@ -325,7 +334,7 @@ export async function applyShare(
     writes[listKey] = JSON.stringify(list);
   }
 
-  const theme = activeTheme(file.keys[THEME_KEY]);
+  const theme = readActiveTheme(file.keys[THEME_KEY]);
   const themes = parseList(writes["marketplace:installed-themes"]);
   if (theme && themes.includes(theme) && !skipped.includes(theme)) {
     writes[THEME_KEY] = file.keys[THEME_KEY];
@@ -354,18 +363,6 @@ function snippetEntry(
     description: listed.description,
     ...(listed.imageURL ? { imageURL: listed.imageURL } : {}),
   });
-}
-
-// Marketplace stores the active theme's key as it is; older versions as JSON.
-function activeTheme(raw: string | undefined): string | null {
-  if (!raw) return null;
-  if (raw.startsWith(ENTRY_PREFIX)) return raw;
-  try {
-    const parsed = JSON.parse(raw);
-    return typeof parsed === "string" ? parsed : null;
-  } catch {
-    return null;
-  }
 }
 
 function parseList(raw: string | undefined): string[] {

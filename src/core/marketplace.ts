@@ -98,7 +98,23 @@ export async function summarizeMarketplaceState(): Promise<SyncifySnapshotSummar
     items: listItems(keys),
     spicetifyConfig,
     marketplaceAvailable: isMarketplaceAvailable(keys),
+    activeTheme: readActiveTheme(keys[ACTIVE_THEME_KEY]),
   };
+}
+
+/**
+ * The active theme's key as Marketplace stores it: the key itself, or JSON
+ * text of it in older versions. Null when none is set.
+ */
+export function readActiveTheme(raw: string | undefined): string | null {
+  if (!raw) return null;
+  if (raw.startsWith(INSTALLED_ITEM_PREFIX)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "string" ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function createPayload(): Promise<SyncifyPayload> {

@@ -38,6 +38,11 @@ export interface RestorePreview {
   counts: Record<ItemChange, number>;
   /** In the backup's Spicetify config but not this device's. */
   manual: ManualItem[];
+  /**
+   * Loading a share code: the code's theme, when it becomes the active one
+   * in place of this device's.
+   */
+  theme?: { key: string; name: string };
 }
 
 const LISTS: [string, ItemType][] = [
