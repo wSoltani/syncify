@@ -48,6 +48,11 @@ export interface SyncifyBackupInfo {
    * Spotify account hasn't approved.
    */
   kind: "rolling" | "anchor" | "pinned" | "quarantined";
+  /**
+   * Given on the website, the only place backups are named. Shown here, never
+   * set here. Null or missing when it has none (older Workers send none).
+   */
+  name?: string | null;
 }
 
 export interface SyncifyRemoteState {
@@ -151,4 +156,6 @@ export interface SyncifySnapshotSummary {
   /** Null when this Spicetify has no config to read. */
   spicetifyConfig: SyncifySpicetifyConfig | null;
   marketplaceAvailable: boolean;
+  /** Marketplace's active theme's key, null when none is set. */
+  activeTheme: string | null;
 }

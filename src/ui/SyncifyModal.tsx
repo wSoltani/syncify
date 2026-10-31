@@ -191,6 +191,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   );
   const [localConfig, setLocalConfig] =
     useState<SyncifySpicetifyConfig | null>(null);
+  const [localTheme, setLocalTheme] = useState<string | null>(null);
   const [marketplaceAvailable, setMarketplaceAvailable] = useState<
     boolean | null
   >(null);
@@ -486,6 +487,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
     setLocalItems(summary.installedItems);
     setLocalItemDetails(summary.items);
     setLocalConfig(summary.spicetifyConfig);
+    setLocalTheme(summary.activeTheme);
     setMarketplaceAvailable(summary.marketplaceAvailable);
     return summary;
   }
@@ -893,6 +895,8 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
     const isOnDevice = backup.payload_hash === localHash;
     const date = formatBackupDate(backup.metadata.last_sync_datetime);
     const items = formatItemCount(countBackupItems(backup));
+    // Named on the website; Syncify shows names but doesn't set them.
+    const name = backup.backup?.name ?? null;
 
     return (
       <button
@@ -923,6 +927,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
               <span className="syncify-backup-note">· updated weekly</span>
             </span>
             <span className="syncify-muted">
+              {name ? `${name} · ` : ""}
               {date} · {items}
             </span>
           </span>
@@ -934,6 +939,13 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
             </span>
             <span className="syncify-muted">
               {items} · from {backup.metadata.device_info}
+            </span>
+          </span>
+        ) : name ? (
+          <span className="syncify-backup-text">
+            <span>{name}</span>
+            <span className="syncify-muted syncify-backup-date">
+              {date} · {items} · from {backup.metadata.device_info}
             </span>
           </span>
         ) : (
@@ -1318,9 +1330,10 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
                   <p className="syncify-confirm-title">
                     Restore{" "}
                     {selectedRestorePayload
-                      ? formatBackupDate(
+                      ? (selectedRestorePayload.backup?.name ??
+                        formatBackupDate(
                           selectedRestorePayload.metadata.last_sync_datetime,
-                        )
+                        ))
                       : "this backup"}
                     ?
                   </p>
@@ -1413,6 +1426,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
             session={session}
             localItems={localItemDetails}
             localConfig={localConfig}
+            localTheme={localTheme}
             marketplaceAvailable={marketplaceAvailable}
             busy={isBusy}
             onSignIn={() => toggleSection("account")}
@@ -1651,7 +1665,7 @@ function RestoreChanges(props: {
   onToggle(): void;
 }) {
   const React = Spicetify.React;
-  const { items, counts, manual } = props.preview;
+  const { items, counts, manual, theme } = props.preview;
   const offCount = [...props.off].filter((key) => !props.allowed.has(key)).length;
 
   return (
@@ -1674,6 +1688,9 @@ function RestoreChanges(props: {
           <span className="syncify-chip">
             {manual.length} to add manually
           </span>
+        ) : null}
+        {theme && (!props.off.has(theme.key) || props.allowed.has(theme.key)) ? (
+          <span className="syncify-chip">Switches your theme to {theme.name}</span>
         ) : null}
         {offCount ? (
           <span className="syncify-chip" data-change="off">
@@ -2325,6 +2342,8 @@ function SharePanel(props: {
   session: AccountSession | null | undefined;
   localItems: InstalledItem[];
   localConfig: SyncifySpicetifyConfig | null;
+  /** Marketplace's active theme here, null when none is set. */
+  localTheme: string | null;
   marketplaceAvailable: boolean | null;
   /** A backup or a restore is running. */
   busy: boolean;
@@ -2403,10 +2422,11 @@ function SharePanel(props: {
             shared.items,
             props.localItems,
             props.localConfig,
+            props.localTheme,
             mode,
           )
         : null,
-    [shared, props.localItems, props.localConfig, mode],
+    [shared, props.localItems, props.localConfig, props.localTheme, mode],
   );
   // Only what the code writes is checked: what it adds, and when replacing,
   // its copy of what's here too. Adding keeps this device's copies as they are.
