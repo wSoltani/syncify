@@ -22,7 +22,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   too_many_codes: "You can't make more share codes. Delete one to make another.",
   daily_limit: "Too many changes to share codes today. Try again tomorrow.",
   too_large: "This setup is too big to share.",
-  invalid_name: "Names are up to 60 characters.",
+  invalid_name: "Names can be up to 60 characters.",
   empty: "There's nothing to share yet. Install something from Marketplace first.",
   invalid_items: "Syncify couldn't read some items. Reload Spotify and try again.",
   source: "Some items don't load from GitHub. Reload Spotify and try again.",
