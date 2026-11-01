@@ -425,7 +425,7 @@ export function SyncifyModal(
   const otherAccounts = linkedAccounts
     .map((account, index) => ({
       hash: account.hash,
-      label: `Spotify account ${index + 1}${account.device_info ? ` · from ${account.device_info}` : ""}`,
+      label: `Spotify account ${index + 1}${account.device_info ? ` from ${account.device_info}` : ""}`,
     }))
     .filter((account) => account.hash !== claims?.hash);
   // Restoring overwrites this device, so warn when what's here now can't be
@@ -973,36 +973,41 @@ export function SyncifyModal(
         {options?.isSafetyCopy ? (
           <span className="syncify-backup-text">
             <span>
-              Safety copy{" "}
-              <span className="syncify-backup-note">· updated weekly</span>
+              Safety copy
+              <span className="syncify-backup-note">
+                <Sep />
+                updated weekly
+              </span>
             </span>
             <span className="syncify-muted">
-              {name ? `${name} · ` : ""}
-              {date} · {items}
+              <Parts parts={[name, date, items]} />
             </span>
           </span>
         ) : options?.isUnapproved ? (
           <span className="syncify-backup-text">
             <span>
-              Not approved{" "}
-              <span className="syncify-backup-note">· {date}</span>
+              Not approved
+              <span className="syncify-backup-note">
+                <Sep />
+                {date}
+              </span>
             </span>
             <span className="syncify-muted">
-              {items} · from {backup.metadata.device_info}
+              <Parts parts={[items, `from ${backup.metadata.device_info}`]} />
             </span>
           </span>
         ) : name ? (
           <span className="syncify-backup-text">
             <span>{name}</span>
             <span className="syncify-muted syncify-backup-date">
-              {date} · {items} · from {backup.metadata.device_info}
+              <Parts parts={[date, items, `from ${backup.metadata.device_info}`]} />
             </span>
           </span>
         ) : (
           <span className="syncify-backup-text">
             <span className="syncify-backup-date">{date}</span>
             <span className="syncify-muted">
-              {items} · from {backup.metadata.device_info}
+              <Parts parts={[items, `from ${backup.metadata.device_info}`]} />
             </span>
           </span>
         )}
@@ -1243,8 +1248,12 @@ export function SyncifyModal(
           <div className="syncify-status-text">
             <h3 className="syncify-status-title">{statusTitle}</h3>
             <p className="syncify-muted">
-              {statusDetail ? `${statusDetail} · ` : ""}
-              {formatItemCount(installedItemCount)} on this device
+              <Parts
+                parts={[
+                  ...(Array.isArray(statusDetail) ? statusDetail : [statusDetail]),
+                  `${formatItemCount(installedItemCount)} on this device`,
+                ]}
+              />
             </p>
           </div>
         )}
@@ -1675,7 +1684,7 @@ export function SyncifyModal(
                   : openExternal(`${projectConfig.githubUrl}#updating`)
               }
             >
-              {newerVersion} is out · {loadedByLoader ? "Reload" : "How to update"}
+              <Parts parts={[`${newerVersion} is out`, loadedByLoader ? "Reload" : "How to update"]} />
             </button>
           ) : null}
         </span>
@@ -1815,8 +1824,8 @@ function RestoreChanges(props: {
                         {item.name}
                         {item.repo ? (
                           <span className="syncify-change-detail">
-                            {" "}
-                            · {item.repo}
+                            <Sep />
+                            {item.repo}
                           </span>
                         ) : null}
                       </span>
@@ -1856,8 +1865,8 @@ function RestoreChanges(props: {
                     <span className="syncify-change-name">
                       {item.name}
                       <span className="syncify-change-detail">
-                        {" "}
-                        · {MANUAL_LABELS[item.type]}
+                        <Sep />
+                        {MANUAL_LABELS[item.type]}
                         {item.scheme ? `, ${item.scheme}` : ""}
                       </span>
                     </span>
@@ -2176,21 +2185,29 @@ function AccountPanel(props: {
             <span className="syncify-account-email">{session.email}</span>
             {secure.kind === "secured" ? (
               <span className="syncify-muted">
-                Backup secured ·{" "}
-                {secure.linkedCount === 1
-                  ? "1 Spotify account linked"
-                  : `${secure.linkedCount} Spotify accounts linked`}
+                <Parts
+                  parts={[
+                    "Backup secured",
+                    secure.linkedCount === 1
+                      ? "1 Spotify account linked"
+                      : `${secure.linkedCount} Spotify accounts linked`,
+                  ]}
+                />
               </span>
             ) : secure.kind === "pending" ? (
               <span className="syncify-muted syncify-account-state">
                 <ClockIcon />
                 <span>
-                  Securing this backup ·{" "}
-                  {secure.waiting
-                    ? "waiting on sign-in"
-                    : secure.held
-                      ? "in review"
-                      : `final ${formatFinalDate(secure.finalAt)}`}
+                  <Parts
+                    parts={[
+                      "Securing this backup",
+                      secure.waiting
+                        ? "waiting on sign-in"
+                        : secure.held
+                          ? "in review"
+                          : `final ${formatFinalDate(secure.finalAt)}`,
+                    ]}
+                  />
                 </span>
               </span>
             ) : secure.kind === "other-account" ? (
@@ -3234,14 +3251,16 @@ function SharePanel(props: {
                           ? code.posted
                             ? "Delete it? Its link stops working and its post comes off Discover."
                             : "Delete it? Its link stops working."
-                          : [
-                              code.name ? displayCode(code.code) : null,
-                              formatCount(code.item_count, "item"),
-                              `Used by ${code.imports}`,
-                              code.hearts === null ? null : formatCount(code.hearts, "heart"),
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
+                          : (
+                            <Parts
+                              parts={[
+                                code.name ? displayCode(code.code) : null,
+                                formatCount(code.item_count, "item"),
+                                `Used by ${code.imports}`,
+                                code.hearts === null ? null : formatCount(code.hearts, "heart"),
+                              ]}
+                            />
+                          )}
                       </span>
                     </span>
                     <span className="syncify-account-actions">
@@ -3353,8 +3372,8 @@ function ShareItems(props: { items: InstalledItem[]; leftOut: SourceChecks }) {
                       {item.name}
                       {item.repo ? (
                         <span className="syncify-change-detail">
-                          {" "}
-                          · {item.repo}
+                          <Sep />
+                          {item.repo}
                         </span>
                       ) : null}
                     </span>
@@ -3400,6 +3419,29 @@ function codesLeft(left: number): string {
 // Syncify's kind colors, one square per item, as on the website's cards.
 // At most PIPS_MAX, so a big setup's row stays one line.
 const PIPS_MAX = 12;
+
+// The dot between facts, drawn, never a character.
+function Sep() {
+  const React = Spicetify.React;
+  return <span className="syncify-sep" aria-hidden="true" />;
+}
+
+// Facts with a drawn dot between each, empty ones left out. One span, so a
+// flex row treats it as one item.
+function Parts(props: { parts: (string | null | undefined | false)[] }) {
+  const React = Spicetify.React;
+  const shown = props.parts.filter((part): part is string => Boolean(part));
+  return (
+    <span className="syncify-parts">
+      {shown.map((part, index) => (
+        <React.Fragment key={index}>
+          {index > 0 ? <Sep /> : null}
+          {part}
+        </React.Fragment>
+      ))}
+    </span>
+  );
+}
 
 function Pips(props: { pick: SharePick }) {
   const React = Spicetify.React;
@@ -3688,7 +3730,7 @@ function describeChanges(
   backupItems: string[],
   localItems: string[],
   localConfig: SyncifySpicetifyConfig | null,
-): string {
+): string[] {
   const inBackup = new Set(backupItems);
   const onDevice = new Set(localItems);
   const added = localItems.filter((item) => !inBackup.has(item)).length;
@@ -3710,7 +3752,7 @@ function describeChanges(
   const summary = changes.length
     ? `${changes.join(", ")} since ${date}`
     : `Last backup ${date}`;
-  return configUnsaved ? `${summary} · Spicetify config not saved yet` : summary;
+  return configUnsaved ? [summary, "Spicetify config not saved yet"] : [summary];
 }
 
 function formatItemCount(count: number): string {
