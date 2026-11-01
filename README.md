@@ -42,7 +42,7 @@ Syncify updates itself: like other self-updating extensions, it loads its latest
 
 ### Security note
 
-Syncify finds your backup by a hash of your Spotify username. Usernames are often public, and until recently that hash was all anyone needed to read your backup or replace it. A replaced backup could add extensions or themes from anywhere when you restored it.
+Syncify finds your backup by a hash of your Spotify username. Usernames are often public, so that hash was all anyone needed to read your backup, and until recently to replace it. A replaced backup could add extensions or themes from anywhere when you restored it.
 
 What protects backups now:
 

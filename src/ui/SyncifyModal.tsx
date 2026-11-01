@@ -619,16 +619,18 @@ export function SyncifyModal(
   // Opened from the launch panel's Secure while signed in: secure at once,
   // once the claim status says it can be.
   useEffect(() => {
-    if (!props.secure || securedFromPanel.current) return;
+    if (!props.secure || securedFromPanel.current || securing) return;
     if (!session || secureState.kind !== "open" || locked) return;
     securedFromPanel.current = true;
     void runSecure();
-  }, [session, secureState.kind, locked]);
+  }, [session, secureState.kind, locked, securing]);
 
   // Signing in from "Secure your backup" claims it at once. Signing in to a
   // locked backup only unlocks it.
   function handleSignedIn(signedIn: AccountSession) {
     setSession(signedIn);
+    // Signing in secures it below, so the launch panel's effect doesn't too.
+    securedFromPanel.current = true;
     if (!locked && remotePayload) {
       void runSecure();
     } else {
