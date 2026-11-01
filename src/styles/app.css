@@ -883,6 +883,54 @@ section[aria-label="Your codes"] {
     padding: 10px 0;
 }
 
+/* Syncify picks: each item a square in its kind's color (Syncify's kind
+   colors, as on the website), then the count. */
+.syncify-pick-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.syncify-pips {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.syncify-pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.syncify-pip[data-kind="extension"] {
+    background: #6cd1d1;
+}
+
+.syncify-pip[data-kind="theme"] {
+    background: #efa4c1;
+}
+
+.syncify-pip[data-kind="snippet"] {
+    background: #d3c48c;
+}
+
+/* Your codes, with new hearts beside it when there are any. */
+.syncify-codes-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.syncify-codes-heading .syncify-tag {
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.syncify-tag[data-tone="new"] {
+    color: var(--syncify-accent-text);
+    background: var(--syncify-accent);
+}
+
 .syncify-share-codes > li + li {
     border-top: 1px dashed var(--syncify-divider);
 }

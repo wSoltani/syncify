@@ -46,12 +46,14 @@ import {
   createShare,
   deleteShare,
   describeShareError,
+  fetchPicks,
   fetchShare,
   listShares,
   profileUrl,
   updateShare,
   type SavedShare,
   type ShareCode,
+  type SharePick,
   type ShareProfile,
 } from "../api/sharesApi";
 import { isSameSpicetifyConfig } from "../core/spicetifyConfig";
@@ -2447,7 +2449,14 @@ function SharePanel(props: {
   const [shared, setShared] = useState<{
     file: ShareFile;
     items: InstalledItem[];
+    /** Loaded from Syncify picks. */
+    pick: boolean;
   } | null>(null);
+  // Syncify picks, read once when this section opens; null until Discover
+  // opens (no picks file), which also hides Find more setups.
+  const [picks, setPicks] = useState<SharePick[] | null>(null);
+  // The pick whose Preview is loading, for its row's button.
+  const [previewing, setPreviewing] = useState<string | null>(null);
   const [mode, setMode] = useState<ShareMode>("add");
   const [showChanges, setShowChanges] = useState(false);
   const [allowed, setAllowed] = useState<Set<string>>(() => new Set());
@@ -2462,6 +2471,10 @@ function SharePanel(props: {
 
   // Sharing, signed in.
   const [codes, setCodes] = useState<ShareCode[] | null>(null);
+  const [newHearts, setNewHearts] = useState(0);
+  // Reading the codes marks new hearts seen, so only the section's first
+  // read sets the chip: the reloads after Delete or Update would clear it.
+  const heartsRead = useRef(false);
   const [maxCodes, setMaxCodes] = useState<number | null>(null);
   // The account's handle; without one, a first code asks for it, filled
   // with the service's suggestion.
@@ -2600,16 +2613,21 @@ function SharePanel(props: {
     };
   }, [writtenItems, localChecks]);
 
+  useEffect(() => {
+    void fetchPicks().then(setPicks);
+  }, []);
+
   // The account's codes, read when this section opens, never at startup.
   useEffect(() => {
     setCodes(null);
     setCompose(null);
     setSaved(null);
+    heartsRead.current = false;
     if (session) void loadCodes();
   }, [session?.token]);
 
-  async function previewCode() {
-    const code = parseCode(input);
+  async function previewCode(picked?: string) {
+    const code = picked ?? parseCode(input);
     setLoadError(null);
     setShared(null);
     if (!code) {
@@ -2618,17 +2636,19 @@ function SharePanel(props: {
     }
 
     setFetching(true);
+    setPreviewing(picked ?? null);
     try {
       const file = await fetchShare(code);
       setMode("add");
       setAllowed(new Set());
       setShowChanges(false);
-      setShared({ file, items: listItems(file.keys) });
+      setShared({ file, items: listItems(file.keys), pick: picked !== undefined });
       void fetchSnippetCatalog().then(setSnippets);
     } catch (error) {
       setLoadError(describeShareError(error));
     } finally {
       setFetching(false);
+      setPreviewing(null);
     }
   }
 
@@ -2643,6 +2663,7 @@ function SharePanel(props: {
         mode,
         skippedItems,
         snippets ?? null,
+        shared.pick,
       );
       Spicetify.showNotification("Syncify: setup loaded. Reloading…");
       // What to add manually is shown after the reload, with the commands.
@@ -2665,6 +2686,10 @@ function SharePanel(props: {
     try {
       const result = await listShares();
       setCodes(result.codes);
+      if (!heartsRead.current) {
+        heartsRead.current = true;
+        setNewHearts(result.newHearts);
+      }
       props.onCodeCount(result.codes.length);
       setMaxCodes(result.max);
       setProfile(result.profile);
@@ -2902,6 +2927,48 @@ function SharePanel(props: {
             </div>
           )}
         </div>
+      ) : null}
+
+      {picks ? (
+        <section className="syncify-share-part" aria-label={picks.length > 0 ? "Syncify picks" : "Discover"}>
+          {picks.length > 0 ? <h5 className="syncify-change-group">Syncify picks</h5> : null}
+          <ul className="syncify-change-list syncify-share-codes">
+            {picks.map((pick) => (
+              <li className="syncify-setting" key={pick.code}>
+                <span className="syncify-setting-text">
+                  <span className="syncify-account-email">{pick.name}</span>
+                  <span className="syncify-muted syncify-pick-detail">
+                    <Pips pick={pick} />
+                    {formatCount(pick.extensions + pick.themes + pick.snippets, "item")}
+                  </span>
+                </span>
+                <button
+                  className="syncify-text-button"
+                  type="button"
+                  disabled={fetching || applying}
+                  onClick={() => void previewCode(pick.code)}
+                >
+                  {previewing === pick.code ? "Loading…" : "Preview"}
+                </button>
+              </li>
+            ))}
+            <li className="syncify-setting">
+              <span className="syncify-setting-text">
+                <span>Find more setups</span>
+                <span className="syncify-muted">People's setups on Discover</span>
+              </span>
+              <button
+                className="syncify-button secondary"
+                type="button"
+                onClick={() =>
+                  window.open(`${getProjectConfig().webUrl.replace(/\/+$/, "")}/discover`, "_blank", "noopener,noreferrer")
+                }
+              >
+                Open Discover
+              </button>
+            </li>
+          </ul>
+        </section>
       ) : null}
 
       {session === undefined ? null : !session ? (
@@ -3147,7 +3214,14 @@ function SharePanel(props: {
 
           {codes && codes.length > 0 ? (
             <section aria-label="Your codes">
-              <h5 className="syncify-change-group">Your codes</h5>
+              <h5 className="syncify-change-group syncify-codes-heading">
+                Your codes
+                {newHearts > 0 ? (
+                  <span className="syncify-tag" data-tone="new">
+                    {formatCount(newHearts, "new heart")}
+                  </span>
+                ) : null}
+              </h5>
               <ul className="syncify-change-list syncify-share-codes">
                 {codes.map((code) => (
                   <li className="syncify-setting" key={code.code}>
@@ -3157,11 +3231,14 @@ function SharePanel(props: {
                       </span>
                       <span className="syncify-muted">
                         {confirmDelete === code.code
-                          ? "Delete it? Its link stops working."
+                          ? code.posted
+                            ? "Delete it? Its link stops working and its post comes off Discover."
+                            : "Delete it? Its link stops working."
                           : [
                               code.name ? displayCode(code.code) : null,
                               formatCount(code.item_count, "item"),
                               `Used by ${code.imports}`,
+                              code.hearts === null ? null : formatCount(code.hearts, "heart"),
                             ]
                               .filter(Boolean)
                               .join(" · ")}
@@ -3318,6 +3395,27 @@ async function copyToClipboard(text: string): Promise<boolean> {
 function codesLeft(left: number): string {
   if (left <= 0) return "No codes left, delete one to make another";
   return `${left} ${left === 1 ? "code" : "codes"} left`;
+}
+
+// Syncify's kind colors, one square per item, as on the website's cards.
+// At most PIPS_MAX, so a big setup's row stays one line.
+const PIPS_MAX = 12;
+
+function Pips(props: { pick: SharePick }) {
+  const React = Spicetify.React;
+  const { extensions, themes, snippets } = props.pick;
+  const kinds = [
+    ...Array<string>(Math.min(extensions, PIPS_MAX)).fill("extension"),
+    ...Array<string>(Math.min(themes, PIPS_MAX)).fill("theme"),
+    ...Array<string>(Math.min(snippets, PIPS_MAX)).fill("snippet"),
+  ].slice(0, PIPS_MAX);
+  return (
+    <span className="syncify-pips" aria-hidden="true">
+      {kinds.map((kind, index) => (
+        <span className="syncify-pip" data-kind={kind} key={index} />
+      ))}
+    </span>
+  );
 }
 
 /** "1 item", "3 items" */

@@ -196,6 +196,7 @@ export class SafetyBackupError extends Error {
  * Loads a share code: a backup of this setup first, then the code's items.
  * When the backup can't be made, nothing changes. A backup that's unchanged,
  * or kept apart until this install is approved, is saved all the same.
+ * `pick`: it came from Syncify picks.
  */
 export async function loadShare(
   config: SyncifyConfig,
@@ -203,6 +204,7 @@ export async function loadShare(
   mode: ShareMode,
   skipped: string[],
   catalog: SnippetCatalog | null,
+  pick = false,
 ): Promise<number> {
   try {
     await backupNow(config);
@@ -215,7 +217,7 @@ export async function loadShare(
   // Counted by the service. Not awaited: it finishes on its own while
   // Spotify reloads, and a failure doesn't matter to the load.
   void getUserIdentity()
-    .then((identity) => reportShareImport(file.code, identity))
+    .then((identity) => reportShareImport(file.code, identity, pick))
     .catch(() => {});
   return written;
 }

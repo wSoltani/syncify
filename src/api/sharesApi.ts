@@ -1,5 +1,5 @@
 import { getProjectConfig } from "../core/projectConfig";
-import { readShareFile, type ShareFile } from "../core/shareCodes";
+import { displayCode, readShareFile, type ShareFile } from "../core/shareCodes";
 import type { UserIdentity } from "../core/user";
 import {
   AccountError,
@@ -16,6 +16,8 @@ const UPDATE_PATH = `${SHARES_PATH}/update`;
 const DELETE_PATH = `${SHARES_PATH}/delete`;
 const IMPORT_PATH = `${SHARES_PATH}/import`;
 const USER_HASH_HEADER = "x-syncify-user-hash";
+// Syncify picks on the share host, written by the service.
+const PICKS_FILE = "discover/presets.json";
 
 const ERROR_MESSAGES: Record<string, string> = {
   no_code: "This code doesn't exist.",
@@ -58,6 +60,19 @@ export interface ShareCode {
   imports: number;
   created_at: number;
   updated_at: number;
+  /** Hearts on its Discover post while it's public, null otherwise. */
+  hearts: number | null;
+  /** It has a Discover post, in any state but removed: deleting the code deletes it. */
+  posted: boolean;
+}
+
+/** A Syncify pick: a setup Syncify suggests, loaded like any code. */
+export interface SharePick {
+  code: string;
+  name: string;
+  extensions: number;
+  themes: number;
+  snippets: number;
 }
 
 /** The handle the account's codes show, "by @handle". */
@@ -106,6 +121,8 @@ export function describeShareError(
  */
 export async function listShares(): Promise<{
   codes: ShareCode[];
+  /** Hearts the account's setups got since it last looked. */
+  newHearts: number;
   max: number | null;
   profile: ShareProfile | null;
   suggestedHandle: string | null;
@@ -113,6 +130,7 @@ export async function listShares(): Promise<{
   const result = (await signedRequest(SHARES_PATH, "GET")) as {
     codes?: unknown;
     max?: unknown;
+    new_hearts?: unknown;
     profile?: { handle?: unknown; link?: unknown } | null;
     suggested_handle?: unknown;
   } | null;
@@ -123,6 +141,7 @@ export async function listShares(): Promise<{
           return code ? [code] : [];
         })
       : [],
+    newHearts: typeof result?.new_hearts === "number" ? result.new_hearts : 0,
     max: typeof result?.max === "number" ? result.max : null,
     profile:
       typeof result?.profile?.handle === "string"
@@ -209,16 +228,40 @@ export async function fetchShare(code: string): Promise<ShareFile> {
 }
 
 /**
+ * Syncify picks, from their file on the share host (no request to the
+ * service). The service writes it only once Discover is open, so null (no
+ * file, or it can't be read) means Discover isn't there: neither the picks
+ * nor Find more setups show. An empty list is Discover open with no picks.
+ */
+export async function fetchPicks(): Promise<SharePick[] | null> {
+  const base = getProjectConfig().shareUrl.replace(/\/+$/, "");
+  try {
+    const response = await fetch(`${base}/${PICKS_FILE}`);
+    if (!response.ok) return null;
+    const file = (await response.json()) as { posts?: unknown };
+    if (!Array.isArray(file.posts)) return null;
+    return file.posts.flatMap((value) => {
+      const pick = readPick(value);
+      return pick ? [pick] : [];
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lets the service count a code loaded on this Spotify account, once per
  * code. Signed when this device is signed in. Sent as Spotify reloads, so it
- * uses keepalive, and it never fails the load itself.
+ * uses keepalive, and it never fails the load itself. `pick`: it was loaded
+ * from Syncify picks, which the service also counts apart.
  */
 export async function reportShareImport(
   code: string,
   identity: UserIdentity,
+  pick = false,
 ): Promise<void> {
   try {
-    await sendSignedIfPossible(IMPORT_PATH, { code }, {
+    await sendSignedIfPossible(IMPORT_PATH, { code, ...(pick ? { source: "preset" } : {}) }, {
       [USER_HASH_HEADER]: identity.hash,
     });
   } catch {
@@ -237,6 +280,34 @@ function readShareCode(value: unknown): ShareCode | null {
     imports: typeof row.imports === "number" ? row.imports : 0,
     created_at: typeof row.created_at === "number" ? row.created_at : 0,
     updated_at: typeof row.updated_at === "number" ? row.updated_at : 0,
+    hearts: readHearts((value as { post?: unknown }).post),
+    posted: readPosted((value as { post?: unknown }).post),
+  };
+}
+
+function readPosted(post: unknown): boolean {
+  const status = (post as { status?: unknown } | null)?.status;
+  return typeof status === "string" && status !== "removed";
+}
+
+// A code's hearts from its post, while the post is public.
+function readHearts(post: unknown): number | null {
+  const value = post as { status?: unknown; hidden?: unknown; hearts?: unknown } | null;
+  return value?.status === "public" && value.hidden !== true && typeof value.hearts === "number"
+    ? value.hearts
+    : null;
+}
+
+function readPick(value: unknown): SharePick | null {
+  const row = value as Partial<SharePick> | null;
+  const count = (n: unknown) => (Number.isSafeInteger(n) && (n as number) >= 0 ? (n as number) : 0);
+  if (!row || typeof row.code !== "string") return null;
+  return {
+    code: row.code,
+    name: typeof row.name === "string" ? row.name : displayCode(row.code),
+    extensions: count(row.extensions),
+    themes: count(row.themes),
+    snippets: count(row.snippets),
   };
 }
 
