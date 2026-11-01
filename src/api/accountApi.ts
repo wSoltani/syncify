@@ -64,10 +64,19 @@ export function describeAccountError(error: unknown): string {
 }
 
 /** Emails a sign-in code. Resolves with the seconds until another can be sent. */
-export async function sendCode(email: string): Promise<number> {
+export async function sendCode(
+  email: string,
+  options: { nudge?: boolean } = {},
+): Promise<number> {
   const result = (await request(SEND_CODE_PATH, {
     method: "POST",
-    body: JSON.stringify({ email, type: "sign-in" }),
+    // A code asked from the Secure nudge counts against its share of the
+    // day's emails.
+    body: JSON.stringify({
+      email,
+      type: "sign-in",
+      ...(options.nudge ? { nudge: true } : {}),
+    }),
   })) as { resend_in?: unknown } | null;
   return typeof result?.resend_in === "number" ? result.resend_in : 60;
 }

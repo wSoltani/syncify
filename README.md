@@ -40,6 +40,19 @@ Syncify updates itself: like other self-updating extensions, it loads its latest
 - Syncify needs [Spicetify Marketplace](https://github.com/spicetify/marketplace). Anything you set up manually in Spicetify's config is listed in your backups, but you add it back yourself; Syncify gives you the commands.
 - **Privacy:** Syncify keeps a one-way hash of your Spotify username and your backups, plus your email if you sign in. You can delete everything any time. [What Syncify stores](https://github.com/wSoltani/Syncify/blob/master/PRIVACY.md)
 
+### Security note
+
+Syncify finds your backup by a hash of your Spotify username. Usernames are often public, and until recently that hash was all anyone needed to read your backup or replace it. A replaced backup could add extensions or themes from anywhere when you restored it.
+
+What protects backups now:
+
+- A backup you secure with your email is locked. Only your account can restore it or back up to it (1.9.0)
+- Before a restore, Syncify shows what will change and warns about anything that doesn't load from GitHub or is blocked by Marketplace
+- Syncify keeps a safety copy of your setup that a burst of new backups can't replace
+- Backups from a new install wait until you approve them from one you already use (1.11.0)
+
+Anyone who knows your username can still restore a backup that isn't secured, or claim it before you do. To secure yours, open Syncify, press **Secure** and enter your email.
+
 ### Support
 
 If Syncify saved your setup, consider supporting the project:

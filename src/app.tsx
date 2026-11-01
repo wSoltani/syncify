@@ -11,6 +11,8 @@ import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { SyncifyModal } from "./ui/SyncifyModal";
 import { ClaimNotice } from "./ui/ClaimNotice";
 import { InstallNotice } from "./ui/InstallNotice";
+import { NudgeNotice } from "./ui/NudgeNotice";
+import { markNudgePanelShown } from "./core/nudge";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "./types/syncify";
 
 const LOG_PREFIX = "[Syncify]";
@@ -63,7 +65,7 @@ function main(): void {
   });
   applyEntryPoint(config.entryPoint);
   initShortcut(config.shortcut, openSyncifyModal);
-  void runStartupSyncCheck({ onClaim: (claim) => void openClaimNotice(claim), onInstall: openInstallNotice }).catch((error) => {
+  void runStartupSyncCheck({ onClaim: (claim) => void openClaimNotice(claim), onInstall: openInstallNotice, onNudge: openNudgeNotice }).catch((error) => {
     warn("Startup sync check failed", error);
   });
   void checkRestore().catch((error) => {
@@ -321,6 +323,21 @@ function openInstallNotice(install: SyncifyWaitingInstall): void {
       { className: "syncify-panel" },
       Spicetify.React.createElement(InstallNotice, { install, onDone: close, onClose: close }),
     ),
+  );
+}
+
+// The Secure nudge's launch panel, once per install. Secure opens Syncify at
+// its Account section to secure the backup.
+function openNudgeNotice(): void {
+  // Syncify's own window already shows the nudge.
+  if (openModal?.container.isConnected) return;
+  debug("Opening nudge notice");
+  markNudgePanelShown();
+  openWindow(
+    Spicetify.React.createElement(NudgeNotice, {
+      onSecure: () => openWindow(Spicetify.React.createElement(SyncifyModal, { section: "account", secure: true })),
+      onClose: () => Spicetify.PopupModal.hide(),
+    }),
   );
 }
 

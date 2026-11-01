@@ -68,6 +68,11 @@ export interface SyncifyRemoteState {
   unapproved: SyncifyPayload[];
   /** Whether this Spotify account trusts this install, and who's waiting. */
   install: SyncifyInstallState | null;
+  /**
+   * The backup service asks for the Secure nudge: this Spotify account has
+   * backups, no account and no pending claim, and the nudge is open to it today.
+   */
+  nudge: boolean;
 }
 
 /**

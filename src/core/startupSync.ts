@@ -2,14 +2,19 @@ import { fetchRemoteState, backupNow, fetchLaunchNotices } from "./syncService";
 import { InstallRefusedError, LockedError } from "../api/syncifyApi";
 import { loadConfig } from "./config";
 import { shouldBlockAutoBackup, summarizeMarketplaceState } from "./marketplace";
+import { wasNudgePanelShown } from "./nudge";
 import type { SyncifyClaim, SyncifyRemoteState, SyncifyWaitingInstall } from "../types/syncify";
 
 type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
 
-/** What a launch can open: someone else's claim, or else a new install waiting for approval. */
+/**
+ * What a launch can open: someone else's claim, or else a new install waiting
+ * for approval, or else the Secure nudge's panel, once per install.
+ */
 export interface LaunchNotices {
   onClaim(claim: PendingClaim): void;
   onInstall(install: SyncifyWaitingInstall): void;
+  onNudge(): void;
 }
 
 // The local day of the last launch check made with auto-backup off.
@@ -19,7 +24,8 @@ const CLAIM_CHECK_KEY = "syncify:claim-check-day";
  * At launch: with auto-backup on, the backup check, and the backup when
  * something changed. With it off, a check for claims on the first launch of
  * each day. Either way someone else's pending claim opens `onClaim`, or
- * without one a new install waiting for this one's approval opens `onInstall`.
+ * without one a new install waiting for this one's approval opens `onInstall`,
+ * or without either the Secure nudge opens `onNudge`, once per install.
  */
 export async function runStartupSyncCheck(notices: LaunchNotices): Promise<void> {
   const config = loadConfig();
@@ -73,11 +79,12 @@ async function checkClaimOncePerDay(notices: LaunchNotices): Promise<void> {
   }
 }
 
-function openNotice(remote: Pick<SyncifyRemoteState, "claim" | "install">, notices: LaunchNotices): void {
+function openNotice(remote: Pick<SyncifyRemoteState, "claim" | "install" | "nudge">, notices: LaunchNotices): void {
   const claim = otherClaim(remote.claim);
   const waiting = remote.install?.waiting[0];
   if (claim) notices.onClaim(claim);
   else if (waiting) notices.onInstall(waiting);
+  else if (remote.nudge && !wasNudgePanelShown()) notices.onNudge();
 }
 
 function otherClaim(claim: SyncifyClaim | null): PendingClaim | null {
