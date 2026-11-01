@@ -3420,10 +3420,16 @@ function codesLeft(left: number): string {
 // At most PIPS_MAX, so a big setup's row stays one line.
 const PIPS_MAX = 12;
 
-// The dot between facts, drawn, never a character.
+// The dot between facts, drawn, never a character. A hidden ", " keeps the
+// facts apart for screen readers and copying.
 function Sep() {
   const React = Spicetify.React;
-  return <span className="syncify-sep" aria-hidden="true" />;
+  return (
+    <>
+      <span className="syncify-sep" aria-hidden="true" />
+      <span className="syncify-sr-only">, </span>
+    </>
+  );
 }
 
 // Facts with a drawn dot between each, empty ones left out. One span, so a
