@@ -13,7 +13,9 @@ You don't need an account. Without one, your backups follow the Spotify account 
 - **Share codes:** for each code you create, its name if you give one, the Marketplace items in it, when it was made and changed, and how many times it was imported. A code and its page are public: anyone with the code or the link can see its name and items. Never extension settings or your Spicetify config.
 - **Your handle:** the name you pick when you first share a setup or on your account page, like @mellow-beat427, and when you last changed it. It's public: your share pages show it, and its profile page lists your codes. It's never made from your email or your Spotify username. When you change it or delete your account, the old one is kept for 30 days so nobody else can take it while old links still point to it.
 - **Imports of share codes:** when you apply someone's code, the hash of your Spotify username is kept with that code, so each Spotify account counts once.
-- **Discovery posts (coming soon):** the setups you post, with their title, description and screenshots, and the hearts you give and get. Screenshots are checked by Cloudflare's Workers AI before anyone sees them.
+- **Discover posts:** for each share code you post to Discover, its description, up to 3 screenshots, when it was posted and changed, and whether it's public, waiting for a check or not allowed. A public post is public like its code: anyone can see it, its screenshots and your handle. Screenshots are checked by Cloudflare's Workers AI (Clef-flash) before anyone sees them, and its answer is kept with each one. Some wait for Syncify to look at them.
+- **Hearts:** which setups you hearted and when, so you can heart each once, and how many hearts you gave or took back today, so one account can't give too many. Others see only how many hearts a setup has, never who gave them. Syncify counts the hearts your setups get, and each month's, to show you new hearts.
+- **Reports:** when you report a setup or a handle, which one, why and when, so Syncify can look at it. The person you report never sees who reported them.
 
 Sign-in codes go out by email through Resend, Brevo or Mailjet, so they see your email address. Syncify only emails sign-in codes.
 
@@ -33,9 +35,10 @@ You can link more than one Spotify account to the same Syncify account.
 
 ## Deleting your data
 
-- **With an account:** sign in at [syncify.wsoltani.com](https://syncify.wsoltani.com/account) and press **Delete everything**. It deletes your account, your email, your signed-in devices, your share codes and their pages, your handle and its profile page, and every linked Spotify account with all its backups, activity counts and the codes it imported. This can't be undone.
+- **With an account:** sign in at [syncify.wsoltani.com](https://syncify.wsoltani.com/account) and press **Delete everything**. It deletes your account, your email, your signed-in devices, your share codes and their pages, your Discover posts and their screenshots, the hearts you gave, your reports, your handle and its profile page, and every linked Spotify account with all its backups, activity counts and the codes it imported. This can't be undone.
 - **Without an account:** secure your backup first, then delete everything once it's secured.
-- **One share code:** delete it in Syncify or on your account page. Its link stops working, and who imported it goes with it.
+- **One share code:** delete it in Syncify or on your account page. Its link stops working, and who imported it goes with it, with its Discover post and hearts.
+- **One Discover post:** press **Remove from Discover** on your account page. Its screenshots and hearts are deleted, and the code stays.
 - **Data you stop using:** a Spotify account without a Syncify account that hasn't used Syncify for 12 months is deleted with all its backups and the codes it imported. A Syncify account with no sign-in for 12 months, and none of its linked Spotify accounts using Syncify in that time, is deleted entirely, the same as Delete everything.
 
 Backups that are deleted or replaced by newer ones stay in storage for about 9 more days, out of reach in Syncify, so they can be brought back if Syncify is ever attacked. After that they're erased.
