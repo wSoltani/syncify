@@ -62,6 +62,8 @@ export interface ShareCode {
   updated_at: number;
   /** Hearts on its Discover post while it's public, null otherwise. */
   hearts: number | null;
+  /** It has a Discover post, in any state but removed: deleting the code deletes it. */
+  posted: boolean;
 }
 
 /** A Syncify pick: a setup Syncify suggests, loaded like any code. */
@@ -227,23 +229,23 @@ export async function fetchShare(code: string): Promise<ShareFile> {
 
 /**
  * Syncify picks, from their file on the share host (no request to the
- * service). Empty until Discover opens, when the file is first written, and
- * whenever it can't be read: the group just doesn't show.
+ * service). The service writes it only once Discover is open, so null (no
+ * file, or it can't be read) means Discover isn't there: neither the picks
+ * nor Find more setups show. An empty list is Discover open with no picks.
  */
-export async function fetchPicks(): Promise<SharePick[]> {
+export async function fetchPicks(): Promise<SharePick[] | null> {
   const base = getProjectConfig().shareUrl.replace(/\/+$/, "");
   try {
     const response = await fetch(`${base}/${PICKS_FILE}`);
-    if (!response.ok) return [];
+    if (!response.ok) return null;
     const file = (await response.json()) as { posts?: unknown };
-    return Array.isArray(file.posts)
-      ? file.posts.flatMap((value) => {
-          const pick = readPick(value);
-          return pick ? [pick] : [];
-        })
-      : [];
+    if (!Array.isArray(file.posts)) return null;
+    return file.posts.flatMap((value) => {
+      const pick = readPick(value);
+      return pick ? [pick] : [];
+    });
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -279,7 +281,13 @@ function readShareCode(value: unknown): ShareCode | null {
     created_at: typeof row.created_at === "number" ? row.created_at : 0,
     updated_at: typeof row.updated_at === "number" ? row.updated_at : 0,
     hearts: readHearts((value as { post?: unknown }).post),
+    posted: readPosted((value as { post?: unknown }).post),
   };
+}
+
+function readPosted(post: unknown): boolean {
+  const status = (post as { status?: unknown } | null)?.status;
+  return typeof status === "string" && status !== "removed";
 }
 
 // A code's hearts from its post, while the post is public.
@@ -292,7 +300,7 @@ function readHearts(post: unknown): number | null {
 
 function readPick(value: unknown): SharePick | null {
   const row = value as Partial<SharePick> | null;
-  const count = (n: unknown) => (typeof n === "number" && n >= 0 ? n : 0);
+  const count = (n: unknown) => (Number.isSafeInteger(n) && (n as number) >= 0 ? (n as number) : 0);
   if (!row || typeof row.code !== "string") return null;
   return {
     code: row.code,
