@@ -485,6 +485,22 @@
     font-size: 12px;
 }
 
+/* The dot between facts: drawn, its middle on the middle of the capitals. */
+.syncify-sep {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 4px;
+    height: 4px;
+    margin: 0 0.4em;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: calc(0.5cap - 2px);
+}
+
+.syncify-parts {
+    min-width: 0;
+}
+
 .syncify-tag {
     flex: 0 0 auto;
     padding: 2px 8px;
