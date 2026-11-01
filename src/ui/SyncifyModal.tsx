@@ -61,6 +61,7 @@ import {
   UnsupportedVersionError,
 } from "../api/syncifyApi";
 import { describeWaitingInstall } from "./InstallNotice";
+import { hideNudge, isNudgeHidden } from "../core/nudge";
 import { ClaimError, type ClaimStatus } from "../api/claimsApi";
 import {
   AccountError,
@@ -171,8 +172,14 @@ let lastCheck: {
   claims: (ClaimStatus & { hash: string }) | null;
 } | null = null;
 
-/** section: the part to open with, as That's me, sign in opens Account. */
-export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
+/**
+ * section: the part to open with, as That's me, sign in opens Account.
+ * secure: opened from the Secure nudge's launch panel, so signing in secures
+ * the backup, and signed in it's secured at once.
+ */
+export function SyncifyModal(
+  props: { section?: AccordionSectionId; secure?: boolean } = {},
+) {
   const React = Spicetify.React;
   const useEffect = React.useEffect as typeof useEffectType;
   const useMemo = React.useMemo as typeof useMemoType;
@@ -256,6 +263,14 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   >(() => lastCheck?.claims ?? null);
   const [securing, setSecuring] = useState(false);
   const [secureError, setSecureError] = useState<string | null>(null);
+  // The Secure nudge: whether the backup service asks for it, whether Not now
+  // hides it on this device, and whether a sign-in started from it.
+  const [remoteNudge, setRemoteNudge] = useState(
+    () => lastCheck?.remote.nudge ?? false,
+  );
+  const [nudgeHidden, setNudgeHidden] = useState(() => isNudgeHidden());
+  const [fromNudge, setFromNudge] = useState(props.secure === true);
+  const securedFromPanel = useRef(false);
   const [cancelling, setCancelling] = useState(false);
   // The linked Spotify account whose backups are shown; null for this one.
   const [linkedHash, setLinkedHash] = useState<string | null>(null);
@@ -381,6 +396,15 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
   const otherClaim =
     remoteClaim?.status === "pending" && !remoteClaim.mine ? remoteClaim : null;
   const secureState = describeSecureState(claims, locked, otherClaim !== null);
+  // Signed out, the backup service decides; signed in, securing sends no
+  // email, so any backup that isn't secured yet shows it. Account says the
+  // same once open.
+  const showNudge =
+    !nudgeHidden &&
+    !locked &&
+    remotePayload !== null &&
+    openSection !== "account" &&
+    (session ? secureState.kind === "open" : session === null && remoteNudge);
   // A new install waiting for this one to approve it, one at a time.
   const waitingInstall = installState?.waiting[0] ?? null;
   // This install's own backups are kept apart until it's approved or signs
@@ -537,6 +561,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
       setSafetyCopy(remote.safetyCopy);
       setUnapproved(remote.unapproved);
       setInstallState(remote.install);
+      setRemoteNudge(remote.nudge);
       setSelectedRestorePayload(remote.payload);
       setRemoteChecked(true);
       setStatus(remote.exists ? "success" : "idle");
@@ -579,10 +604,33 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
     }
   }
 
+  /** The nudge's Secure: signed in it secures, signed out Account opens. */
+  function secureFromNudge() {
+    setFromNudge(true);
+    if (session) void runSecure();
+    else toggleSection("account");
+  }
+
+  function dismissNudge() {
+    hideNudge();
+    setNudgeHidden(true);
+  }
+
+  // Opened from the launch panel's Secure while signed in: secure at once,
+  // once the claim status says it can be.
+  useEffect(() => {
+    if (!props.secure || securedFromPanel.current || securing) return;
+    if (!session || secureState.kind !== "open" || locked) return;
+    securedFromPanel.current = true;
+    void runSecure();
+  }, [session, secureState.kind, locked, securing]);
+
   // Signing in from "Secure your backup" claims it at once. Signing in to a
   // locked backup only unlocks it.
   function handleSignedIn(signedIn: AccountSession) {
     setSession(signedIn);
+    // Signing in secures it below, so the launch panel's effect doesn't too.
+    securedFromPanel.current = true;
     if (!locked && remotePayload) {
       void runSecure();
     } else {
@@ -1225,6 +1273,34 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
         )}
       </section>
 
+      {showNudge ? (
+        <div className="syncify-nudge" role="region" aria-label="Secure your backup">
+          <ShieldIcon />
+          <span className="syncify-setting-text">
+            <span>Secure your backup</span>
+            <span className="syncify-muted">So only you can restore it</span>
+          </span>
+          <span className="syncify-nudge-actions">
+            <button
+              className="syncify-text-button"
+              type="button"
+              onClick={dismissNudge}
+              disabled={securing}
+            >
+              Not now
+            </button>
+            <button
+              className="syncify-button"
+              type="button"
+              onClick={secureFromNudge}
+              disabled={securing || isBusy}
+            >
+              {securing ? "Securing…" : "Secure"}
+            </button>
+          </span>
+        </div>
+      ) : null}
+
       {!remoteChecked ||
       locked ||
       remoteBackups.length > 0 ||
@@ -1455,6 +1531,7 @@ export function SyncifyModal(props: { section?: AccordionSectionId } = {}) {
             securing={securing}
             secureError={secureError}
             onSecure={() => void runSecure()}
+            nudge={fromNudge}
             onSignedIn={handleSignedIn}
             onSignedOut={handleSignedOut}
             onOpenWebsite={openExternal}
@@ -1889,6 +1966,8 @@ function AccountPanel(props: {
   securing: boolean;
   secureError: string | null;
   onSecure(): void;
+  /** Sign-in started from the Secure nudge: its code says so. */
+  nudge: boolean;
   onSignedIn(session: AccountSession): void;
   onSignedOut(): void;
   onOpenWebsite(url: string): void;
@@ -1982,7 +2061,7 @@ function AccountPanel(props: {
     setBusy(true);
     setError(null);
     try {
-      const resendIn = await sendCode(target);
+      const resendIn = await sendCode(target, { nudge: props.nudge });
       updateDraft({
         email: target,
         codeSentAt: Date.now(),
@@ -3493,6 +3572,7 @@ const NO_REMOTE_STATE: SyncifyRemoteState = {
   claim: null,
   unapproved: [],
   install: null,
+  nudge: false,
 };
 
 const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [

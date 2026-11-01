@@ -142,12 +142,12 @@ async function withCurrentHash(
  */
 export async function fetchLaunchNotices(
   config: SyncifyConfig,
-): Promise<Pick<SyncifyRemoteState, "claim" | "install">> {
+): Promise<Pick<SyncifyRemoteState, "claim" | "install" | "nudge">> {
   const remote = await downloadPayload(
     requireWorkerUrl(config),
     await getUserIdentity(),
   );
-  return { claim: remote.claim, install: remote.install };
+  return { claim: remote.claim, install: remote.install, nudge: remote.nudge };
 }
 
 /**

@@ -161,6 +161,7 @@ export async function downloadPayload(
       claim: readClaim(result?.claim),
       unapproved: [],
       install: readInstall(result?.install),
+      nudge: false,
     };
   }
 
@@ -171,12 +172,16 @@ export async function downloadPayload(
   const body = (await response.json()) as SyncifyPayload & {
     claim?: unknown;
     install?: unknown;
+    nudge?: unknown;
   };
-  // The notice of a pending claim and this install's state come with the backups.
+  // The notice of a pending claim, this install's state and the Secure nudge
+  // come with the backups.
   const claim = readClaim(body.claim);
   const install = readInstall(body.install);
+  const nudge = body.nudge === true;
   delete body.claim;
   delete body.install;
+  delete body.nudge;
   const all = [body, ...(body.backup_history ?? [])];
 
   if (!all.every((backup) => backup.backup)) {
@@ -188,6 +193,7 @@ export async function downloadPayload(
       claim,
       unapproved: [],
       install,
+      nudge,
     };
   }
 
@@ -209,6 +215,7 @@ export async function downloadPayload(
       claim,
       unapproved,
       install,
+      nudge,
     };
   }
 
@@ -222,10 +229,11 @@ export async function downloadPayload(
       claim,
       unapproved,
       install,
+      nudge,
     };
   }
 
-  return { exists: true, payload, backups, safetyCopy, claim, unapproved, install };
+  return { exists: true, payload, backups, safetyCopy, claim, unapproved, install, nudge };
 }
 
 /**

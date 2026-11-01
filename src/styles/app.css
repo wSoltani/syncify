@@ -210,6 +210,28 @@
     text-decoration: underline;
 }
 
+/* The Secure nudge, under the status */
+
+.syncify-nudge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: var(--syncify-surface);
+}
+
+.syncify-nudge .syncify-setting-text {
+    flex: 1 1 auto;
+}
+
+.syncify-nudge-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 16px;
+}
+
 /* Sections */
 
 .syncify-section {
