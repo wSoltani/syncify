@@ -497,6 +497,18 @@
     vertical-align: calc(0.5cap - 2px);
 }
 
+.syncify-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: pre;
+    border: 0;
+}
+
 .syncify-parts {
     min-width: 0;
 }
