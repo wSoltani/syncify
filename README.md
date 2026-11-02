@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://syncify.wsoltani.com"><img src="https://img.shields.io/badge/Website-syncify.wsoltani.com-6cd1d1" alt="Syncify website"></a>
   <a href="https://syncify.wsoltani.com/discord"><img src="https://img.shields.io/badge/Discord-Join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Join the Syncify Discord"></a>
 </p>
 
