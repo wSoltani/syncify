@@ -1231,9 +1231,11 @@ export function SyncifyModal(
                   ? "Nothing from Marketplace to load"
                   : `${restoreResult.loaded} of ${restoreResult.total} loaded`}
             </p>
-            {allLoaded && restoreResult.kind === "restore" ? (
+            {allLoaded ? (
               <p className="syncify-muted">
-                Syncify saved your setup?{" "}
+                {restoreResult.kind === "share"
+                  ? "Syncify set it up for you?"
+                  : "Syncify saved your setup?"}{" "}
                 <button
                   className="syncify-text-button syncify-inline-button"
                   type="button"
