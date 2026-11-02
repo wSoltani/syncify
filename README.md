@@ -8,53 +8,47 @@
 
 ## Using Syncify
 
-Syncify backs up the extensions, themes and snippets you installed from Spicetify Marketplace, so you can get them back in one click after a Spotify update, a reinstall, or on a new computer. Backups follow the Spotify account you're signed in with. Secure yours with your email so only you can restore it.
+Syncify backs up what you installed from Spicetify Marketplace, so you get it back in one click after a Spotify update or on a new computer.
 
 ### Install
 
-**From Marketplace (recommended):** search for **Syncify** in Marketplace and click Install.
+**From Marketplace (recommended):** search for **Syncify** and click Install.
 
-**Manually:** download `syncify.js` from the [latest release](https://github.com/wSoltani/Syncify/releases/latest), put it in your Spicetify `Extensions` folder (`%appdata%\spicetify\Extensions\` on Windows, `~/.config/spicetify/Extensions/` on macOS and Linux), then run:
+**Manually:** put `syncify.js` from the [latest release](https://github.com/wSoltani/Syncify/releases/latest) in your Spicetify `Extensions` folder, then run:
 
 ```bash
 spicetify config extensions syncify.js
 spicetify apply
 ```
 
+The folder is `%appdata%\spicetify\Extensions\` on Windows and `~/.config/spicetify/Extensions/` on macOS and Linux.
+
 ### How to use it
 
 Open Syncify from the top bar, your profile menu, or <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>.
 
-- **Back up now** saves your setup.
-- **Backups** keeps your 3 latest backups plus a weekly **safety copy**. **Current** marks the one on this device.
-- **Restore** shows what will be added and removed and flags anything that isn't from Marketplace. Spotify then reloads and Syncify tells you how much loaded.
-- **Back up automatically** (off by default) backs up when Spotify starts if something changed. It never replaces a bigger backup with a smaller one.
+- **Back up now** saves your setup
+- **Restore** shows what changes before anything happens
+- **Back up automatically** backs up when Spotify starts
 
-Change the shortcut and where the button shows under **Settings**.
+Syncify keeps your 3 latest backups and a weekly safety copy.
+
+### Secure your backup
+
+Press **Secure** in Syncify and enter your email. Only your account can then restore your backup or back up to it.
 
 ### Updating
 
-Syncify updates itself each time Spotify starts. Old versions stop backing up after a while, so if Syncify says yours is no longer supported:
+Syncify updates itself when Spotify starts. If it says your version is no longer supported:
 
-- **Marketplace install:** restart Spotify, or reinstall Syncify from Marketplace.
-- **Manual install:** download `syncify.js` from the [latest release](https://github.com/wSoltani/Syncify/releases/latest), replace the old one and run `spicetify apply`.
+- **Marketplace install:** restart Spotify or reinstall Syncify
+- **Manual install:** replace `syncify.js` with the [latest release](https://github.com/wSoltani/Syncify/releases/latest) and run `spicetify apply`
 
 ### Good to know
 
-- Syncify needs [Spicetify Marketplace](https://github.com/spicetify/marketplace). Things you set up manually in Spicetify's config are listed in your backups too. Syncify can't add them back for you, but it gives you the commands.
-- **Privacy:** Syncify stores your backups, a one-way hash of your Spotify username, and your email if you sign in. You can delete everything any time. [What Syncify stores](https://github.com/wSoltani/Syncify/blob/master/PRIVACY.md)
-
-### Keep your backup safe
-
-Syncify finds your backup by a hash of your Spotify username. Usernames are often public, so anyone who knows yours can restore a backup that isn't secured, or claim it before you do.
-
-To secure yours, open Syncify, press **Secure** and enter your email. After that, only your account can restore it or back up to it.
-
-Every backup also gets these:
-
-- Before a restore, Syncify shows what will change and warns about anything that doesn't load from GitHub or is blocked by Marketplace
-- A safety copy of your setup that a burst of new backups can't replace
-- Backups from a new install wait until you approve them from one you already use
+- Syncify needs [Spicetify Marketplace](https://github.com/spicetify/marketplace)
+- Things you set up manually in Spicetify's config are listed in your backups with the commands to add them back
+- You can delete everything any time. [What Syncify stores](https://github.com/wSoltani/Syncify/blob/master/PRIVACY.md)
 
 ### Support
 
@@ -64,7 +58,7 @@ If Syncify saved your setup, you can support it on Ko-fi:
 
 Starring the repo and sharing it help a lot too. 💚
 
-Found a bug or have an idea? [Open an issue](https://github.com/wSoltani/Syncify/issues/new) or ask in the [Syncify Discord](https://syncify.wsoltani.com/discord).
+Bug or idea? [Open an issue](https://github.com/wSoltani/Syncify/issues/new) or ask in the [Syncify Discord](https://syncify.wsoltani.com/discord).
 
 Check out [Netherstone](https://github.com/Netherstone-HQ/Netherstone)
 
