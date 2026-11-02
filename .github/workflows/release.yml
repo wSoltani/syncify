@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .node-version
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .node-version
       - name: Wait for jsDelivr to serve the release
         run: |
           url="https://cdn.jsdelivr.net/gh/wSoltani/syncify@${GITHUB_REF_NAME}/dist/syncify.bundle.js"

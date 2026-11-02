@@ -2,6 +2,7 @@
   "name": "syncify",
   "version": "1.15.2",
   "private": true,
+  "packageManager": "npm@11.19.1",
   "description": "Synchronize Spicetify Marketplace state across devices.",
   "type": "module",
   "scripts": {
