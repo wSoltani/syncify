@@ -33,9 +33,11 @@ Open Syncify from the top bar, your profile menu, or <kbd>Ctrl</kbd>+<kbd>Alt</k
 
 Syncify keeps your 3 latest backups and a weekly safety copy.
 
-### Secure your backup
+### Share and Discover
 
-Press **Secure** in Syncify and enter your email. Only your account can then restore your backup or back up to it.
+- Sign in, then **Share this setup** gives you a code anyone can load
+- Paste a code or a link under **Share** to load someone's setup
+- [Discover](https://syncify.wsoltani.com/discover) lists setups people posted, and you can post yours there
 
 ### Updating
 
