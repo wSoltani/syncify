@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .node-version
       - name: Write latest.json
         run: node scripts/release-pointer.mjs latest.json "$VERSION" --stable
       # The Release workflow publishes the GitHub release only once the tag's
