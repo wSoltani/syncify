@@ -1706,6 +1706,13 @@ export function SyncifyModal(
           <button
             className="syncify-text-button"
             type="button"
+            onClick={() => openExternal(projectConfig.discordUrl)}
+          >
+            Discord
+          </button>
+          <button
+            className="syncify-text-button"
+            type="button"
             onClick={() => openExternal(projectConfig.kofiUrl)}
           >
             Support on Ko-fi

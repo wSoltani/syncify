@@ -143,6 +143,8 @@ export interface SyncifyProjectConfig {
   webUrl: string;
   githubUrl: string;
   kofiUrl: string;
+  /** The Syncify Discord, through the website's /discord redirect. */
+  discordUrl: string;
   issueUrl: string;
   /** Where the release pointers (latest.json) are served. */
   releasesUrl: string;

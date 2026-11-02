@@ -61,6 +61,8 @@ If Syncify saved your setup, consider supporting the project:
 
 Starring the repo, sharing it and [reporting bugs](https://github.com/wSoltani/Syncify/issues/new) help a lot too. 💚
 
+Questions or ideas? Ask in the [Syncify Discord](https://syncify.wsoltani.com/discord).
+
 Check out [Netherstone](https://github.com/Netherstone-HQ/Netherstone)
 
 ---
