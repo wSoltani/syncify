@@ -46,7 +46,7 @@ Syncify updates itself each time Spotify starts. Old versions stop backing up af
 
 ### Keep your backup safe
 
-Syncify finds your backup by a hash of your Spotify username. Usernames are often public, so anyone who knows yours can restore a backup that isn't secured, or claim it before you do. Versions before 1.11.0 also let them replace it, so a restore could add extensions or themes from anywhere.
+Syncify finds your backup by a hash of your Spotify username. Usernames are often public, so anyone who knows yours can restore a backup that isn't secured, or claim it before you do.
 
 To secure yours, open Syncify, press **Secure** and enter your email. After that, only your account can restore it or back up to it.
 
