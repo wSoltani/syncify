@@ -22,6 +22,13 @@ jobs:
     environment: releases
     env:
       VERSION: ${{ inputs.version }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,15 +48,16 @@ jobs:
             || { echo "::error::v$VERSION is a draft or prerelease"; exit 1; }
           curl -fsS -o /dev/null "https://cdn.jsdelivr.net/gh/wSoltani/syncify@v$VERSION/dist/syncify.bundle.js" \
             || { echo "::error::jsDelivr doesn't serve v$VERSION's bundle"; exit 1; }
+      # Read from the bucket, not the public address, which is cached. Only
+      # the Discord post uses it, to stay quiet on a rollback.
+      - name: Read the current latest.json
+        run: |
+          if ! aws s3api get-object --endpoint-url "$R2_ENDPOINT" \
+              --bucket syncify-releases --key latest.json previous-latest.json \
+              > /dev/null 2> get-error.txt; then
+            grep -q NoSuchKey get-error.txt || { cat get-error.txt; exit 1; }
+          fi
       - name: Upload latest.json
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
-          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
-          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         run: |
           aws s3api put-object \
             --endpoint-url "$R2_ENDPOINT" \
@@ -58,3 +66,7 @@ jobs:
             --body latest.json \
             --content-type application/json \
             --cache-control "public, max-age=60"
+      - name: Post in the Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: node scripts/announce-release.mjs "$VERSION" previous-latest.json
