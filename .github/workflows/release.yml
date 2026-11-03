@@ -9,12 +9,12 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -47,7 +47,7 @@ jobs:
   # it to everyone.
   beta:
     needs: release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: releases
     # One pointer write at a time, so two tags pushed together can't race.
     concurrency:
@@ -62,10 +62,12 @@ jobs:
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
+          # Nothing to install here, and the job holds the R2 keys.
+          package-manager-cache: false
       - name: Wait for jsDelivr to serve the release
         run: |
           url="https://cdn.jsdelivr.net/gh/wSoltani/syncify@${GITHUB_REF_NAME}/dist/syncify.bundle.js"
