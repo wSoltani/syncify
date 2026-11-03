@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   promote:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: releases
     env:
       VERSION: ${{ inputs.version }}
@@ -30,10 +30,12 @@ jobs:
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
+          # Nothing to install here, and the job holds the R2 keys.
+          package-manager-cache: false
       - name: Write latest.json
         run: node scripts/release-pointer.mjs latest.json "$VERSION" --stable
       # The Release workflow publishes the GitHub release only once the tag's
