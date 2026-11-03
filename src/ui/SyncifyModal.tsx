@@ -3220,6 +3220,29 @@ function SharePanel(props: {
                     : `${saved.leftOut} snippets aren't in Marketplace's list anymore, so they were left out.`}
                 </p>
               ) : null}
+              {/* A new code, once Discover is open (picks is its file): the
+                  website's Post your setup, started on this code. */}
+              {saved.outcome === "created" && picks ? (
+                <div className="syncify-setting">
+                  <span className="syncify-setting-text">
+                    <span>Post it on Discover</span>
+                    <span className="syncify-muted">Let people find it and try it</span>
+                  </span>
+                  <button
+                    className="syncify-button secondary"
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        `${getProjectConfig().webUrl.replace(/\/+$/, "")}/discover?post=${encodeURIComponent(saved.code)}`,
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
+                    }
+                  >
+                    Post
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
