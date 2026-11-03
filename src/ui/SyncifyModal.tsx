@@ -372,10 +372,14 @@ export function SyncifyModal(
   const isBusy = status === "loading";
   const alertMessage =
     message?.kind === "warning" || message?.kind === "error" ? message : null;
-  const localDiffersFromBackup = Boolean(
-    remotePayload && localHash && remotePayload.payload_hash !== localHash,
-  );
+  // What's on this device is backed up when any of the backups holds it, so
+  // restoring an older backup doesn't ask to back the same data up again.
+  // The safety copy doesn't count: it's replaced every week.
   const isBackedUp = Boolean(
+    localHash && remoteBackups.some((backup) => backup.payload_hash === localHash),
+  );
+  const localDiffersFromBackup = Boolean(remotePayload && localHash && !isBackedUp);
+  const latestIsOnDevice = Boolean(
     remotePayload && localHash && remotePayload.payload_hash === localHash,
   );
   const selectedIsOnDevice = Boolean(
@@ -383,13 +387,13 @@ export function SyncifyModal(
       localHash &&
       selectedRestorePayload.payload_hash === localHash,
   );
-  // With everything backed up, only the latest backup is shown until asked.
+  // With the latest backup on this device, only it is shown until asked.
   // Otherwise the list stays open, so someone who came to restore sees it.
   // A linked account's backups are always shown in full.
   const backupsExpanded =
     linkedHash !== null ||
     showAllBackups ||
-    !isBackedUp ||
+    !latestIsOnDevice ||
     allBackups.length < 2;
   const visibleBackups = backupsExpanded
     ? shownBackups
@@ -1323,7 +1327,7 @@ export function SyncifyModal(
           <div className="syncify-section-header">
             <h4 className="syncify-section-title">Backups</h4>
             <span className="syncify-section-controls">
-              {!linkedHash && isBackedUp && allBackups.length > 1 ? (
+              {!linkedHash && latestIsOnDevice && allBackups.length > 1 ? (
                 <button
                   className="syncify-text-button syncify-disclosure"
                   type="button"

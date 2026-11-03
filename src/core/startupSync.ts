@@ -42,7 +42,8 @@ export async function runStartupSyncCheck(notices: LaunchNotices): Promise<void>
       return;
     }
 
-    if (remoteState.payload?.payload_hash === localSummary.hash) return;
+    // Already in a backup, such as one just restored: nothing new to save.
+    if (remoteState.backups.some((backup) => backup.payload_hash === localSummary.hash)) return;
     if (localSummary.keyCount === 0) return;
 
     const { unapproved } = await backupNow(config);
