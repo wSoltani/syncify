@@ -88,8 +88,9 @@ function openNotice(remote: Pick<SyncifyRemoteState, "claim" | "install" | "nudg
   else if (remote.nudge && !wasNudgePanelShown()) notices.onNudge();
 }
 
+// Someone else's claim, unless this install already pressed Not me on it.
 function otherClaim(claim: SyncifyClaim | null): PendingClaim | null {
-  return claim?.status === "pending" && !claim.mine ? claim : null;
+  return claim?.status === "pending" && !claim.mine && !claim.not_me ? claim : null;
 }
 
 function readCheckDay(): string | null {

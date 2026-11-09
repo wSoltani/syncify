@@ -106,13 +106,10 @@ export type SyncifyClaim =
       email: string | null;
       /** When it becomes final, in milliseconds, unless it's held. */
       final_at: number;
-      /** Held: it won't become final on its own yet. */
+      /** Held: Syncify checks it before it becomes final. */
       held: boolean;
-      /**
-       * Held only by installs that used this Spotify account without the
-       * claimer signed in: it goes through once the claimer signs in there.
-       */
-      waiting?: true;
+      /** This install pressed Not me, and Syncify is checking the claim. */
+      not_me?: true;
     }
   | { status: "final"; mine: boolean };
 

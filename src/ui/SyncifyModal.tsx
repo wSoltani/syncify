@@ -655,12 +655,14 @@ export function SyncifyModal(
     void refreshStatus({ silent: true });
   }
 
-  /** "Not me": anyone on this Spotify account can send a claim to review. */
+  /**
+   * Not me: from an install this Spotify account trusts it cancels the
+   * claim, from any other Syncify checks it.
+   */
   async function cancelOtherClaim() {
     setCancelling(true);
     try {
-      await cancelPendingClaim(config);
-      Spicetify.showNotification("Syncify: claim sent for review");
+      Spicetify.showNotification(notMeToast(await cancelPendingClaim(config)));
       await refreshStatus({ silent: true });
     } catch (error) {
       setMessage({
@@ -1098,33 +1100,19 @@ export function SyncifyModal(
 
       {otherClaim ? (
         <div className="syncify-alert" role="alert">
-          <span>
-            {otherClaim.email ?? "Someone"} is claiming this backup.
-            {session === null
-              ? " If that's you, sign in to finish."
-              : otherClaim.held
-                ? " Syncify is reviewing it."
-                : null}
-          </span>
-          <span className="syncify-alert-actions">
-            <button
-              className="syncify-text-button"
-              type="button"
-              onClick={() => void cancelOtherClaim()}
-              disabled={cancelling}
-            >
-              Not me
-            </button>
-            {session === null ? (
+          <span>{otherClaimText(otherClaim)}</span>
+          {otherClaim.not_me ? null : (
+            <span className="syncify-alert-actions">
               <button
                 className="syncify-text-button"
                 type="button"
-                onClick={() => toggleSection("account")}
+                onClick={() => void cancelOtherClaim()}
+                disabled={cancelling}
               >
-                That's me, sign in
+                Not me
               </button>
-            ) : null}
-          </span>
+            </span>
+          )}
         </div>
       ) : null}
 
@@ -1933,16 +1921,24 @@ function SourceLabel(props: { check: SourceCheck }) {
   );
 }
 
+const ENDED = {
+  owner: "This backup isn't secured. Someone using this Spotify account said it isn't yours.",
+  admin: "This backup isn't secured. Syncify couldn't confirm it's yours.",
+  undone: "This backup is no longer secured by your account.",
+} as const;
+
 /** Where securing this Spotify account's backup stands, signed in. */
 type SecureState =
   // The claim status couldn't be read yet.
   | { kind: "unknown" }
   | { kind: "open" }
-  | { kind: "pending"; finalAt: number; held: boolean; waiting: boolean }
+  | { kind: "pending"; finalAt: number; held: boolean }
   | { kind: "secured"; linkedCount: number }
   | { kind: "other-claim" }
   | { kind: "other-account" }
-  | { kind: "cancelled" };
+  // Ended lately: cancelled from this Spotify account or by an admin, or
+  // undone by an admin, which keeps this account from securing it again.
+  | { kind: "ended"; reason: "owner" | "admin" | "undone" };
 
 function describeSecureState(
   claims: (ClaimStatus & { hash: string }) | null,
@@ -1962,17 +1958,18 @@ function describeSecureState(
   }
   if (claim?.status === "pending") {
     return claim.mine
-      ? { kind: "pending", finalAt: claim.final_at, held: claim.held, waiting: claim.waiting === true }
+      ? { kind: "pending", finalAt: claim.final_at, held: claim.held }
       : { kind: "other-claim" };
   }
 
-  // Cancelled from this Spotify account lately, and not claimed again since.
+  // Ended lately, and not claimed again since (the list keeps only those).
   const own = (claims.accounts ?? []).filter(
     (account) => account.hash === claims.hash,
   );
   const latest = own[own.length - 1];
-  if (latest?.status === "cancelled" && latest.cancelled_by === "owner") {
-    return { kind: "cancelled" };
+  if (latest?.status === "unlinked") return { kind: "ended", reason: "undone" };
+  if (latest?.status === "cancelled" && latest.cancelled_by !== "claimer") {
+    return { kind: "ended", reason: latest.cancelled_by === "owner" ? "owner" : "admin" };
   }
   return { kind: "open" };
 }
@@ -2189,7 +2186,7 @@ function AccountPanel(props: {
     const canSecure =
       secure.kind === "open" ||
       secure.kind === "other-claim" ||
-      secure.kind === "cancelled";
+      (secure.kind === "ended" && secure.reason !== "undone");
 
     return (
       <>
@@ -2211,16 +2208,9 @@ function AccountPanel(props: {
               <span className="syncify-muted syncify-account-state">
                 <ClockIcon />
                 <span>
-                  <Parts
-                    parts={[
-                      "Securing this backup",
-                      secure.waiting
-                        ? "waiting on sign-in"
-                        : secure.held
-                          ? "in review"
-                          : `final ${formatFinalDate(secure.finalAt)}`,
-                    ]}
-                  />
+                  {secure.held
+                    ? "Syncify is checking your request to secure this backup"
+                    : `Your backup will be secured ${securedOn(secure.finalAt)}`}
                 </span>
               </span>
             ) : secure.kind === "other-account" ? (
@@ -2287,26 +2277,15 @@ function AccountPanel(props: {
             >
               {props.securing
                 ? "Securing…"
-                : secure.kind === "cancelled"
+                : secure.kind === "ended"
                   ? "Secure again"
                   : "Secure"}
             </button>
           </div>
         ) : null}
-        {secure.kind === "other-claim" ? (
+        {secure.kind === "ended" ? (
           <div className="syncify-alert" role="status">
-            Another claim is pending. If it isn't yours, press Not me above and
-            Syncify will review it.
-          </div>
-        ) : secure.kind === "cancelled" ? (
-          <div className="syncify-alert" role="status">
-            Your claim was cancelled from this Spotify account.
-          </div>
-        ) : secure.kind === "pending" && secure.waiting ? (
-          <div className="syncify-alert" role="status">
-            Syncify ran on this Spotify account without you signed in, maybe
-            after a Spotify update or on another computer. Sign in to Syncify
-            there to finish linking.
+            {ENDED[secure.reason]}
           </div>
         ) : null}
         {props.secureError ? (
@@ -3521,10 +3500,42 @@ function maskEmail(email: string): string {
   return `${email[0]}***${email.slice(at)}`;
 }
 
-/** "on Nov 1, 04:42 PM", or "today, 04:42 PM" */
-export function formatFinalDate(at: number): string {
-  const date = formatBackupDate(new Date(at).toISOString());
-  return date.startsWith("today") ? date : `on ${date}`;
+/** When a claim goes final, as a day: "today", or "Nov 16". */
+function claimDay(at: number): string {
+  const date = new Date(at);
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return "today";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
+  });
+}
+
+/** "on Nov 16", or "today". */
+export function securedOn(at: number): string {
+  const day = claimDay(at);
+  return day === "today" ? day : `on ${day}`;
+}
+
+/** "before Nov 16", or "today". */
+export function notMeBy(at: number): string {
+  const day = claimDay(at);
+  return day === "today" ? day : `before ${day}`;
+}
+
+/** What Syncify says on a Spotify account someone else is securing. */
+export function otherClaimText(claim: Extract<SyncifyClaim, { status: "pending" }>): string {
+  if (claim.not_me) return "Syncify is checking this claim.";
+  const who = `${claim.email ?? "Someone"} is securing this backup.`;
+  return claim.held
+    ? `${who} Syncify is checking it.`
+    : `${who} If that isn't you, press Not me ${notMeBy(claim.final_at)}.`;
+}
+
+/** The toast after Not me. */
+export function notMeToast(result: "cancelled" | "checking"): string {
+  return result === "cancelled" ? "Syncify: claim cancelled" : "Syncify: sent for a check";
 }
 
 /** "0:45" */
@@ -3631,7 +3642,7 @@ interface SectionStatus {
 
 /**
  * Account's closed row: a check when signed in with this backup secured, a
- * clock while linking finishes, an alert when something needs a sign-in or
+ * clock while securing it, an alert when something needs a sign-in or
  * securing.
  */
 function accountStatus(
@@ -3642,10 +3653,14 @@ function accountStatus(
   if (locked) return { kind: "warning", label: "Sign in to see your backups" };
   if (!session) return null;
   if (secure.kind === "secured") return { kind: "ok", label: "Signed in, backup secured" };
-  if (secure.kind === "pending") return { kind: "pending", label: "Linking this Spotify account" };
-  if (secure.kind === "open" || secure.kind === "cancelled") {
-    return { kind: "warning", label: "Backup not secured yet" };
+  if (secure.kind === "pending") {
+    return {
+      kind: "pending",
+      label: secure.held ? "Backup not secured yet" : `Your backup will be secured ${securedOn(secure.finalAt)}`,
+    };
   }
+  if (secure.kind === "open") return { kind: "warning", label: "Backup not secured yet" };
+  if (secure.kind === "ended") return { kind: "warning", label: "Backup not secured" };
   return { kind: "ok", label: "Signed in" };
 }
 

@@ -9,6 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   no_backup: "Back up first, then secure your backup.",
   unsupported_identity: "This Spotify account can't be secured.",
   too_many_accounts: "Your account already has 10 Spotify accounts linked.",
+  undone: "This backup can't be secured with your account.",
   offline: "Couldn't reach Syncify. Check your connection and try again.",
 };
 
@@ -23,12 +24,18 @@ export class ClaimError extends Error {
 /** One of the signed-in account's claims, oldest first. */
 export interface LinkedAccount {
   hash: string;
-  /** `final` claims are the linked accounts. */
-  status: "pending" | "final" | "cancelled";
+  /**
+   * `final` claims are the linked accounts. Cancelled and undone ones are
+   * listed for 30 days, unless claimed again since.
+   */
+  status: "pending" | "final" | "cancelled" | "unlinked";
   final_at: number;
   /** A pending claim held for Syncify to review. */
   held: boolean;
-  /** For a cancelled claim, who cancelled it. */
+  /**
+   * For a cancelled claim, who cancelled it: this Spotify account, or an
+   * admin (null).
+   */
   cancelled_by: "owner" | "claimer" | null;
   device_info: string | null;
 }
@@ -75,18 +82,22 @@ export async function claimBackup(
 }
 
 /**
- * Not me: holds someone else's pending claim on this Spotify account for
- * Syncify to review. Signed by the claimer, it cancels the claimer's own.
+ * Not me on someone else's pending claim on this Spotify account: from an
+ * install this account trusts, it cancels the claim; from any other, Syncify
+ * checks it. Signed by the claimer, it cancels the claimer's own.
  */
 export async function cancelClaim(
   workerUrl: string,
   identity: UserIdentity,
-): Promise<void> {
+): Promise<"cancelled" | "checking"> {
   const response = await send(workerUrl, identity, "POST", CANCEL_CLAIM_PATH);
   // Already gone: nothing left to cancel.
-  if (!response.ok && response.status !== 404) {
-    throw new ClaimError(await readCode(response));
-  }
+  if (response.status === 404) return "cancelled";
+  if (!response.ok) throw new ClaimError(await readCode(response));
+  const result = (await response.json().catch(() => null)) as {
+    held?: unknown;
+  } | null;
+  return result?.held === true ? "checking" : "cancelled";
 }
 
 async function send(
@@ -117,6 +128,7 @@ function isLinkedAccount(value: unknown): value is LinkedAccount {
       typeof account.hash === "string" &&
       (account.status === "pending" ||
         account.status === "final" ||
-        account.status === "cancelled"),
+        account.status === "cancelled" ||
+        account.status === "unlinked"),
   );
 }

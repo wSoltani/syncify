@@ -6,7 +6,6 @@ import { checkRestore, watchScriptsIfRestored } from "./core/restoreSummary";
 import { getProjectConfig } from "./core/projectConfig";
 import { loadConfig } from "./core/config";
 import { initShortcut } from "./core/shortcut";
-import { loadSession } from "./core/account";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { SyncifyModal } from "./ui/SyncifyModal";
 import { ClaimNotice } from "./ui/ClaimNotice";
@@ -294,17 +293,13 @@ function openSyncifyModal(): void {
 }
 
 // Someone else's claim on this Spotify account, found when Spotify started.
-// Signed out, That's me, sign in opens Syncify at its Account section.
 async function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" }>): Promise<void> {
-  const session = await loadSession().catch(() => null);
   // Syncify's own window already shows it.
   if (openModal?.container.isConnected) return;
   debug("Opening claim notice");
   openWindow(
     Spicetify.React.createElement(ClaimNotice, {
       claim,
-      signedIn: session !== null,
-      onSignIn: () => openWindow(Spicetify.React.createElement(SyncifyModal, { section: "account" })),
       onClose: () => Spicetify.PopupModal.hide(),
     }),
   );

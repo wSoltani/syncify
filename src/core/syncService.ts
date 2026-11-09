@@ -245,9 +245,9 @@ export async function answerWaitingInstall(
   await answerInstall(requireWorkerUrl(config), await getUserIdentity(), installId, action);
 }
 
-/** Cancels the pending claim on this Spotify account. */
-export async function cancelPendingClaim(config: SyncifyConfig): Promise<void> {
-  await cancelClaim(requireWorkerUrl(config), await getUserIdentity());
+/** Not me on the pending claim on this Spotify account: cancelled, or Syncify checks it. */
+export async function cancelPendingClaim(config: SyncifyConfig): Promise<"cancelled" | "checking"> {
+  return cancelClaim(requireWorkerUrl(config), await getUserIdentity());
 }
 
 function requireWorkerUrl(config: SyncifyConfig): string {
