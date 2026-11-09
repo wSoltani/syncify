@@ -3500,7 +3500,6 @@ function maskEmail(email: string): string {
   return `${email[0]}***${email.slice(at)}`;
 }
 
-/** "on Nov 1, 04:42 PM", or "today, 04:42 PM" */
 /** When a claim goes final, as a day: "today", or "Nov 16". */
 function claimDay(at: number): string {
   const date = new Date(at);
