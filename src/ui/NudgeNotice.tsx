@@ -19,7 +19,17 @@ export function NudgeNotice(props: { onSecure(): void; onClose(): void }) {
         >
           Not now
         </button>
-        <button className="syncify-button" type="button" onClick={props.onSecure}>
+        <button
+          className="syncify-button"
+          type="button"
+          onClick={(event) => {
+            // Secure swaps this panel for Syncify's window in the same popup.
+            // Spicetify's popup closes on a click outside it, and this button
+            // is gone by then, so the click must stop here.
+            event.stopPropagation();
+            props.onSecure();
+          }}
+        >
           Secure
         </button>
       </div>
