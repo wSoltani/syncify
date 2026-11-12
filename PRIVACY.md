@@ -30,7 +30,7 @@ Syncify runs on Cloudflare. Its usage analytics keep your username hash with eac
 
 Syncify can undo a secured claim if it turns out to be wrong. Your backups stay as they are, and that account can't secure them again.
 
-For this, Syncify keeps when each claim was made, when it was held for a check and why, and when it was secured or undone. While a Spotify account is being claimed, the install that made the claim and each install that pressed **Not me** are kept with their device, version, country and when they were first seen, so an admin can compare them. That's deleted when the claim finishes or is cancelled.
+For this, Syncify keeps when each claim was made, when it was held for a check and why, and when it was secured or undone. While a Spotify account is being claimed, the install that made the claim and each install that pressed **Not me** are kept with their device, version, country and when they were first seen. So is each device the claiming account signs in with: its user agent, the country it signed in from and when, even after it signs out. That way an admin can compare them. All of it is deleted when the claim finishes or is cancelled.
 
 You can link more than one Spotify account to the same Syncify account.
 
