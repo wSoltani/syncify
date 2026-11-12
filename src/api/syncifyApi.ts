@@ -374,6 +374,16 @@ export function readClaim(value: unknown): SyncifyClaim | null {
   const claim = value as Partial<SyncifyClaim> | null | undefined;
   if (!claim || typeof claim.mine !== "boolean") return null;
   if (claim.status === "final") return { status: "final", mine: claim.mine };
+  if (claim.status === "undone") {
+    return typeof claim.undone_at === "number"
+      ? {
+          status: "undone",
+          mine: false,
+          email: typeof claim.email === "string" ? claim.email : null,
+          undone_at: claim.undone_at,
+        }
+      : null;
+  }
   if (claim.status !== "pending" || typeof claim.final_at !== "number") {
     return null;
   }

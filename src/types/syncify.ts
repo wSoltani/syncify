@@ -111,7 +111,19 @@ export type SyncifyClaim =
       /** This install pressed Not me, and Syncify is checking the claim. */
       not_me?: true;
     }
-  | { status: "final"; mine: boolean };
+  | { status: "final"; mine: boolean }
+  /**
+   * An admin undid someone else's final claim on this Spotify account in the
+   * last 30 days, and nobody claimed it since. Never sent to the claimer.
+   */
+  | {
+      status: "undone";
+      mine: false;
+      /** The claimer's email, masked ("a***e@example.com"). */
+      email: string | null;
+      /** When it was undone, in milliseconds. */
+      undone_at: number;
+    };
 
 export interface SyncifyConfig {
   workerUrl: string | null;

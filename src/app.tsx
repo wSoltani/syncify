@@ -8,7 +8,7 @@ import { loadConfig } from "./core/config";
 import { initShortcut } from "./core/shortcut";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { SyncifyModal } from "./ui/SyncifyModal";
-import { ClaimNotice } from "./ui/ClaimNotice";
+import { ClaimNotice, UndoneClaimNotice } from "./ui/ClaimNotice";
 import { InstallNotice } from "./ui/InstallNotice";
 import { NudgeNotice } from "./ui/NudgeNotice";
 import { markNudgePanelShown } from "./core/nudge";
@@ -64,7 +64,7 @@ function main(): void {
   });
   applyEntryPoint(config.entryPoint);
   initShortcut(config.shortcut, openSyncifyModal);
-  void runStartupSyncCheck({ onClaim: (claim) => void openClaimNotice(claim), onInstall: openInstallNotice, onNudge: openNudgeNotice }).catch((error) => {
+  void runStartupSyncCheck({ onClaim: (claim) => void openClaimNotice(claim), onUndone: openUndoneNotice, onInstall: openInstallNotice, onNudge: openNudgeNotice }).catch((error) => {
     warn("Startup sync check failed", error);
   });
   void checkRestore().catch((error) => {
@@ -303,6 +303,21 @@ async function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" 
       onClose: () => Spicetify.PopupModal.hide(),
     }),
   );
+}
+
+// An admin undid someone else's claim on this Spotify account, found when
+// Spotify started. Not shown over Syncify's own window, so it shows on a
+// later launch instead.
+function openUndoneNotice(claim: Extract<SyncifyClaim, { status: "undone" }>): boolean {
+  if (openModal?.container.isConnected) return false;
+  debug("Opening undone claim notice");
+  openWindow(
+    Spicetify.React.createElement(UndoneClaimNotice, {
+      claim,
+      onClose: () => Spicetify.PopupModal.hide(),
+    }),
+  );
+  return true;
 }
 
 // A new install on this Spotify account waiting for this one's approval,

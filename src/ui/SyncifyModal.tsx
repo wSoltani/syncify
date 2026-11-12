@@ -3533,6 +3533,11 @@ export function otherClaimText(claim: Extract<SyncifyClaim, { status: "pending" 
     : `${who} If that isn't you, press Not me ${notMeBy(claim.final_at)}.`;
 }
 
+/** What Syncify says on a Spotify account after an admin undid someone else's claim. */
+export function undoneClaimText(claim: Extract<SyncifyClaim, { status: "undone" }>): string {
+  return `This backup is no longer secured by ${claim.email ?? "another account"}.`;
+}
+
 /** The toast after Not me. */
 export function notMeToast(result: "cancelled" | "checking"): string {
   return result === "cancelled" ? "Syncify: claim cancelled" : "Syncify: sent for a check";

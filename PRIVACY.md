@@ -28,7 +28,7 @@ Syncify runs on Cloudflare. Its usage analytics keep your username hash with eac
 2. The claim stays pending for 7 days. Syncify on that Spotify account shows it with your email partly hidden, like a\*\*\*e@example.com, and anyone using that Spotify account can press **Not me**.
 3. **Not me** from a device that Spotify account trusts cancels the claim. **Not me** from any other device, or an old version of Syncify used there during the claim, makes it wait until Syncify checks it manually. Otherwise, after the 7 days the backup is secured to your account, and only your signed-in devices can restore it.
 
-Syncify can undo a secured claim if it turns out to be wrong. Your backups stay as they are, and that account can't secure them again.
+Syncify can undo a secured claim if it turns out to be wrong. Your backups stay as they are, and that account can't secure them again. For 30 days, Syncify on that Spotify account says the backup is no longer secured by that account, with its email partly hidden.
 
 For this, Syncify keeps when each claim was made, when it was held for a check and why, and when it was secured or undone. While a Spotify account is being claimed, the install that made the claim and each install that pressed **Not me** are kept with their device, version, country and when they were first seen. So is each device the claiming account signs in with: its user agent, the country it signed in from and when, even after it signs out. That way an admin can compare them. All of it is deleted when the claim finishes or is cancelled.
 
