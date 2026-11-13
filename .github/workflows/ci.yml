@@ -19,6 +19,7 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: node scripts/check-release.mjs
+      - run: node scripts/registry/check.mjs
       - run: npm run build
       # Marketplace runs the committed loader, and it falls back to the
       # committed bundle, so both must match src.

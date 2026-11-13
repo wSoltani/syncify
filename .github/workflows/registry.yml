@@ -1,0 +1,90 @@
+name: Registry
+
+# Checks pull requests that change the settings registry, and publishes it to
+# the releases bucket once it changes on master. Syncify reads it from there,
+# so a merged entry reaches everyone within about a minute.
+on:
+  pull_request:
+    paths: [registry/**]
+  push:
+    branches: [master]
+    paths: [registry/**]
+
+permissions:
+  contents: read
+
+jobs:
+  owners:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      # The check runs from the base branch, so a pull request can't change
+      # the rules it is held to. The pull request's registry is only read.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+      - name: Read the pull request's registry
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          git show "$HEAD_SHA:registry/registry.json" > "$RUNNER_TEMP/head-registry.json"
+      - name: Check for the base branch's check
+        id: base
+        run: |
+          if [ -f scripts/registry/owners.mjs ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::The base branch has no registry check yet"
+          fi
+      - uses: actions/setup-node@v7
+        if: steps.base.outputs.ready == 'true'
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - if: steps.base.outputs.ready == 'true'
+        run: npm ci
+      - name: Check who changed which entries
+        if: steps.base.outputs.ready == 'true'
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          MAINTAINER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/registry/owners.mjs registry/registry.json "$RUNNER_TEMP/head-registry.json"
+
+  upload:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: releases
+    # One upload at a time, so the newest master always lands last.
+    concurrency:
+      group: registry-upload
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          # The job holds the R2 keys, so it skips the shared cache.
+          package-manager-cache: false
+      # Only the upload step sees the R2 keys, and no install script runs.
+      - run: npm ci --ignore-scripts
+      - name: Check and build registry.json
+        run: node scripts/registry/check.mjs --out "$RUNNER_TEMP/registry.json"
+      - name: Upload registry.json
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket syncify-releases \
+            --key registry.json \
+            --body "$RUNNER_TEMP/registry.json" \
+            --content-type application/json \
+            --cache-control "public, max-age=60"
