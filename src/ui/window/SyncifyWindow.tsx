@@ -23,7 +23,7 @@ import type { RestoreRequest } from "../backups/RestorePreview";
 import { notMeToast } from "../claimText";
 import { TabPanel, useStableId } from "../kit";
 import { SettingsTab } from "../settings/SettingsTab";
-import { SharePanel } from "../share/SharePanel";
+import { ShareTab } from "../share/ShareTab";
 import { useStoredShareInfo } from "../share/useStoredShareInfo";
 import { useLatest } from "../useLatest";
 import { BackupNotices } from "./BackupNotices";
@@ -361,23 +361,20 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           onError={handleError}
         />
       ) : tab === "share" ? (
-        <TabPanel idBase={idBase} id="share">
-          <div className="syncify-panel">
-            <SharePanel
-              config={config}
-              session={session}
-              localItems={local?.items ?? []}
-              localConfig={local?.spicetifyConfig ?? null}
-              localTheme={local?.activeTheme ?? null}
-              marketplaceAvailable={local?.marketplaceAvailable ?? null}
-              busy={busy}
-              onSignIn={() => setTab("account")}
-              onSignedOut={handleSignedOut}
-              onCodeCount={shareInfo.saveCodeCount}
-              onHandle={shareInfo.saveHandle}
-            />
-          </div>
-        </TabPanel>
+        <ShareTab
+          idBase={idBase}
+          config={config}
+          session={session}
+          localItems={local?.items ?? []}
+          localConfig={local?.spicetifyConfig ?? null}
+          localTheme={local?.activeTheme ?? null}
+          marketplaceAvailable={local?.marketplaceAvailable ?? null}
+          busy={busy}
+          onSignIn={() => setTab("account")}
+          onSignedOut={handleSignedOut}
+          onCodeCount={shareInfo.saveCodeCount}
+          onHandle={shareInfo.saveHandle}
+        />
       ) : tab === "account" ? (
         <TabPanel idBase={idBase} id="account">
           <div className="syncify-panel">

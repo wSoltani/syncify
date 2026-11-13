@@ -141,7 +141,7 @@
     padding: var(--syncify-space-2) var(--syncify-space-3);
     border-radius: calc(var(--syncify-size-control) * var(--syncify-corner));
     background: var(--syncify-color-surface);
-    font-family: ui-monospace, Consolas, monospace;
+    font-family: var(--syncify-font-mono);
     font-size: var(--syncify-text-small);
     white-space: pre-wrap;
     overflow-wrap: anywhere;

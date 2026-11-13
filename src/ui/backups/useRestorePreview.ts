@@ -8,7 +8,7 @@ import {
 } from "../../core/sourceChecks";
 import type { SyncifyPayload, SyncifySpicetifyConfig } from "../../types/syncify";
 import { backupItems } from "./backupItems";
-import { listRestoreChanges } from "./restoreChanges";
+import { listChanges } from "../changes/listChanges";
 
 /**
  * What restoring a backup changes here, with where each item comes from.
@@ -67,7 +67,7 @@ export function useRestorePreview(
   );
 
   const changes = useMemo(
-    () => listRestoreChanges(preview, checks, optional, allowed, unapproved),
+    () => listChanges(preview, checks, { optional, allowed, unapproved }),
     [preview, checks, optional, allowed, unapproved],
   );
 
