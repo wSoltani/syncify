@@ -19,6 +19,8 @@ const config: SyncifyConfig = {
   autoBackupEnabled: true,
   entryPoint: "both",
   shortcut: DEFAULT_SHORTCUT,
+  settingsSyncEnabled: true,
+  shareRestoredSettings: true,
 };
 
 type TabProps = Parameters<typeof SettingsTab>[0];

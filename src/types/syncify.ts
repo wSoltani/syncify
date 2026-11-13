@@ -1,7 +1,8 @@
-// 2 adds spicetify_config. Older backups are version 1.
+// 2 adds spicetify_config, 3 adds extension_settings. Older backups are
+// version 1.
 import type { InstalledItem } from "../core/restorePreview";
 
-export const SYNCIFY_SCHEMA_VERSION = 2;
+export const SYNCIFY_SCHEMA_VERSION = 3;
 
 interface SyncifyMetadata {
   last_sync_datetime: string;
@@ -20,9 +21,27 @@ export interface SyncifyPayload {
   marketplace_data: SyncifyMarketplaceData;
   /** What Spicetify's config lists outside Marketplace. From version 2. */
   spicetify_config?: SyncifySpicetifyConfig;
+  /**
+   * The settings of the items in the settings registry, by registry id.
+   * Left out of payload_hash, so a settings change alone never makes a new
+   * backup. From version 3.
+   */
+  extension_settings?: SyncifyExtensionSettings;
   backup_history?: SyncifyPayload[];
   /** Added by the backup service to each backup it sends. */
   backup?: SyncifyBackupInfo;
+}
+
+export type SyncifyExtensionSettings = Record<string, SyncifyItemSettings>;
+
+/** One item's settings, where it keeps them. */
+export interface SyncifyItemSettings {
+  storage: "localStorage" | "indexedDB";
+  /**
+   * Each key's stored value: its text in localStorage, or its whole record
+   * in IndexedDB. Keys the registry excludes are never here.
+   */
+  values: Record<string, unknown>;
 }
 
 /** Spicetify's config, without the extensions Marketplace adds to it. */
@@ -124,6 +143,10 @@ export interface SyncifyConfig {
   /** `null` means the shortcut is turned off. */
   shortcut: SyncifyShortcut | null;
   entryPoint: SyncifyEntryPoint;
+  /** This device syncs extension settings with the account's other devices. */
+  settingsSyncEnabled: boolean;
+  /** The restore preview's choice to use restored extension settings on the other devices too. */
+  shareRestoredSettings: boolean;
 }
 
 /** Where Syncify's "open" button appears: top bar, profile menu, or both. */

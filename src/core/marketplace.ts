@@ -1,5 +1,7 @@
 import { sha256Hex, stableStringify } from "./crypto";
 import { getDeviceInfo } from "./device";
+import { fitSettings, readLocalSettings } from "./extensionSettings";
+import { loadRegistry } from "./settingsRegistry";
 import { keepsSyncify, listItems } from "./restorePreview";
 import {
   normalizeSpicetifyConfig,
@@ -11,6 +13,7 @@ import {
 } from "./marketplaceStorage";
 import {
   SYNCIFY_SCHEMA_VERSION,
+  type SyncifyExtensionSettings,
   type SyncifyPayload,
   type SyncifySnapshotSummary,
   type SyncifySpicetifyConfig,
@@ -48,6 +51,9 @@ const UI_STATE_KEYS = new Set(["marketplace:active-tab", "marketplace:sort"]);
 const INSTALLED_ITEM_PREFIX = "marketplace:installed:";
 const ACTIVE_THEME_KEY = "marketplace:theme-installed";
 const REFRESHED_ITEM_FIELDS = ["stars", "tags", "lastUpdated", "created"];
+// The largest backup the backup service takes. Extension settings that would
+// pass it are left out of that backup rather than failing it.
+const MAX_BACKUP_BYTES = 750 * 1024;
 
 // The Spicetify config counts too, when there is one. Backups from before it
 // was saved hash the same as they always did.
@@ -117,11 +123,15 @@ export function readActiveTheme(raw: string | undefined): string | null {
   }
 }
 
+/**
+ * This device's setup, as a backup: the Marketplace keys, the Spicetify
+ * config and the registered extensions' settings, which stay out of the hash.
+ */
 export async function createPayload(): Promise<SyncifyPayload> {
-  const keys = await collectMarketplaceKeys();
+  const [keys, settings] = await Promise.all([collectMarketplaceKeys(), readSettingsForBackup()]);
   const spicetifyConfig = readSpicetifyConfig(keys);
 
-  return {
+  const payload: SyncifyPayload = {
     schema_version: SYNCIFY_SCHEMA_VERSION,
     metadata: {
       last_sync_datetime: new Date().toISOString(),
@@ -132,6 +142,21 @@ export async function createPayload(): Promise<SyncifyPayload> {
     marketplace_data: { keys },
     ...(spicetifyConfig ? { spicetify_config: spicetifyConfig } : {}),
   };
+  if (Object.keys(settings).length === 0) return payload;
+
+  const baseBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
+  const fitted = fitSettings(settings, baseBytes, MAX_BACKUP_BYTES);
+  return Object.keys(fitted).length > 0 ? { ...payload, extension_settings: fitted } : payload;
+}
+
+// A backup goes ahead without settings when they can't be read.
+async function readSettingsForBackup(): Promise<SyncifyExtensionSettings> {
+  try {
+    const registry = await loadRegistry();
+    return registry ? (await readLocalSettings(registry)).settings : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

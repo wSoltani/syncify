@@ -1,7 +1,7 @@
 // The shared parts every Syncify screen is built from. Screens import them
 // from here and never draw a control of their own.
 export { Button } from "./Button";
-export { Checkbox } from "./Checkbox";
+export { Checkbox, CheckboxRow } from "./Checkbox";
 export { Dialog, DialogContent } from "./Dialog";
 export { Field } from "./Field";
 export { AlertIcon, CheckIcon, ShieldIcon } from "./icons";

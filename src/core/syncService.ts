@@ -25,6 +25,8 @@ import {
   restoreMarketplaceKeys,
 } from "./marketplace";
 import { applyShare, type ShareFile, type ShareMode } from "./shareCodes";
+import { saveRestoredSettings, writeSettings } from "./extensionSettings";
+import { loadRegistry } from "./settingsRegistry";
 import type { SnippetCatalog } from "./sourceChecks";
 
 /**
@@ -150,6 +152,14 @@ export async function fetchLaunchNotices(
   return { claim: remote.claim, install: remote.install, nudge: remote.nudge };
 }
 
+/** The extension settings a restore writes, from its preview. */
+export interface SettingsRestore {
+  /** Registry ids of the items whose settings it writes. */
+  ids: string[];
+  /** The restored settings go to the account's other devices too. */
+  share: boolean;
+}
+
 /**
  * With `linkedHash`, the backup is one of that linked Spotify account's.
  * `skipped`: item keys left as they are on this device.
@@ -159,6 +169,7 @@ export async function restoreNow(
   selectedPayload?: SyncifyPayload,
   linkedHash?: string,
   skipped: string[] = [],
+  settings: SettingsRestore = { ids: [], share: false },
 ): Promise<{ payload: SyncifyPayload; restoredCount: number }> {
   const payload = selectedPayload ?? (await fetchRemoteState(config)).payload;
 
@@ -168,6 +179,9 @@ export async function restoreNow(
     );
   }
 
+  // Settings first: a write that fails stops the restore before Marketplace
+  // changes.
+  await restoreSettings(payload, settings);
   const restoredCount = await restoreMarketplaceKeys(payload, skipped);
 
   // Counted by the backup service. Not awaited: it finishes on its own while
@@ -182,6 +196,14 @@ export async function restoreNow(
   }
 
   return { payload, restoredCount };
+}
+
+async function restoreSettings(payload: SyncifyPayload, settings: SettingsRestore): Promise<void> {
+  if (settings.ids.length === 0 || !payload.extension_settings) return;
+  const registry = await loadRegistry();
+  if (!registry) return;
+  await writeSettings(registry, payload.extension_settings, settings.ids);
+  await saveRestoredSettings({ at: Date.now(), ...settings });
 }
 
 /** A safety backup failed, so a code wasn't loaded. */

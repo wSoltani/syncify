@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { previewSettings } from "../../core/extensionSettings";
 import { previewRestore, type InstalledItem } from "../../core/restorePreview";
 import {
   checkCatalog,
@@ -9,11 +10,13 @@ import {
 import type { SyncifyPayload, SyncifySpicetifyConfig } from "../../types/syncify";
 import { backupItems } from "./backupItems";
 import { listChanges } from "../changes/listChanges";
+import { describeSettings } from "./settingsRows";
 
 /**
- * What restoring a backup changes here, with where each item comes from.
- * The checks that need no network show at once; the catalog lookups follow,
- * and Restore waits for them, so nothing unchecked slips through.
+ * What restoring a backup changes here, with where each item comes from and
+ * the extension settings it writes. The checks that need no network show at
+ * once; the catalog lookups and the settings follow, and Restore waits for
+ * them, so nothing unchecked slips through.
  */
 export function useRestorePreview(
   backup: SyncifyPayload,
@@ -39,6 +42,21 @@ export function useRestorePreview(
       current = false;
     };
   }, [backup, preview, localChecks]);
+
+  // Registry ids whose settings differ. A failure to read them leaves the
+  // settings as they are rather than holding the restore up.
+  const [settings, setSettings] = useState<{ for: SyncifyPayload; ids: string[] } | null>(null);
+  useEffect(() => {
+    let current = true;
+    void previewSettings(backup.extension_settings)
+      .catch(() => [])
+      .then((ids) => {
+        if (current) setSettings({ for: backup, ids });
+      });
+    return () => {
+      current = false;
+    };
+  }, [backup]);
 
   const catalogChecks = catalog?.for === backup ? catalog.checks : null;
   // The local checks win when both have something.
@@ -66,9 +84,23 @@ export function useRestorePreview(
     [preview, checks, unapproved],
   );
 
+  const skipped = useMemo(() => [...optional].filter((key) => !allowed.has(key)), [optional, allowed]);
+  const settingsIds = settings?.for === backup ? settings.ids : null;
+  // An item left off keeps its settings too.
+  const settingsRows = useMemo(
+    () => describeSettings(settingsIds ?? [], backupItems(backup), localItems).filter((row) => !skipped.includes(row.key)),
+    [settingsIds, backup, localItems, skipped],
+  );
+
   const changes = useMemo(
-    () => listChanges(preview, checks, { optional, allowed, unapproved }),
-    [preview, checks, optional, allowed, unapproved],
+    () =>
+      listChanges(preview, checks, {
+        optional,
+        allowed,
+        unapproved,
+        settings: settingsRows.map(({ id, name, kind }) => ({ id, name, kind })),
+      }),
+    [preview, checks, optional, allowed, unapproved, settingsRows],
   );
 
   function allow(key: string, on: boolean) {
@@ -82,10 +114,12 @@ export function useRestorePreview(
     preview,
     changes,
     unapproved,
-    /** Catalog lookups still running: Restore waits. */
-    checking: catalogChecks === null,
+    /** Catalog lookups or settings still being read: Restore waits. */
+    checking: catalogChecks === null || settingsIds === null,
     /** Optional items left off: the restore skips them. */
-    skipped: [...optional].filter((key) => !allowed.has(key)),
+    skipped,
+    /** Registry ids of the items whose settings the restore writes. */
+    settingsIds: changes.settings.map((row) => row.id),
     allow,
   };
 }

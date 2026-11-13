@@ -19,3 +19,19 @@ export function Checkbox(props: CheckboxProps) {
     />
   );
 }
+
+/** A checkbox with its label beside it, the whole row a target. */
+export function CheckboxRow(props: Omit<CheckboxProps, "label"> & { label: string }) {
+  return (
+    <label className="syncify-checkbox-row" data-disabled={props.disabled ? "true" : undefined}>
+      <input
+        className="syncify-checkbox"
+        type="checkbox"
+        checked={props.checked}
+        onChange={(event) => props.onChange(event.currentTarget.checked)}
+        disabled={props.disabled}
+      />
+      <span className="syncify-checkbox-label">{props.label}</span>
+    </label>
+  );
+}

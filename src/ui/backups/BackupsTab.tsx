@@ -50,6 +50,10 @@ export function BackupsTab(props: {
   otherAccounts: OtherAccount[];
   /** Notices about this device's backups, shown above the list. */
   notices?: ReactNode;
+  /** The backup is secured and this device syncs extension settings. */
+  canShareSettings: boolean;
+  shareSettings: boolean;
+  onShareSettingsChange(share: boolean): void;
   busy: boolean;
   restoring: boolean;
   onRestore(request: RestoreRequest & { linkedHash: string | null }): void;
@@ -81,6 +85,9 @@ export function BackupsTab(props: {
         localIsUnsaved={
           local.installedItemCount > 0 && !isInBackups(local.hash, remote)
         }
+        canShareSettings={props.canShareSettings}
+        shareSettings={props.shareSettings}
+        onShareSettingsChange={props.onShareSettingsChange}
         busy={props.busy}
         restoring={props.restoring}
         onCancel={() => setPreviewing(null)}

@@ -10,6 +10,8 @@ const DEFAULT_CONFIG: SyncifyConfig = {
   autoBackupEnabled: false,
   shortcut: DEFAULT_SHORTCUT,
   entryPoint: DEFAULT_ENTRY_POINT,
+  settingsSyncEnabled: true,
+  shareRestoredSettings: true,
 };
 
 export function loadConfig(): SyncifyConfig {
@@ -23,15 +25,14 @@ export function loadConfig(): SyncifyConfig {
     const parsed = JSON.parse(raw) as Partial<SyncifyConfig>;
     return {
       workerUrl: projectConfig.workerUrl,
-      autoBackupEnabled:
-        parsed.autoBackupEnabled === undefined
-          ? DEFAULT_CONFIG.autoBackupEnabled
-          : Boolean(parsed.autoBackupEnabled),
+      autoBackupEnabled: parseFlag(parsed.autoBackupEnabled, DEFAULT_CONFIG.autoBackupEnabled),
       shortcut:
         parsed.shortcut === undefined
           ? DEFAULT_CONFIG.shortcut
           : parseShortcut(parsed.shortcut),
       entryPoint: parseEntryPoint(parsed.entryPoint),
+      settingsSyncEnabled: parseFlag(parsed.settingsSyncEnabled, DEFAULT_CONFIG.settingsSyncEnabled),
+      shareRestoredSettings: parseFlag(parsed.shareRestoredSettings, DEFAULT_CONFIG.shareRestoredSettings),
     };
   } catch {
     return { ...DEFAULT_CONFIG, workerUrl: projectConfig.workerUrl };
@@ -44,6 +45,8 @@ export function saveConfig(config: SyncifyConfig): void {
     autoBackupEnabled: config.autoBackupEnabled,
     shortcut: config.shortcut,
     entryPoint: config.entryPoint,
+    settingsSyncEnabled: config.settingsSyncEnabled,
+    shareRestoredSettings: config.shareRestoredSettings,
   } satisfies SyncifyConfig);
 
   if (Spicetify.LocalStorage?.set) {
@@ -52,6 +55,10 @@ export function saveConfig(config: SyncifyConfig): void {
   }
 
   window.localStorage.setItem(CONFIG_STORAGE_KEY, serialized);
+}
+
+function parseFlag(value: unknown, fallback: boolean): boolean {
+  return value === undefined ? fallback : Boolean(value);
 }
 
 export function hasWorkerUrl(

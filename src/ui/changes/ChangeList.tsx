@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ItemType, ManualItem } from "../../core/restorePreview";
-import { Button, Checkbox, List, ListRow, Meta, Pip, type Kind } from "../kit";
+import { Button, Checkbox, List, ListDivider, ListRow, Meta, Pip, type Kind } from "../kit";
 import type { ChangeList as Changes, ChangeRow, ItemRow } from "./listChanges";
 
 const KINDS: Record<ItemType, Kind> = { extension: "extension", theme: "theme", snippet: "snippet" };
@@ -17,7 +17,8 @@ const MANUAL_LABELS: Record<ManualItem["type"], string> = {
 
 /**
  * What a restore or a share code changes, one row each: changes first, then
- * what's added by hand, then the rest folded into one row.
+ * what's added by hand, then extension settings after a line, then the rest
+ * folded into one row after another.
  */
 export function ChangeList(props: {
   changes: Changes;
@@ -51,6 +52,20 @@ export function ChangeList(props: {
           end={<span className="syncify-change-label syncify-cap">Add manually</span>}
         />
       ))}
+      {changes.settings.length > 0 ? <ListDivider /> : null}
+      {changes.settings.map((row) => (
+        <ListRow
+          key={`settings:${row.id}`}
+          leading={<Pip kind={row.kind} />}
+          name={row.name}
+          end={
+            <span className="syncify-change-label syncify-cap" data-change="Updates">
+              Updates
+            </span>
+          }
+        />
+      ))}
+      {changes.settings.length > 0 && changes.unchanged.length > 0 ? <ListDivider /> : null}
       {changes.unchanged.length > 0 ? (
         <ListRow
           name={<span className="syncify-change-fold">{changes.unchanged.length} more stay the same</span>}
