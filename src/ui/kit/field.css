@@ -67,7 +67,7 @@
 }
 
 .syncify-input-control[data-mono="true"]:not(:placeholder-shown) {
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-family: var(--syncify-font-mono);
     letter-spacing: 0.05em;
 }
 

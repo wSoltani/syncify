@@ -1,0 +1,27 @@
+/* Adds, Updates and Removes: plain colored text, not chips. */
+.syncify-change-label {
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-small);
+    font-weight: 700;
+}
+
+.syncify-change-label[data-change="Adds"] {
+    color: var(--syncify-color-accent);
+}
+
+.syncify-change-label[data-change="Updates"] {
+    color: var(--syncify-kind-app);
+}
+
+.syncify-change-label[data-change="Removes"] {
+    color: var(--syncify-color-error);
+}
+
+.syncify-change-label + .syncify-checkbox {
+    margin-left: var(--syncify-space-2);
+}
+
+.syncify-change-fold {
+    color: var(--syncify-color-muted);
+    font-weight: 400;
+}

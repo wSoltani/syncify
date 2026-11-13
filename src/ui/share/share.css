@@ -1,0 +1,47 @@
+/* Loading a setup, the picks and your codes, split by dashed lines. */
+.syncify-share-part {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-3);
+}
+
+.syncify-share-part + .syncify-share-part {
+    padding-top: var(--syncify-space-4);
+    border-top: var(--syncify-line) dashed var(--syncify-color-divider);
+}
+
+/* A share code, in the code font. */
+.syncify-share-code {
+    font-family: var(--syncify-font-mono);
+    font-size: inherit;
+}
+
+/* "3 new hearts", after Your codes: plain accent text, not a chip. */
+.syncify-share-hearts {
+    margin-left: var(--syncify-space-2);
+    color: var(--syncify-color-accent);
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.syncify-share-code-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--syncify-space-1);
+}
+
+.syncify-share-create {
+    display: flex;
+}
+
+/* A pick's items as kind squares, as on the website's cards. */
+.syncify-share-pips {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--syncify-space-0);
+}
+
+.syncify-share-left-out {
+    display: block;
+    margin-top: var(--syncify-space-1);
+}

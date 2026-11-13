@@ -52,6 +52,8 @@
     --syncify-text-title: 20px;
     --syncify-text-heading: 18px;
     --syncify-text-body: 14px;
+    /* Codes and commands. */
+    --syncify-font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
     --syncify-text-small: 13px;
     --syncify-text-label: 12px;
     --syncify-text-tiny: 11px;

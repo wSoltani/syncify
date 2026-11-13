@@ -60,8 +60,6 @@ export interface ShareCode {
   imports: number;
   created_at: number;
   updated_at: number;
-  /** Hearts on its Discover post while it's public, null otherwise. */
-  hearts: number | null;
   /** It has a Discover post, in any state but removed: deleting the code deletes it. */
   posted: boolean;
 }
@@ -280,7 +278,6 @@ function readShareCode(value: unknown): ShareCode | null {
     imports: typeof row.imports === "number" ? row.imports : 0,
     created_at: typeof row.created_at === "number" ? row.created_at : 0,
     updated_at: typeof row.updated_at === "number" ? row.updated_at : 0,
-    hearts: readHearts((value as { post?: unknown }).post),
     posted: readPosted((value as { post?: unknown }).post),
   };
 }
@@ -288,14 +285,6 @@ function readShareCode(value: unknown): ShareCode | null {
 function readPosted(post: unknown): boolean {
   const status = (post as { status?: unknown } | null)?.status;
   return typeof status === "string" && status !== "removed";
-}
-
-// A code's hearts from its post, while the post is public.
-function readHearts(post: unknown): number | null {
-  const value = post as { status?: unknown; hidden?: unknown; hearts?: unknown } | null;
-  return value?.status === "public" && value.hidden !== true && typeof value.hearts === "number"
-    ? value.hearts
-    : null;
 }
 
 function readPick(value: unknown): SharePick | null {
