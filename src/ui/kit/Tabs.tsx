@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 export interface TabItem<Id extends string> {
   id: Id;
@@ -25,6 +25,13 @@ const panelId = (idBase: string, id: string) => `${idBase}-panel-${id}`;
  */
 export function Tabs<Id extends string>(props: TabsProps<Id>) {
   const listRef = useRef<HTMLDivElement>(null);
+
+  // A narrow window scrolls the row: the open tab is always in view.
+  useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [props.selected]);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const count = props.tabs.length;

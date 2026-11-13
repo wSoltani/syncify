@@ -1,9 +1,13 @@
 .syncify-setting-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: var(--syncify-space-4);
+    gap: var(--syncify-space-2) var(--syncify-space-4);
     min-height: var(--syncify-size-row-single);
+    /* The room a control already leaves in a one-line row, so a row whose
+       control moved under its label keeps clear of the lines around it. */
+    padding-block: calc((var(--syncify-size-row-single) - var(--syncify-size-control)) / 2);
 }
 
 /* A row with its value under the label is as tall as a two-line list row. */
@@ -19,16 +23,19 @@ label.syncify-setting-row[data-disabled="true"] {
     cursor: default;
 }
 
-.syncify-setting-row-text {
+.syncify-setting-row-text,
+.syncify-setting-row > .syncify-setting-row-label {
     display: flex;
-    flex: 1 1 auto;
+    /* Takes the room the control leaves; once its longest word no longer
+       fits, the control moves under it instead of being cut. */
+    flex: 1 1 0;
     flex-direction: column;
-    min-width: 0;
+    min-width: min-content;
 }
 
 .syncify-setting-row-label {
     font-weight: 600;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
 }
 
 .syncify-setting-row-value {

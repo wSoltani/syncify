@@ -1,7 +1,21 @@
+/* When the window is too narrow for every tab, the row scrolls sideways
+   instead of running off the window, without drawing a scrollbar. The open
+   tab is kept in view. */
 .syncify-tabs {
     display: flex;
     gap: var(--syncify-space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
     box-shadow: inset 0 calc(-1 * var(--syncify-line)) 0 var(--syncify-color-divider);
+}
+
+.syncify-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+/* Drawn inside the tab, so the scrolling row never cuts it off. */
+.syncify-ui .syncify-tab:focus-visible {
+    outline-offset: calc(-1 * var(--syncify-ring));
 }
 
 /* The open tab's bar is drawn over its bottom edge, so it doesn't move the
