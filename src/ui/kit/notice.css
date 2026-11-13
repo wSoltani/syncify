@@ -1,5 +1,6 @@
 .syncify-notice {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--syncify-space-3);
     padding: var(--syncify-space-3) var(--syncify-space-3) var(--syncify-space-3) var(--syncify-space-4);
@@ -11,10 +12,13 @@
     background: var(--syncify-color-warning-surface);
 }
 
-/* The mark sits on the first line's capitals, however many lines follow. */
+/*
+ * The mark sits on the first line's capitals, however many lines follow.
+ * Narrower than a short line of text, the actions move under it.
+ */
 .syncify-notice-body {
     display: flex;
-    flex: 1 1 auto;
+    flex: 1 1 var(--syncify-notice-text-min);
     align-items: flex-start;
     gap: var(--syncify-space-3);
     min-width: 0;
@@ -46,6 +50,7 @@
 .syncify-notice-actions {
     display: flex;
     flex: 0 0 auto;
+    margin-left: auto;
     align-items: center;
     gap: var(--syncify-space-2);
 }

@@ -35,7 +35,7 @@ export function BackupNotices(props: {
           tone="warning"
           actions={
             <>
-              <Button variant="subtle" onClick={props.onHideNudge} disabled={props.securing}>
+              <Button variant="subtle" size="small" onClick={props.onHideNudge} disabled={props.securing}>
                 Not now
               </Button>
               <Button size="small" onClick={props.onSecure} disabled={props.securing}>

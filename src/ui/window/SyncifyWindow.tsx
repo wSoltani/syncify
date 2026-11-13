@@ -363,7 +363,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
             tone="info"
             actions={
               <>
-                <Button variant="subtle" onClick={hideArrived}>
+                <Button variant="subtle" size="small" onClick={hideArrived}>
                   Not now
                 </Button>
                 <Button size="small" onClick={() => window.location.reload()}>
