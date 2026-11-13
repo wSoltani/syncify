@@ -2,7 +2,7 @@ import { Fragment, type ReactNode } from "react";
 import { classNames } from "./classNames";
 
 /** The dot between facts: drawn, never a typed character. */
-export function Dot() {
+function Dot() {
   return (
     <>
       <span className="syncify-dot" aria-hidden="true" />
@@ -11,7 +11,7 @@ export function Dot() {
   );
 }
 
-export type MetaPart = ReactNode | null | undefined | false;
+type MetaPart = ReactNode | null | undefined | false;
 
 /** Facts with a drawn dot between each; empty ones are left out. */
 export function Meta(props: { parts: MetaPart[]; className?: string }) {

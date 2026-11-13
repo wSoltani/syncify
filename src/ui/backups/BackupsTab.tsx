@@ -25,7 +25,7 @@ import { describeBackupRow, type BackupKind, type BackupRowModel } from "./backu
 import { RestorePreview, type RestoreRequest } from "./RestorePreview";
 
 /** Another Spotify account linked to the signed-in account. */
-export interface OtherAccount {
+interface OtherAccount {
   hash: string;
   label: string;
 }

@@ -3,13 +3,6 @@ import type { InstalledItem } from "../core/restorePreview";
 
 export const SYNCIFY_SCHEMA_VERSION = 2;
 
-export type SyncifyStatus =
-  | "idle"
-  | "loading"
-  | "success"
-  | "error"
-  | "needs-restore";
-
 export interface SyncifyMetadata {
   last_sync_datetime: string;
   device_info: string;

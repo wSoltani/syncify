@@ -251,12 +251,12 @@ async function keepSkipped(
   }
 }
 
-export function countInstalledItems(keys: Record<string, string>): number {
+function countInstalledItems(keys: Record<string, string>): number {
   return listInstalledItems(keys).length;
 }
 
 /** Keys of the installed extensions, themes and snippets. */
-export function listInstalledItems(keys: Record<string, string>): string[] {
+function listInstalledItems(keys: Record<string, string>): string[] {
   return INSTALLED_LIST_KEYS.flatMap((key) =>
     parseStoredArray(keys[key]).map(String),
   );

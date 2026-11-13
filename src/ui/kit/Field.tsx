@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { useStableId } from "./useStableId";
 
-export interface FieldProps {
+interface FieldProps {
   /** Always shown above the input; a placeholder never stands in for it. */
   label: string;
   value: string;

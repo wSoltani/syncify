@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Mark, type Tone } from "./Mark";
 
-export interface NoticeProps {
+interface NoticeProps {
   tone: Tone;
   children: ReactNode;
   /** Up to two buttons, on the right. */

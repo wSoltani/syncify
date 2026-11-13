@@ -7,7 +7,7 @@ export interface TabItem<Id extends string> {
   status?: ReactNode;
 }
 
-export interface TabsProps<Id extends string> {
+interface TabsProps<Id extends string> {
   tabs: readonly TabItem<Id>[];
   selected: NoInfer<Id>;
   onSelect(id: NoInfer<Id>): void;
@@ -16,8 +16,8 @@ export interface TabsProps<Id extends string> {
   label: string;
 }
 
-export const tabId = (idBase: string, id: string) => `${idBase}-tab-${id}`;
-export const panelId = (idBase: string, id: string) => `${idBase}-panel-${id}`;
+const tabId = (idBase: string, id: string) => `${idBase}-tab-${id}`;
+const panelId = (idBase: string, id: string) => `${idBase}-panel-${id}`;
 
 /**
  * Tabs that switch a panel. Arrow keys, Home and End move between them and

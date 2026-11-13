@@ -6,12 +6,12 @@ import { fetchClaims, fetchRemoteState } from "../../core/syncService";
 import type { SyncifyConfig, SyncifyPayload, SyncifyRemoteState } from "../../types/syncify";
 
 // Mirrors the worker's MAX_BACKUP_HISTORY.
-export const MAX_BACKUPS = 3;
+const MAX_BACKUPS = 3;
 
-export type Claims = ClaimStatus & { hash: string };
+type Claims = ClaimStatus & { hash: string };
 
 /** One read of this Spotify account's backups and, signed in, its claims. */
-export interface BackupCheck {
+interface BackupCheck {
   remote: SyncifyRemoteState;
   /** A secured backup this device can't read: signed out, or another account. */
   lockedBy: LockedError["code"] | null;

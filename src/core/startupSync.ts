@@ -13,7 +13,7 @@ type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
  * one, once, or else a new install waiting for approval, or else the Secure
  * nudge's panel, once per install. `onUndone` says whether it opened.
  */
-export interface LaunchNotices {
+interface LaunchNotices {
   onClaim(claim: PendingClaim): void;
   onUndone(claim: UndoneClaim): boolean;
   onInstall(install: SyncifyWaitingInstall): void;

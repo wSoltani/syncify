@@ -19,7 +19,7 @@ type OpenResult =
 // "unavailable" means this Spotify build has no usable IndexedDB, which is the
 // normal case for Marketplace < 1.0.9. "failed" means the store is there but
 // the write did not land, so the caller must not report success.
-export type MarketplaceWriteResult = "written" | "unavailable" | "failed";
+type MarketplaceWriteResult = "written" | "unavailable" | "failed";
 
 export async function readMarketplaceStore(): Promise<Record<
   string,

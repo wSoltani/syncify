@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 
-export interface KeyButtonProps
+interface KeyButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type" | "children"> {
   /** The keys, like "Ctrl+Alt+S", or what to press while recording. */
   keys: string;

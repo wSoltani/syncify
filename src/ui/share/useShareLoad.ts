@@ -17,7 +17,7 @@ import { loadShare, SafetyBackupError } from "../../core/syncService";
 import type { SyncifyConfig, SyncifySpicetifyConfig } from "../../types/syncify";
 import { listChanges } from "../changes/listChanges";
 
-export interface LoadedShare {
+interface LoadedShare {
   file: ShareFile;
   items: InstalledItem[];
   /** Loaded from Syncify picks. */

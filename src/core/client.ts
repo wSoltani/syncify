@@ -19,7 +19,7 @@ const DATABASE_TIMEOUT_MS = 2000;
  * This install's ID, and whether it's kept in Syncify's database. Only an ID
  * kept there has a key of its own (installKey.ts), stored next to it.
  */
-export interface Install {
+interface Install {
   id: string;
   inDatabase: boolean;
 }
