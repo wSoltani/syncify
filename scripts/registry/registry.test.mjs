@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkRegistry, keysOverlap, readJson, registryPath, schemaPath } from "./check.mjs";
-import { checkPullRequest, diffItems, manifestPaths } from "./owners.mjs";
+import { checkPullRequest, diffItems, manifestPaths, submitterOf } from "./owners.mjs";
 
 const schema = await readJson(schemaPath);
 
@@ -130,6 +130,17 @@ describe("manifestPaths", () => {
   });
 });
 
+describe("submitterOf", () => {
+  it("takes the opener, or the owner line when the submission app opened it", () => {
+    const app = "registry-app[bot]";
+    expect(submitterOf({ opener: "alice", body: "Owner: @mallory", app })).toBe("alice");
+    expect(submitterOf({ opener: "alice", body: "", app: "" })).toBe("alice");
+    expect(submitterOf({ opener: app, body: "Adds an entry\n\nOwner: @alice\n", app })).toBe("alice");
+    expect(submitterOf({ opener: app, body: "Owner: alice", app })).toBe(null);
+    expect(submitterOf({ opener: app, body: null, app })).toBe(null);
+  });
+});
+
 describe("diffItems", () => {
   it("finds added, changed and removed entries and top-level changes", () => {
     const base = registry([item("a/b/one.js"), item("a/b/two.js")]);
@@ -153,8 +164,16 @@ describe("checkPullRequest", () => {
   });
   const base = registry([]);
   const head = registry([item("alice/repo/ext.js")]);
-  const run = (fields) =>
-    checkPullRequest({ base, head, author: "alice", maintainer: "wSoltani", github: github(), ...fields });
+  const run = ({ author = "alice", submitter = author, ...fields } = {}) =>
+    checkPullRequest({
+      base,
+      head,
+      opener: author,
+      submitter,
+      maintainer: "wSoltani",
+      github: github(),
+      ...fields,
+    });
 
   it("accepts the repo's owner", async () => {
     expect(await run()).toEqual([]);
@@ -189,6 +208,16 @@ describe("checkPullRequest", () => {
     ]);
     expect(await run({ author: "wSoltani", head: registry([item("carol/repo/ext.js")]) })).toEqual([
       "carol/repo/ext.js: no public GitHub repo carol/repo",
+    ]);
+  });
+
+  it("checks the owner the submission app names, not the app", async () => {
+    expect(await run({ author: "registry-app[bot]", submitter: "alice" })).toEqual([]);
+    expect(await run({ author: "registry-app[bot]", submitter: "mallory" })).toEqual([
+      "alice/repo/ext.js: only the owner of alice/repo can add or change this entry",
+    ]);
+    expect(await run({ author: "registry-app[bot]", submitter: null })).toEqual([
+      'registry-app[bot] opened this without an "Owner: @login" line naming the owner',
     ]);
   });
 

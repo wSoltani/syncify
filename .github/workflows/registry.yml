@@ -4,7 +4,10 @@ name: Registry
 # the releases bucket once it changes on master. Syncify reads it from there,
 # so a merged entry reaches everyone within about a minute.
 on:
-  pull_request:
+  # pull_request_target runs this file and its scripts as they are on master,
+  # so a pull request can't change the rules it is held to. Nothing from the
+  # pull request runs: its registry.json is only read as data.
+  pull_request_target:
     paths: [registry/**]
   push:
     branches: [master]
@@ -15,39 +18,32 @@ permissions:
 
 jobs:
   owners:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-24.04
     steps:
-      # The check runs from the base branch, so a pull request can't change
-      # the rules it is held to. The pull request's registry is only read.
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
       - name: Read the pull request's registry
         env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          git fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          git fetch --no-tags --depth=1 origin "refs/pull/$PR_NUMBER/head"
           git show "$HEAD_SHA:registry/registry.json" > "$RUNNER_TEMP/head-registry.json"
-      - name: Check for the base branch's check
-        id: base
-        run: |
-          if [ -f scripts/registry/owners.mjs ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::The base branch has no registry check yet"
-          fi
       - uses: actions/setup-node@v7
-        if: steps.base.outputs.ready == 'true'
         with:
           node-version-file: .node-version
-          cache: npm
-      - if: steps.base.outputs.ready == 'true'
-        run: npm ci
+          # Runs with the base branch's rights, so it skips the shared cache.
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
       - name: Check who changed which entries
-        if: steps.base.outputs.ready == 'true'
         env:
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_OPENER: ${{ github.event.pull_request.user.login }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          # The login of the app that opens owners' submissions, once it exists.
+          SUBMISSION_APP: ${{ vars.REGISTRY_SUBMISSION_APP }}
           MAINTAINER: ${{ github.repository_owner }}
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/registry/owners.mjs registry/registry.json "$RUNNER_TEMP/head-registry.json"

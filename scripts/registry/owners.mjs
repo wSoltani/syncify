@@ -8,6 +8,11 @@ import { checkRegistry, readJson, schemaPath } from "./check.mjs";
 // owner is the GitHub account that owns the repo, or a public member of the
 // organization that owns it. Every added or changed id must also match an
 // item in the repo's manifest.json, as Marketplace builds it.
+//
+// The owner is whoever opened the pull request, except when the submission
+// app opened it for an owner it signed in with GitHub: then it's the login on
+// the body's "Owner: @login" line. Only the app and maintainers can edit the
+// body of a pull request the app opened.
 
 const GITHUB_API = "https://api.github.com";
 const RAW = "https://raw.githubusercontent.com";
@@ -46,6 +51,12 @@ export function diffItems(base, head) {
   return { changed, removed, settingsChanged };
 }
 
+export function submitterOf({ opener, body, app }) {
+  if (!app || opener.toLowerCase() !== app.toLowerCase()) return opener;
+  const match = /^Owner: @([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)\s*$/m.exec(body ?? "");
+  return match ? match[1] : null;
+}
+
 export function createGitHub(token, fetchImpl = fetch) {
   const headers = {
     accept: "application/vnd.github+json",
@@ -81,10 +92,13 @@ export function createGitHub(token, fetchImpl = fetch) {
   };
 }
 
-export async function checkPullRequest({ base, head, author, maintainer, github }) {
+export async function checkPullRequest({ base, head, opener, submitter, maintainer, github }) {
   const errors = [];
   const { changed, removed, settingsChanged } = diffItems(base, head);
-  const isMaintainer = author.toLowerCase() === maintainer.toLowerCase();
+  const isMaintainer = opener.toLowerCase() === maintainer.toLowerCase();
+  if (!isMaintainer && !submitter) {
+    return [`${opener} opened this without an "Owner: @login" line naming the owner`];
+  }
 
   if (settingsChanged && !isMaintainer) {
     errors.push("Only Syncify changes the format, sizes and account limit");
@@ -100,8 +114,8 @@ export async function checkPullRequest({ base, head, author, maintainer, github 
 
   const ownsRepo = async (repo) => {
     const owner = repo.owner.login;
-    if (owner.toLowerCase() === author.toLowerCase()) return true;
-    return repo.owner.type === "Organization" && github.isPublicMember(owner, author);
+    if (owner.toLowerCase() === submitter.toLowerCase()) return true;
+    return repo.owner.type === "Organization" && github.isPublicMember(owner, submitter);
   };
 
   for (const { id, item } of changed) {
@@ -142,9 +156,15 @@ export async function checkPullRequest({ base, head, author, maintainer, github 
 
 async function main() {
   const [basePath, headPath] = process.argv.slice(2);
-  const { PR_AUTHOR: author, MAINTAINER: maintainer, GITHUB_TOKEN: token } = process.env;
-  if (!headPath || !author || !maintainer) {
-    console.error("Usage: PR_AUTHOR=… MAINTAINER=… node scripts/registry/owners.mjs <base registry> <head registry>");
+  const {
+    PR_OPENER: opener,
+    PR_BODY: body,
+    SUBMISSION_APP: app,
+    MAINTAINER: maintainer,
+    GITHUB_TOKEN: token,
+  } = process.env;
+  if (!headPath || !opener || !maintainer) {
+    console.error("Usage: PR_OPENER=… MAINTAINER=… node scripts/registry/owners.mjs <base registry> <head registry>");
     process.exit(2);
   }
 
@@ -156,7 +176,8 @@ async function main() {
       : await checkPullRequest({
           base: await readJson(basePath).catch(() => null),
           head,
-          author,
+          opener,
+          submitter: submitterOf({ opener, body, app }),
           maintainer,
           github: createGitHub(token),
         });
