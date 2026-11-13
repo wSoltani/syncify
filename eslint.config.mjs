@@ -9,6 +9,11 @@ import tseslint from "typescript-eslint";
 const linted = [
   "src/react/**/*.ts",
   "src/ui/kit/**/*.{ts,tsx}",
+  "src/ui/window/**/*.{ts,tsx}",
+  "src/ui/backups/**/*.{ts,tsx}",
+  "src/ui/account/secureState.ts",
+  "src/ui/share/useStoredShareInfo.ts",
+  "src/ui/*.{ts,tsx}",
   "src/test/**/*.ts",
   "vitest.config.ts",
 ];

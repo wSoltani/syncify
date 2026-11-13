@@ -1,0 +1,101 @@
+/* Spotify PopupModal shell tweaks scoped to Syncify. Keep these minimal so the
+   Spotify modal can size naturally instead of being forced/cropped. */
+.syncify-modal-shell .main-trackCreditsModal-header,
+.main-trackCreditsModal-header:has(+ * :is(.syncify-panel, .syncify-window)),
+.main-trackCreditsModal-header:has(~ * :is(.syncify-panel, .syncify-window)) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 16px 20px 8px !important;
+}
+
+.syncify-modal-shell .main-trackCreditsModal-header h1,
+.main-trackCreditsModal-header:has(+ * :is(.syncify-panel, .syncify-window)) h1,
+.main-trackCreditsModal-header:has(~ * :is(.syncify-panel, .syncify-window)) h1 {
+    margin: 0 !important;
+    font-size: 18px !important;
+    line-height: 1.25 !important;
+}
+
+/* The mark before the title. */
+.syncify-modal-shell .main-trackCreditsModal-header h1 {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.syncify-modal-mark {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.syncify-modal-shell .main-trackCreditsModal-mainSection,
+.syncify-modal-shell .main-trackCreditsModal-content,
+.main-trackCreditsModal-mainSection:has(.syncify-panel),
+.main-trackCreditsModal-content:has(.syncify-panel) {
+    /* The window reads these to fit inside without the shell scrolling. */
+    --syncify-shell-height: calc(100vh - 140px);
+    --syncify-shell-padding-top: 10px;
+    --syncify-shell-padding-bottom: 18px;
+
+    box-sizing: border-box !important;
+    max-height: var(--syncify-shell-height) !important;
+    padding: var(--syncify-shell-padding-top) 20px var(--syncify-shell-padding-bottom) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+.syncify-modal-shell .syncify-modal-close {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    color: var(--spice-subtext) !important;
+    background: transparent !important;
+    cursor: pointer !important;
+    /* A tall window reaches up under Spotify's title bar, which drags the
+       window and takes the clicks. */
+    -webkit-app-region: no-drag !important;
+    transition:
+        color 120ms ease,
+        background-color 120ms ease,
+        transform 120ms ease !important;
+}
+
+.syncify-modal-shell .syncify-modal-close svg {
+    width: 18px !important;
+    height: 18px !important;
+    fill: none !important;
+    stroke: currentColor !important;
+    stroke-width: 2 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+    pointer-events: none !important;
+}
+
+.syncify-modal-shell .syncify-modal-close:hover {
+    color: var(--spice-text) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.syncify-modal-shell .syncify-modal-close:active {
+    transform: scale(0.96) !important;
+}
+
+@media (max-width: 560px) {
+    .syncify-modal-shell .main-trackCreditsModal-mainSection,
+    .syncify-modal-shell .main-trackCreditsModal-content,
+    .main-trackCreditsModal-mainSection:has(.syncify-panel),
+    .main-trackCreditsModal-content:has(.syncify-panel) {
+        --syncify-shell-height: calc(100vh - 110px);
+        --syncify-shell-padding-bottom: 14px;
+
+        padding: var(--syncify-shell-padding-top) 14px var(--syncify-shell-padding-bottom) !important;
+    }
+}

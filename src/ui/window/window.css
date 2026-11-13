@@ -1,0 +1,185 @@
+/* The window fits the height Spotify's popup leaves it, so the status and
+   tabs stay put and only the open tab scrolls. Without the popup's sizes it
+   grows with its content and the popup scrolls instead. */
+.syncify-window {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-4);
+    width: 100%;
+    min-width: 0;
+    max-height: calc(
+        var(--syncify-shell-height) - var(--syncify-shell-padding-top) - var(--syncify-shell-padding-bottom)
+    );
+}
+
+.syncify-window-top {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: var(--syncify-space-5);
+}
+
+/* Status */
+
+.syncify-status {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-3);
+}
+
+.syncify-status-main {
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-4);
+}
+
+.syncify-status-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--syncify-space-2);
+    min-width: 0;
+}
+
+.syncify-status-title {
+    margin: 0;
+    font-size: var(--syncify-text-title);
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.syncify-status-sentence {
+    margin: 0;
+}
+
+.syncify-status-ask {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--syncify-space-1) var(--syncify-space-2);
+    margin: 0;
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-small);
+}
+
+/* An alert that needs an answer takes the status's place. Its mark sits on
+   the title's capitals, however many lines follow. */
+.syncify-status-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--syncify-space-3);
+    padding: var(--syncify-space-4);
+    border-radius: var(--syncify-radius-surface);
+    background: var(--syncify-color-warning-surface);
+}
+
+.syncify-status-alert .syncify-status-title {
+    font-size: var(--syncify-text-heading);
+}
+
+.syncify-status-alert-mark {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    height: 1lh;
+    font-size: var(--syncify-text-heading);
+    line-height: 1.25;
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-status-alert-mark {
+        height: 1cap;
+    }
+
+    .syncify-status-alert .syncify-status-title,
+    .syncify-status-alert .syncify-status-sentence {
+        text-box: trim-both cap alphabetic;
+    }
+
+    .syncify-status-alert .syncify-status-text {
+        gap: calc(1lh - 1cap);
+    }
+}
+
+.syncify-status-alert > .syncify-btn,
+.syncify-status-answers {
+    flex: 0 0 auto;
+    align-self: center;
+}
+
+.syncify-status-answers {
+    display: flex;
+    gap: var(--syncify-space-2);
+}
+
+/* The status in one line under an alert. */
+.syncify-status-line {
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-2);
+    min-height: var(--syncify-size-control-small);
+}
+
+.syncify-status-line > .syncify-btn {
+    margin-left: auto;
+}
+
+.syncify-status-check {
+    color: var(--syncify-color-accent);
+    stroke-width: 3;
+}
+
+/* Tabs */
+
+.syncify-tab-text {
+    margin: 0;
+}
+
+.syncify-commands {
+    margin: var(--syncify-space-2) 0 0;
+    padding: var(--syncify-space-2) var(--syncify-space-3);
+    border-radius: calc(var(--syncify-size-control) * var(--syncify-corner));
+    background: var(--syncify-color-surface);
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: var(--syncify-text-small);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Footer */
+
+.syncify-window-footer {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--syncify-space-2) var(--syncify-space-4);
+    padding-top: var(--syncify-space-3);
+    border-top: var(--syncify-line) solid var(--syncify-color-divider);
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-label);
+}
+
+.syncify-window-footer-version,
+.syncify-window-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--syncify-space-1);
+}
+
+.syncify-window-footer-version {
+    gap: var(--syncify-space-3);
+}
+
+.syncify-ui .syncify-window-update {
+    color: var(--syncify-color-accent);
+    font-weight: 700;
+}
+
+/* The Account tab's check, centered on its label's capitals. */
+.syncify-tab-check {
+    display: inline-flex;
+}

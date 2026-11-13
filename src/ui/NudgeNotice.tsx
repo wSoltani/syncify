@@ -3,7 +3,6 @@
  * on a backup with no account. Secure opens Syncify to secure it.
  */
 export function NudgeNotice(props: { onSecure(): void; onClose(): void }) {
-  const React = Spicetify.React;
   return (
     <div className="syncify-panel">
       <p className="syncify-claim-notice">
