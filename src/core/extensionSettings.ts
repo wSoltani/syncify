@@ -292,56 +292,69 @@ function inItemStore<T>(
   if (!factory) return Promise.resolve(null);
   const idb = factory;
 
-  const work = new Promise<T | null>((resolve, reject) => {
+  return new Promise<T | null>((resolve, reject) => {
+    // Settled once: by the work, or by the timeout, which aborts whatever
+    // is still running so a late write can't land after the restore failed.
+    let settled = false;
+    let transaction: IDBTransaction | null = null;
+    const finish = (outcome: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      outcome();
+    };
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error("The extension's database took too long.")));
+      try {
+        transaction?.abort();
+      } catch {
+        // already finished
+      }
+    }, DATABASE_TIMEOUT_MS);
+
     let request: IDBOpenDBRequest;
     try {
       request = idb.open(storage.database);
     } catch {
-      resolve(null);
+      finish(() => resolve(null));
       return;
     }
 
     // It doesn't exist on this device: cancel, so nothing is created.
     request.onupgradeneeded = () => request.transaction?.abort();
     request.onerror = () => {
-      if (request.error?.name === "AbortError") resolve(null);
-      else reject(request.error);
+      const error = request.error;
+      finish(() => (error?.name === "AbortError" ? resolve(null) : reject(error)));
     };
-    request.onblocked = () => reject(new Error("The extension's database is busy."));
+    request.onblocked = () => finish(() => reject(new Error("The extension's database is busy.")));
     request.onsuccess = () => {
       const db = request.result;
       db.onversionchange = () => db.close();
-      if (!db.objectStoreNames.contains(storage.store)) {
+      if (settled || !db.objectStoreNames.contains(storage.store)) {
         db.close();
-        resolve(null);
+        finish(() => resolve(null));
         return;
       }
 
       try {
-        const transaction = db.transaction(storage.store, mode);
+        const current = db.transaction(storage.store, mode);
+        transaction = current;
         let result: T | null = null;
-        run(transaction.objectStore(storage.store), (value) => {
+        run(current.objectStore(storage.store), (value) => {
           result = value;
         });
-        transaction.oncomplete = () => {
+        current.oncomplete = () => {
           db.close();
-          resolve(result);
+          finish(() => resolve(result));
         };
-        transaction.onerror = transaction.onabort = () => {
+        current.onerror = current.onabort = () => {
           db.close();
-          reject(transaction.error ?? new Error("IndexedDB failed."));
+          finish(() => reject(current.error ?? new Error("IndexedDB failed.")));
         };
       } catch (error) {
         db.close();
-        reject(error);
+        finish(() => reject(error));
       }
     };
   });
-
-  return Promise.race([
-    work,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("The extension's database took too long.")), DATABASE_TIMEOUT_MS),
-    ),
-  ]);
 }
