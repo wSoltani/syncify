@@ -55,7 +55,7 @@ export function ChangeList(props: {
         <ListRow
           name={<span className="syncify-change-fold">{changes.unchanged.length} more stay the same</span>}
           end={
-            <Button variant="text" aria-expanded={showUnchanged} onClick={() => setShowUnchanged(!showUnchanged)}>
+            <Button variant="subtle" aria-expanded={showUnchanged} onClick={() => setShowUnchanged(!showUnchanged)}>
               {showUnchanged ? "Hide" : "Show"}
             </Button>
           }

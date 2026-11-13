@@ -72,11 +72,11 @@ export function SettingsTab(props: {
         >
           <span className="syncify-settings-shortcut">
             {recorder.recording ? null : config.shortcut ? (
-              <Button variant="text" onClick={() => updateShortcut(null)}>
+              <Button variant="subtle" onClick={() => updateShortcut(null)}>
                 Turn off
               </Button>
             ) : (
-              <Button variant="text" onClick={() => updateShortcut(DEFAULT_SHORTCUT)}>
+              <Button variant="subtle" onClick={() => updateShortcut(DEFAULT_SHORTCUT)}>
                 Use default
               </Button>
             )}

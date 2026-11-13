@@ -135,18 +135,8 @@ export function AccountTab(props: {
   return (
     <TabPanel idBase={props.idBase} id="account">
       <SettingGroup>
-        <SettingRow label="Email for sign-in codes" value={maskEmail(session.email)}>
-          <Button variant="secondary" size="small" onClick={() => void openAccountPage()} disabled={busy}>
-            Change
-          </Button>
-        </SettingRow>
-        {handle ? (
-          <SettingRow label="Creator handle" value={`@${handle}`}>
-            <Button variant="secondary" size="small" onClick={() => void openAccountPage()} disabled={busy}>
-              Change
-            </Button>
-          </SettingRow>
-        ) : null}
+        <SettingRow label="Email for sign-in codes" value={maskEmail(session.email)} />
+        {handle ? <SettingRow label="Creator handle" value={`@${handle}`} /> : null}
         <SettingRow label="Your account page">
           <Button variant="secondary" size="small" onClick={() => void openAccountPage()} disabled={busy}>
             Open
