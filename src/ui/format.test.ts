@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notMeBy, otherClaimText, securedOn, waitingInstallTitle } from "./claimText";
+import { describeOtherClaim, notMeBy, securedOn, undoneClaimTitle, waitingInstallTitle } from "./claimText";
 import { formatBackupDate, formatCount, formatItemCount, joinNames } from "./format";
 
 describe("formatItemCount", () => {
@@ -50,13 +50,20 @@ describe("claim text", () => {
     }
   });
 
-  it("writes someone else's claim as sentences", () => {
+  it("writes someone else's claim as a title and a sentence", () => {
+    expect(describeOtherClaim({ status: "pending", mine: false, email: null, final_at: today, held: true })).toEqual({
+      title: "Someone is securing this backup",
+      text: "Syncify is checking it.",
+    });
     expect(
-      otherClaimText({ status: "pending", mine: false, email: null, final_at: today, held: true }),
-    ).toBe("Someone is securing this backup. Syncify is checking it.");
-    expect(
-      otherClaimText({ status: "pending", mine: false, email: null, final_at: today, held: false, not_me: true }),
-    ).toBe("Syncify is checking this claim.");
+      describeOtherClaim({ status: "pending", mine: false, email: null, final_at: today, held: false, not_me: true }),
+    ).toEqual({ title: "Syncify is checking this claim", text: null });
+  });
+
+  it("names who no longer secures the backup", () => {
+    expect(undoneClaimTitle({ status: "undone", mine: false, email: null, undone_at: 0 })).toBe(
+      "This backup is no longer secured by another account",
+    );
   });
 
   it("names the waiting install's device when known", () => {

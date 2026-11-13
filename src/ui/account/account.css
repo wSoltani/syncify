@@ -1,0 +1,32 @@
+/* The code step's Resend and Use another email. */
+.syncify-account-resend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--syncify-space-3);
+}
+
+.syncify-account-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-2);
+}
+
+/* Where securing this backup stands on the left, Sign out on the right. */
+.syncify-account-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--syncify-space-4);
+}
+
+.syncify-account-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--syncify-space-2);
+    min-width: 0;
+}
+
+.syncify-account-check {
+    flex: 0 0 auto;
+    color: var(--syncify-color-accent);
+}

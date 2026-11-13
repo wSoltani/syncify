@@ -4,7 +4,7 @@ import { useStableId } from "./useStableId";
 export interface DialogContentProps {
   title: ReactNode;
   /** One or two short sentences: what happens, and what is lost. */
-  children: ReactNode;
+  children?: ReactNode;
   /** Two buttons: the safe one first, the action last. */
   actions: ReactNode;
   titleId?: string;
@@ -20,7 +20,7 @@ export function DialogContent(props: DialogContentProps) {
       <h2 className="syncify-dialog-title" id={props.titleId}>
         {props.title}
       </h2>
-      <div className="syncify-dialog-text">{props.children}</div>
+      {props.children ? <div className="syncify-dialog-text">{props.children}</div> : null}
       <div className="syncify-dialog-actions">{props.actions}</div>
     </div>
   );

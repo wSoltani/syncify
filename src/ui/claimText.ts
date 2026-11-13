@@ -40,15 +40,9 @@ export function describeOtherClaim(claim: PendingClaim): {
   };
 }
 
-/** The same claim as one or two sentences, for the notice when Spotify starts. */
-export function otherClaimText(claim: PendingClaim): string {
-  const { title, text } = describeOtherClaim(claim);
-  return text ? `${title}. ${text}` : `${title}.`;
-}
-
 /** What Syncify says on a Spotify account after an admin undid someone else's claim. */
-export function undoneClaimText(claim: UndoneClaim): string {
-  return `This backup is no longer secured by ${claim.email ?? "another account"}.`;
+export function undoneClaimTitle(claim: UndoneClaim): string {
+  return `This backup is no longer secured by ${claim.email ?? "another account"}`;
 }
 
 /** The toast after Not me. */

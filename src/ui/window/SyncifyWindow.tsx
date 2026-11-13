@@ -15,13 +15,13 @@ import {
   secureBackup,
 } from "../../core/syncService";
 import type { SyncifyConfig } from "../../types/syncify";
-import { AccountPanel } from "../account/AccountPanel";
+import { AccountTab } from "../account/AccountTab";
 import { accountTabStatus, describeSecureState } from "../account/secureState";
 import { backupItems } from "../backups/backupItems";
 import { BackupsTab } from "../backups/BackupsTab";
 import type { RestoreRequest } from "../backups/RestorePreview";
 import { notMeToast } from "../claimText";
-import { TabPanel, useStableId } from "../kit";
+import { useStableId } from "../kit";
 import { SettingsTab } from "../settings/SettingsTab";
 import { ShareTab } from "../share/ShareTab";
 import { useStoredShareInfo } from "../share/useStoredShareInfo";
@@ -40,7 +40,7 @@ import { WindowTabs, type WindowTab } from "./WindowTabs";
 
 /**
  * Syncify's window: where this device stands, pinned above four tabs.
- * tab: the tab to open with, as That's me, sign in opens Account.
+ * tab: the tab to open with: Account, from the Secure nudge's launch panel.
  * secure: opened from the Secure nudge's launch panel, so signing in secures
  * the backup, and signed in it's secured at once.
  */
@@ -376,24 +376,20 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           onHandle={shareInfo.saveHandle}
         />
       ) : tab === "account" ? (
-        <TabPanel idBase={idBase} id="account">
-          <div className="syncify-panel">
-            <AccountPanel
-              session={session}
-              locked={locked}
-              secure={secureState}
-              securing={securing}
-              secureError={secureError}
-              onSecure={() => void runSecure()}
-              nudge={fromNudge}
-              onSignedIn={handleSignedIn}
-              onSignedOut={handleSignedOut}
-              onOpenWebsite={openExternal}
-              handle={shareInfo.handle}
-              onHandle={shareInfo.saveHandle}
-            />
-          </div>
-        </TabPanel>
+        <AccountTab
+          idBase={idBase}
+          session={session}
+          locked={locked}
+          secure={secureState}
+          securing={securing}
+          secureError={secureError}
+          onSecure={() => void runSecure()}
+          nudge={fromNudge}
+          onSignedIn={handleSignedIn}
+          onSignedOut={handleSignedOut}
+          handle={shareInfo.handle}
+          onHandle={shareInfo.saveHandle}
+        />
       ) : (
         <SettingsTab
           idBase={idBase}

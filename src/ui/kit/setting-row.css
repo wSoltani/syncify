@@ -6,6 +6,11 @@
     min-height: var(--syncify-size-row-single);
 }
 
+/* A row with its value under the label is as tall as a two-line list row. */
+.syncify-setting-row:has(.syncify-setting-row-value) {
+    min-height: var(--syncify-size-row);
+}
+
 label.syncify-setting-row {
     cursor: pointer;
 }
