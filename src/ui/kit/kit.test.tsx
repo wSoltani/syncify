@@ -163,6 +163,15 @@ describe("Menu", () => {
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("menu")).toBeNull();
   });
+
+  it("stays open while its own items scroll, and closes when the page scrolls", () => {
+    render(<Menu label="More" trigger="more" items={[{ label: "Update", onSelect: () => {} }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.scroll(screen.getByRole("menu"));
+    expect(screen.getByRole("menu")).toBeTruthy();
+    fireEvent.scroll(document);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
 });
 
 describe("Dialog", () => {
@@ -188,5 +197,25 @@ describe("Dialog", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(opener);
     opener.remove();
+  });
+
+  it("stays open and keeps focus when its parent renders a new onClose", () => {
+    const first = vi.fn();
+    const latest = vi.fn();
+    const dialogFor = (onClose: () => void) => (
+      <Dialog open title="Delete Clean and quiet" onClose={onClose} actions={<button type="button">Keep it</button>}>
+        The code stops working.
+      </Dialog>
+    );
+    const { rerender } = render(dialogFor(first));
+    const keep = screen.getByRole("button", { name: "Keep it" });
+    keep.focus();
+    rerender(dialogFor(latest));
+    const dialog = screen.getByRole("dialog", { name: "Delete Clean and quiet" });
+    expect((dialog as HTMLDialogElement).open).toBe(true);
+    expect(document.activeElement).toBe(keep);
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledOnce();
   });
 });

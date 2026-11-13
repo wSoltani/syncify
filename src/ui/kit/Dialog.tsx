@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { useStableId } from "./useStableId";
 
 export interface DialogContentProps {
@@ -39,7 +39,13 @@ export interface DialogProps extends Omit<DialogContentProps, "titleId"> {
 export function Dialog(props: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useStableId("dialog");
-  const { open, onClose } = props;
+  const { open } = props;
+  // The latest onClose, so a parent's new inline function doesn't close and
+  // reopen the dialog on every render.
+  const onCloseRef = useRef(props.onClose);
+  useLayoutEffect(() => {
+    onCloseRef.current = props.onClose;
+  });
 
   useEffect(() => {
     const dialog = ref.current;
@@ -48,7 +54,7 @@ export function Dialog(props: DialogProps) {
     if (!dialog.open) dialog.showModal();
     const onCancel = (event: Event) => {
       event.preventDefault();
-      onClose();
+      onCloseRef.current();
     };
     dialog.addEventListener("cancel", onCancel);
     return () => {
@@ -56,7 +62,7 @@ export function Dialog(props: DialogProps) {
       if (dialog.open) dialog.close();
       if (returnTo instanceof HTMLElement && returnTo.isConnected) returnTo.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (

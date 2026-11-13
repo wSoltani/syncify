@@ -52,12 +52,17 @@ export function Menu(props: MenuProps) {
       if (!(target instanceof Node)) return;
       if (!popover.contains(target) && !button.contains(target)) close();
     };
+    // The page moving leaves the menu behind; scrolling inside it doesn't.
+    const onScroll = (event: Event) => {
+      if (event.target instanceof Node && popover.contains(event.target)) return;
+      close();
+    };
     document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("scroll", close, true);
+    document.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", close);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("scroll", close, true);
+      document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", close);
       hidePopover(popover);
     };
