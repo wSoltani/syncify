@@ -10,6 +10,8 @@
     border-radius: calc(var(--syncify-size-control-medium) * var(--syncify-corner));
     color: var(--syncify-color-text);
     background: var(--syncify-color-surface);
+    /* The key's lower edge. */
+    box-shadow: inset 0 calc(-2 * var(--syncify-line)) 0 var(--syncify-color-divider);
     font: inherit;
     font-size: var(--syncify-text-small);
     font-weight: 700;
@@ -22,5 +24,7 @@
 
 .syncify-keycap[data-recording="true"] {
     color: var(--syncify-color-accent);
-    box-shadow: inset 0 0 0 var(--syncify-line) var(--syncify-color-accent);
+    box-shadow:
+        inset 0 calc(-2 * var(--syncify-line)) 0 var(--syncify-color-divider),
+        inset 0 0 0 var(--syncify-line) var(--syncify-color-accent);
 }
