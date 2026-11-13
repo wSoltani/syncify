@@ -116,7 +116,11 @@ export function AccountTab(props: {
             ? "Sign in with the email that secured this backup"
             : "Sign in to secure your backup so only you can restore it"}
         </p>
-        {message ? <Notice tone={message.kind}>{message.text}</Notice> : null}
+        {message ? (
+          <Notice tone={message.kind} live>
+            {message.text}
+          </Notice>
+        ) : null}
         <SignInForm signIn={signIn} />
       </TabPanel>
     );
@@ -158,7 +162,11 @@ export function AccountTab(props: {
       </SettingGroup>
       {secure.kind === "ended" ? <Notice tone="warning">{ENDED[secure.reason]}</Notice> : null}
       {props.secureError ? <Notice tone="error">{props.secureError}</Notice> : null}
-      {message ? <Notice tone={message.kind}>{message.text}</Notice> : null}
+      {message ? (
+          <Notice tone={message.kind} live>
+            {message.text}
+          </Notice>
+        ) : null}
       <div className="syncify-account-footer">
         <span className="syncify-account-status">
           {secure.kind === "secured" ? <CheckIcon className="syncify-account-check" /> : null}

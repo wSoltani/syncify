@@ -65,6 +65,7 @@ describe("SettingsTab", () => {
 
     const off = { ...config, shortcut: null };
     rerender(<SettingsTab idBase="t" config={off} onConfigChange={() => {}} busy={false} unsupported={false} />);
+    expect(screen.getByRole("button", { name: "Off, change the keyboard shortcut" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Use default" }));
     expect(applyShortcut).toHaveBeenLastCalledWith(DEFAULT_SHORTCUT);
   });
@@ -80,6 +81,7 @@ describe("Recording a shortcut", () => {
     renderTab();
     fireEvent.click(keyButton());
     expect(screen.getByText("Press a key combination, or Esc to cancel")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Press keys for a new keyboard shortcut" })).toBeTruthy();
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", ctrlKey: true, altKey: true }));
     });
@@ -108,7 +110,7 @@ describe("Recording a shortcut", () => {
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", altKey: true }));
     });
-    expect(screen.getByText(/is already used by Spotify or another extension/)).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toMatch(/is already used by Spotify or another extension/);
     expect(applyShortcut).not.toHaveBeenCalled();
   });
 });

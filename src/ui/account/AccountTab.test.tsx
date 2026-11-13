@@ -150,6 +150,7 @@ describe("AccountTab signed in", () => {
     const onSignedOut = vi.fn();
     await renderTab({ session, onSignedOut });
     expect(onSignedOut).toHaveBeenCalledOnce();
+    expect(screen.getByRole("status").textContent).not.toBe("");
   });
 
   it("asks for the handle once when it isn't known yet", async () => {

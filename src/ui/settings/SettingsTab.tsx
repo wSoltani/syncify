@@ -27,6 +27,7 @@ export function SettingsTab(props: {
   const keyId = useStableId("shortcut");
   const recorder = useShortcutRecorder(keyId, updateShortcut);
   const entryPoint = menuAvailable ? config.entryPoint : "topbar";
+  const keys = recorder.recording ? "Press keys" : config.shortcut ? formatShortcut(config.shortcut) : "Off";
 
   function save(next: SyncifyConfig) {
     saveConfig(next);
@@ -81,19 +82,20 @@ export function SettingsTab(props: {
             )}
             <KeyButton
               id={keyId}
-              keys={recorder.recording ? "Press keys" : config.shortcut ? formatShortcut(config.shortcut) : "Off"}
+              keys={keys}
               recording={recorder.recording}
-              aria-label={
-                recorder.recording
-                  ? "Recording a keyboard shortcut"
-                  : `Change the keyboard shortcut${config.shortcut ? `, now ${formatShortcut(config.shortcut)}` : ""}`
-              }
+              // Starts with what it shows, so it can be named by voice too.
+              aria-label={recorder.recording ? `${keys} for a new keyboard shortcut` : `${keys}, change the keyboard shortcut`}
               onClick={recorder.toggle}
             />
           </span>
         </SettingRow>
       </SettingGroup>
-      {recorder.error ? <Notice tone="warning">{recorder.error}</Notice> : null}
+      {recorder.error ? (
+        <Notice tone="warning" live>
+          {recorder.error}
+        </Notice>
+      ) : null}
       {!menuAvailable ? (
         <Notice tone="info">The profile menu isn't available in this Spicetify version.</Notice>
       ) : config.entryPoint === "menu" && !config.shortcut ? (
