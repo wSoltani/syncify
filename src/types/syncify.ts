@@ -143,6 +143,10 @@ export interface SyncifyConfig {
   /** `null` means the shortcut is turned off. */
   shortcut: SyncifyShortcut | null;
   entryPoint: SyncifyEntryPoint;
+  /** This device syncs extension settings with the account's other devices. */
+  settingsSyncEnabled: boolean;
+  /** The restore preview's choice to use restored extension settings on the other devices too. */
+  shareRestoredSettings: boolean;
 }
 
 /** Where Syncify's "open" button appears: top bar, profile menu, or both. */

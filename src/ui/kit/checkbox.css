@@ -31,3 +31,30 @@
     cursor: default;
     opacity: 0.45;
 }
+
+/* A checkbox and its label, centered on the label's capitals. */
+.syncify-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-3);
+    align-self: flex-start;
+    min-height: var(--syncify-size-control-small);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.syncify-checkbox-row[data-disabled="true"] {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.syncify-checkbox-row[data-disabled="true"] .syncify-checkbox {
+    opacity: 1;
+}
+
+/* Trimmed to its capitals like .syncify-cap, but free to wrap at narrow widths. */
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-checkbox-label {
+        text-box: trim-both cap alphabetic;
+    }
+}

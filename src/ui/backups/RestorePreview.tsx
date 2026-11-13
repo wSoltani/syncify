@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import type { ManualItem } from "../../core/restorePreview";
+import type { SettingsRestore } from "../../core/syncService";
 import type { SyncifySnapshotSummary } from "../../types/syncify";
 import { ChangeList } from "../changes/ChangeList";
 import { changesLabel } from "../changes/listChanges";
-import { Button, Notice, SectionHeader, TabPanel, useStableId } from "../kit";
+import { Button, CheckboxRow, Notice, SectionHeader, TabPanel, useStableId } from "../kit";
 import type { BackupRowModel } from "./backupRows";
 import { useRestorePreview } from "./useRestorePreview";
 
@@ -13,6 +14,8 @@ export interface RestoreRequest {
   skipped: string[];
   /** Added in a terminal after the reload. */
   manual: ManualItem[];
+  /** The extension settings it writes. */
+  settings: SettingsRestore;
 }
 
 /**
@@ -25,6 +28,14 @@ export function RestorePreview(props: {
   local: SyncifySnapshotSummary;
   /** Restoring overwrites what's here, and no backup holds it. */
   localIsUnsaved: boolean;
+  /**
+   * The backup is secured and this device syncs extension settings, so the
+   * restored ones can go to the other devices too.
+   */
+  canShareSettings: boolean;
+  /** The remembered choice to share them. */
+  shareSettings: boolean;
+  onShareSettingsChange(share: boolean): void;
   /** Something is running, so nothing else can start. */
   busy: boolean;
   restoring: boolean;
@@ -36,6 +47,7 @@ export function RestorePreview(props: {
   const restore = useRestorePreview(row.backup, local.items, local.spicetifyConfig);
   const { changes } = restore;
   const marketplaceMissing = !local.marketplaceAvailable;
+  const showShare = props.canShareSettings && restore.settingsIds.length > 0;
 
   // Opened from a row that's gone now: focus moves to what took its place.
   useEffect(() => {
@@ -48,7 +60,14 @@ export function RestorePreview(props: {
         Cancel
       </Button>
       <Button
-        onClick={() => props.onRestore({ row, skipped: restore.skipped, manual: restore.preview.manual })}
+        onClick={() =>
+          props.onRestore({
+            row,
+            skipped: restore.skipped,
+            manual: restore.preview.manual,
+            settings: { ids: restore.settingsIds, share: showShare && props.shareSettings },
+          })
+        }
         disabled={props.busy || restore.checking || marketplaceMissing}
       >
         {props.restoring ? "Restoring…" : restore.checking ? "Checking…" : changesLabel("Restore", changes.count)}
@@ -81,6 +100,14 @@ export function RestorePreview(props: {
         </Notice>
       ))}
       {props.localIsUnsaved ? <Notice tone="warning">Your current setup isn't backed up.</Notice> : null}
+      {showShare ? (
+        <CheckboxRow
+          label="Use these extension settings on my other devices too"
+          checked={props.shareSettings}
+          onChange={props.onShareSettingsChange}
+          disabled={props.busy}
+        />
+      ) : null}
     </TabPanel>
   );
 }

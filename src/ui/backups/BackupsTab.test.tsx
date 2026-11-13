@@ -13,6 +13,10 @@ vi.mock("../../core/sourceChecks", async (original) => ({
   checkCatalog: (_items: unknown, checks: unknown) => Promise.resolve(checks),
 }));
 
+// Extension settings: none differ unless a test says so.
+const previewSettings = vi.hoisted(() => vi.fn(async (): Promise<string[]> => []));
+vi.mock("../../core/extensionSettings", () => ({ previewSettings }));
+
 const one = "marketplace:installed:a/b/one.js";
 const two = "marketplace:installed:a/b/two.js";
 const current = makeBackup("now", [one, two], { at: "2026-11-12T22:42:00Z" });
@@ -49,6 +53,9 @@ const tabProps = (changes: Partial<TabProps> = {}): TabProps => ({
   lockedBy: null,
   local,
   otherAccounts: [],
+  canShareSettings: false,
+  shareSettings: true,
+  onShareSettingsChange: () => {},
   busy: false,
   restoring: false,
   onRestore: () => {},
@@ -83,6 +90,41 @@ describe("BackupsTab", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Preview restore of / }));
+  });
+
+  it("lists extension settings after the items, and offers them to the other devices", async () => {
+    previewSettings.mockResolvedValueOnce(["spicetify/cli/Extensions/trashbin.js"]);
+    const onRestore = vi.fn();
+    const onShareSettingsChange = vi.fn();
+    renderTab({ onRestore, canShareSettings: true, onShareSettingsChange });
+    fireEvent.click(screen.getByRole("button", { name: /^Preview restore of / }));
+    await act(() => Promise.resolve());
+
+    const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+    expect(rows).toEqual(["two.jsRemoves", "Trashbin settingsUpdates", "1 more stay the sameShow"]);
+    expect(document.querySelectorAll(".syncify-list-divider")).toHaveLength(2);
+    const share = screen.getByRole("checkbox", { name: "Use these extension settings on my other devices too" });
+    fireEvent.click(share);
+    expect(onShareSettingsChange).toHaveBeenCalledWith(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Restore 2 changes" }));
+    expect(onRestore).toHaveBeenCalledWith(
+      expect.objectContaining({ settings: { ids: ["spicetify/cli/Extensions/trashbin.js"], share: true } }),
+    );
+  });
+
+  it("keeps the extension settings choice off this device when it can't be shared", async () => {
+    previewSettings.mockResolvedValueOnce(["spicetify/cli/Extensions/trashbin.js"]);
+    const onRestore = vi.fn();
+    renderTab({ onRestore });
+    fireEvent.click(screen.getByRole("button", { name: /^Preview restore of / }));
+    await act(() => Promise.resolve());
+
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Restore 2 changes" }));
+    expect(onRestore).toHaveBeenCalledWith(
+      expect.objectContaining({ settings: { ids: ["spicetify/cli/Extensions/trashbin.js"], share: false } }),
+    );
   });
 
   it("shows loading rows while checking, and none once the check failed", () => {

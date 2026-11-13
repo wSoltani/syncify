@@ -1,8 +1,8 @@
 import { stableStringify } from "./crypto";
 import { writeState } from "./database";
 import {
-  isListKey,
   isSettingKey,
+  loadRegistry,
   type RegistryItem,
   type SettingsRegistry,
 } from "./settingsRegistry";
@@ -128,37 +128,30 @@ export async function writeSettings(
   }
 }
 
-/** One item whose settings a restore changes. */
-export interface SettingsChange {
-  id: string;
-  /** Only list keys differ, such as a list of hidden songs. */
-  listsOnly: boolean;
-}
-
 /**
- * The items whose settings in a backup differ from this device's, among
- * those a restore can write.
+ * The registry ids of the items whose settings in a backup differ from this
+ * device's, among those a restore can write.
  */
 export function compareSettings(
   registry: SettingsRegistry,
   backup: SyncifyExtensionSettings | undefined,
   local: LocalSettings,
-): SettingsChange[] {
+): string[] {
   if (!backup) return [];
-  const changes: SettingsChange[] = [];
-
-  for (const item of registry.items) {
+  return registry.items.flatMap((item) => {
     const saved = usableSettings(item, backup[item.id]);
-    if (!saved || local.unavailable.has(item.id)) continue;
+    if (!saved || local.unavailable.has(item.id)) return [];
     const here = local.settings[item.id]?.values ?? {};
-    const differing = [...new Set([...Object.keys(saved), ...Object.keys(here)])].filter(
-      (key) => !sameValue(item, saved[key], here[key]),
-    );
-    if (differing.length > 0) {
-      changes.push({ id: item.id, listsOnly: differing.every((key) => isListKey(item, key)) });
-    }
-  }
-  return changes;
+    const keys = new Set([...Object.keys(saved), ...Object.keys(here)]);
+    return [...keys].some((key) => !sameValue(item, saved[key], here[key])) ? [item.id] : [];
+  });
+}
+
+/** What restoring a backup changes in the registered items' settings here. */
+export async function previewSettings(backup: SyncifyExtensionSettings | undefined): Promise<string[]> {
+  if (!backup) return [];
+  const registry = await loadRegistry();
+  return registry ? compareSettings(registry, backup, await readLocalSettings(registry)) : [];
 }
 
 /**

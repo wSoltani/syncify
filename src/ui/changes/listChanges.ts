@@ -1,5 +1,6 @@
 import type { ItemType, ManualItem, RestorePreview } from "../../core/restorePreview";
 import { isWarning, type SourceCheck, type SourceChecks } from "../../core/sourceChecks";
+import type { Kind } from "../kit";
 import { joinNames } from "../format";
 
 /** Colored text at a change row's end. */
@@ -23,6 +24,15 @@ export interface ChangeRow extends ItemRow {
   included: boolean;
 }
 
+/** An item whose extension settings a restore writes. */
+export interface SettingsRow {
+  /** The item's registry id. */
+  id: string;
+  /** "Shuffle+ settings" */
+  name: string;
+  kind: Kind;
+}
+
 /** Which changes are left off, and which of those were turned on. */
 interface ChangeChoices {
   optional: ReadonlySet<string>;
@@ -33,11 +43,15 @@ interface ChangeChoices {
   unapproved?: boolean;
   /** What the warnings ask before: "Restore it only if you trust it." */
   verb?: "Restore" | "Load";
+  /** Items whose extension settings change too, each one more change. */
+  settings?: SettingsRow[];
 }
 
 export interface ChangeList {
   /** Adds, then Updates, then Removes, each by name. */
   changes: ChangeRow[];
+  /** Extension settings it writes, after the items. */
+  settings: SettingsRow[];
   /** Folded into "N more stay the same". */
   unchanged: ItemRow[];
   /** In Spicetify's config: added in a terminal afterwards. */
@@ -101,12 +115,14 @@ export function listChanges(preview: RestorePreview, checks: SourceChecks, choic
 
   // The preview keeps its name order inside each kind of change.
   changes.sort((a, b) => CHANGE_ORDER[a.change] - CHANGE_ORDER[b.change]);
+  const settings = choices.settings ?? [];
   return {
     changes,
+    settings,
     unchanged,
     manual: preview.manual,
     warnings: [...describeWarnings(changes, checks, choices.verb ?? "Restore"), ...describeFixed(changes)],
-    count: changes.filter((row) => row.included).length,
+    count: changes.filter((row) => row.included).length + settings.length,
   };
 }
 

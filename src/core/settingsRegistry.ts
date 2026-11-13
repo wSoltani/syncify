@@ -29,8 +29,6 @@ export interface RegistryItem {
   keys: string[];
   /** Never leave the device. They win over keys. */
   exclude: string[];
-  /** Keys whose value is a list people add to. */
-  lists: string[];
   storage: SettingsStorage;
 }
 
@@ -99,8 +97,7 @@ function parseItem(raw: unknown): RegistryItem | null {
     return null;
   }
 
-  const lists = isRecord(raw.lists) ? Object.keys(raw.lists) : [];
-  return { id: raw.id, keys, exclude, lists, storage };
+  return { id: raw.id, keys, exclude, storage };
 }
 
 function parseStorage(raw: unknown): SettingsStorage | null {
@@ -127,11 +124,6 @@ function parseKeys(raw: unknown): string[] | null {
 /** Whether a key is one of the item's settings: named in keys and not excluded. */
 export function isSettingKey(item: RegistryItem, key: string): boolean {
   return item.keys.some((pattern) => matches(pattern, key)) && !item.exclude.some((pattern) => matches(pattern, key));
-}
-
-/** Whether a key is one of the item's list keys. */
-export function isListKey(item: RegistryItem, key: string): boolean {
-  return item.lists.includes(key);
 }
 
 function matches(pattern: string, key: string): boolean {

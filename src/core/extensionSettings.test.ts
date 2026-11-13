@@ -98,7 +98,7 @@ describe("writeSettings", () => {
 });
 
 describe("compareSettings", () => {
-  it("lists items whose settings differ, and whether only lists do", () => {
+  it("lists the items whose settings differ", () => {
     const changes = compareSettings(
       registry,
       {
@@ -113,7 +113,7 @@ describe("compareSettings", () => {
         unavailable: new Set(),
       },
     );
-    expect(changes).toEqual([{ id: "someone/trash/trash.js", listsOnly: true }]);
+    expect(changes).toEqual(["someone/trash/trash.js"]);
   });
 
   it("compares only the value of an IndexedDB record, and skips stores not on this device", () => {

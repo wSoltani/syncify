@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { ClaimError } from "../../api/claimsApi";
 import { InstallRefusedError, LockedError, UnsupportedVersionError } from "../../api/syncifyApi";
 import type { AccountSession } from "../../core/account";
-import { loadConfig } from "../../core/config";
+import { loadConfig, saveConfig } from "../../core/config";
 import { hideNudge, isNudgeHidden } from "../../core/nudge";
 import { getProjectConfig } from "../../core/projectConfig";
 import { getLoaderInfo } from "../../core/releases";
@@ -190,7 +190,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     try {
       setActivity("restoring");
       setMessage(null);
-      await restoreNow(config, request.row.backup, request.linkedHash ?? undefined, request.skipped);
+      await restoreNow(config, request.row.backup, request.linkedHash ?? undefined, request.skipped, request.settings);
       Spicetify.showNotification("Syncify restore complete. Reloading…");
       // What to add by hand is shown after the reload, with the commands.
       savePendingRestore(request.manual);
@@ -355,6 +355,13 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
               restoreResult={restoreResult.result}
             />
           }
+          canShareSettings={session != null && secureState.kind === "secured" && config.settingsSyncEnabled}
+          shareSettings={config.shareRestoredSettings}
+          onShareSettingsChange={(share) => {
+            const next = { ...config, shareRestoredSettings: share };
+            saveConfig(next);
+            setConfig(next);
+          }}
           busy={busy}
           restoring={activity === "restoring"}
           onRestore={(request) => void restore(request)}
