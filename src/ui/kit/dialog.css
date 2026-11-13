@@ -10,6 +10,15 @@
     background: var(--syncify-color-raised);
 }
 
+.syncify-dialog[data-width="wide"] {
+    --syncify-dialog-width: 600px;
+}
+
+/* A wide dialog holds a list under its sentence: they stand apart like the title. */
+.syncify-dialog[data-width="wide"] .syncify-dialog-text {
+    gap: var(--syncify-space-4);
+}
+
 .syncify-dialog::backdrop {
     background: var(--syncify-color-backdrop);
 }

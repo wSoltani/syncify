@@ -5,3 +5,61 @@
     align-items: center;
     gap: var(--syncify-space-2);
 }
+
+/* The Extension settings section and the Items list in its place. */
+.syncify-sync-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-3);
+}
+
+/* An item's size, switch and menu, spaced apart like the settings rows. */
+.syncify-sync-section .syncify-row-end {
+    gap: var(--syncify-space-3);
+}
+
+/* An item's size at its row's end, before its switch. */
+.syncify-sync-size {
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-small);
+    white-space: nowrap;
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-sync-size {
+        text-box: trim-both cap alphabetic;
+    }
+}
+
+/* Under the name when narrow, the size, switch and menu stay on one line: the size wraps instead. */
+@container (width < 480px) {
+    .syncify-sync-section .syncify-list[data-wrap="true"] .syncify-row-end {
+        flex-wrap: nowrap;
+    }
+
+    .syncify-sync-section .syncify-sync-size {
+        white-space: normal;
+    }
+}
+
+.syncify-sync-size[data-tone="warning"],
+.syncify-sync-warning {
+    color: var(--syncify-color-warning);
+}
+
+/* Under the other settings, a little apart from them. */
+.syncify-sync-section[data-place="settings"] {
+    margin-top: var(--syncify-space-1);
+}
+
+/* The first-sync choice: the two copies side by side, under the name when narrow. */
+.syncify-first-sync-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--syncify-space-4);
+}
+
+/* Its rows line up with the text above them. */
+.syncify-dialog .syncify-list {
+    margin-inline: calc(-1 * var(--syncify-space-3));
+}

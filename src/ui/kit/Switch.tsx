@@ -4,15 +4,21 @@ interface SwitchProps {
   checked: boolean;
   onChange(checked: boolean): void;
   disabled?: boolean;
+  /** Read out when the row around it names it, like a list row's item. */
+  label?: string;
 }
 
-/** A switch takes effect at once. Use it inside a SwitchRow, which labels it. */
-function Switch(props: SwitchProps) {
+/**
+ * A switch takes effect at once. In a SwitchRow, which labels it, or at a
+ * list row's end with `label`.
+ */
+export function Switch(props: SwitchProps) {
   return (
     <input
       className="syncify-switch-control"
       type="checkbox"
       role="switch"
+      aria-label={props.label}
       checked={props.checked}
       onChange={(event) => props.onChange(event.currentTarget.checked)}
       disabled={props.disabled}
@@ -20,7 +26,7 @@ function Switch(props: SwitchProps) {
   );
 }
 
-interface SwitchRowProps extends SwitchProps {
+interface SwitchRowProps extends Omit<SwitchProps, "label"> {
   /** Names the thing that is on, never the action. */
   label: ReactNode;
 }

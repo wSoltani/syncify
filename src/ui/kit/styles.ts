@@ -3,6 +3,7 @@ import icons from "./icons.css";
 import button from "./button.css";
 import switchStyles from "./switch.css";
 import checkbox from "./checkbox.css";
+import radio from "./radio.css";
 import settingRow from "./setting-row.css";
 import meta from "./meta.css";
 import listRow from "./list-row.css";
@@ -25,6 +26,7 @@ export const kitStyles = [
   button,
   switchStyles,
   checkbox,
+  radio,
   settingRow,
   meta,
   listRow,

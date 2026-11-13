@@ -113,3 +113,27 @@ button.syncify-row:disabled {
     margin-left: var(--syncify-space-3);
     color: var(--syncify-color-muted);
 }
+
+.syncify-row[data-plain="true"] .syncify-row-name {
+    font-weight: 400;
+}
+
+/* A list whose row ends move under the name when there's no room beside it. */
+.syncify-list[data-wrap="true"] {
+    container-type: inline-size;
+}
+
+@container (width < 480px) {
+    .syncify-list[data-wrap="true"] .syncify-row[data-lines="1"] {
+        grid-template-rows: auto auto;
+        row-gap: var(--syncify-space-1);
+    }
+
+    .syncify-list[data-wrap="true"] .syncify-row-end {
+        flex-wrap: wrap;
+        grid-column: 2 / -1;
+        grid-row: 2;
+        gap: 0 var(--syncify-space-4);
+        margin-left: 0;
+    }
+}

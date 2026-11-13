@@ -2,9 +2,21 @@ import type { ReactNode } from "react";
 import { ChevronRightIcon } from "./icons";
 
 /** A list of the person's things, one ListRow each. */
-export function List(props: { children: ReactNode; label?: string }) {
+export function List(props: {
+  children: ReactNode;
+  label?: string;
+  /** Each row's end moves under its name when the list is too narrow for both. */
+  wrap?: boolean;
+  /** Its rows are still loading. */
+  busy?: boolean;
+}) {
   return (
-    <ul className="syncify-list" aria-label={props.label}>
+    <ul
+      className="syncify-list"
+      aria-label={props.label}
+      aria-busy={props.busy ? "true" : undefined}
+      data-wrap={props.wrap ? "true" : undefined}
+    >
       {props.children}
     </ul>
   );
@@ -32,6 +44,8 @@ interface ListRowProps {
   disabled?: boolean;
   /** So focus can come back to the row after what it opened closes. */
   id?: string;
+  /** The name is a plain sentence, such as what an empty list says. */
+  plain?: boolean;
 }
 
 export function ListRow(props: ListRowProps) {
@@ -66,7 +80,7 @@ export function ListRow(props: ListRowProps) {
           <ChevronRightIcon className="syncify-row-chevron" />
         </button>
       ) : (
-        <div className="syncify-row" id={props.id} data-lines={lines}>
+        <div className="syncify-row" id={props.id} data-lines={lines} data-plain={props.plain ? "true" : undefined}>
           {content}
         </div>
       )}

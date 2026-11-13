@@ -7,6 +7,7 @@ import { debug, warn } from "../../core/log";
 let shown: {
   container: Element;
   root: { unmount(): void } | null;
+  watch: MutationObserver | null;
 } | null = null;
 
 export function isWindowOpen(): boolean {
@@ -19,9 +20,9 @@ export function closeWindow(): void {
 
 /** Shows `element` in Spotify's popup, in place of whatever it showed. */
 export function openWindow(element: ReactElement): void {
-  shown?.root?.unmount();
+  close(shown);
   const container = document.createElement("div");
-  shown = { container, root: null };
+  shown = { container, root: null, watch: null };
 
   try {
     Spicetify.PopupModal.display({
@@ -36,6 +37,30 @@ export function openWindow(element: ReactElement): void {
 
   prepareShell(container);
   renderReact(container, element);
+  unmountOnClose(container);
+}
+
+/**
+ * However Spotify's popup closes (Syncify's button, Escape, a click outside),
+ * what was in it unmounts, so it can finish what waits for it to close, such
+ * as a delete held for Undo.
+ */
+function unmountOnClose(container: Element): void {
+  const current = shown;
+  if (current?.container !== container || typeof MutationObserver !== "function") return;
+  const watch = new MutationObserver(() => {
+    if (!container.isConnected) close(current);
+  });
+  watch.observe(document.body, { childList: true, subtree: true });
+  current.watch = watch;
+}
+
+function close(entry: typeof shown): void {
+  if (!entry) return;
+  entry.watch?.disconnect();
+  entry.watch = null;
+  entry.root?.unmount();
+  entry.root = null;
 }
 
 // Dresses Spotify's popup once it's on the page: the mark before the title,

@@ -44,7 +44,13 @@ function main(): void {
   });
   applyEntryPoint(config.entryPoint);
   initShortcut(config.shortcut, toggleSyncify);
-  void runStartupSyncCheck({ onClaim: openClaimNotice, onUndone: openUndoneNotice, onInstall: openInstallNotice, onNudge: openNudgeNotice }).catch((error) => {
+  void runStartupSyncCheck({
+    onClaim: openClaimNotice,
+    onUndone: openUndoneNotice,
+    onInstall: openInstallNotice,
+    onNudge: openNudgeNotice,
+    onFirstSync: openFirstSync,
+  }).catch((error) => {
     warn("Startup sync check failed", error);
   });
   void checkRestore().catch((error) => {
@@ -109,6 +115,15 @@ function openNudgeNotice(): void {
       onClose={closeWindow}
     />,
   );
+}
+
+// The first-sync choice of extension settings, once per device: Syncify
+// opens at Settings with the choice over it.
+function openFirstSync(): void {
+  // Syncify's own window shows it already.
+  if (isWindowOpen()) return;
+  debug("Opening first sync");
+  openWindow(<SyncifyWindow tab="settings" />);
 }
 
 // Before waiting for Spicetify, so no script that loads after a restore is missed.

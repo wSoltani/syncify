@@ -1,0 +1,56 @@
+/* A square ring; picked, the ring and a square inside it in the accent. */
+.syncify-radio {
+    --syncify-radio-dot: 8px;
+
+    position: relative;
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: var(--syncify-size-check);
+    height: var(--syncify-size-check);
+    margin: 0;
+    border-radius: calc(var(--syncify-size-check) * var(--syncify-corner));
+    box-shadow: inset 0 0 0 var(--syncify-ring) var(--syncify-color-muted);
+    appearance: none;
+    cursor: pointer;
+}
+
+.syncify-radio:checked {
+    box-shadow: inset 0 0 0 var(--syncify-ring) var(--syncify-color-accent);
+}
+
+.syncify-radio:checked::before {
+    width: var(--syncify-radio-dot);
+    height: var(--syncify-radio-dot);
+    border-radius: calc(var(--syncify-radio-dot) * var(--syncify-corner));
+    background: var(--syncify-color-accent);
+    content: "";
+}
+
+.syncify-radio:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+/* A radio and its label, centered on the label's capitals. */
+.syncify-radio-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--syncify-space-2);
+    min-height: var(--syncify-size-control-small);
+    font-size: var(--syncify-text-small);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.syncify-radio-row[data-disabled="true"] {
+    cursor: default;
+    opacity: 0.45;
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-radio-label {
+        text-box: trim-both cap alphabetic;
+    }
+}

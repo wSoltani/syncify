@@ -28,6 +28,8 @@ export function DialogContent(props: DialogContentProps) {
 
 interface DialogProps extends Omit<DialogContentProps, "titleId"> {
   open: boolean;
+  /** Room for a choice per row, such as the first-sync choice. */
+  wide?: boolean;
   /** Escape, or the safe button: nothing happens. */
   onClose(): void;
 }
@@ -66,7 +68,7 @@ export function Dialog(props: DialogProps) {
 
   if (!open) return null;
   return (
-    <dialog className="syncify-dialog" ref={ref} aria-labelledby={titleId}>
+    <dialog className="syncify-dialog" data-width={props.wide ? "wide" : undefined} ref={ref} aria-labelledby={titleId}>
       <DialogContent title={props.title} actions={props.actions} titleId={titleId}>
         {props.children}
       </DialogContent>

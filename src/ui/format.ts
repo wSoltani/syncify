@@ -38,3 +38,18 @@ export function joinNames(names: string[]): string {
   if (names.length <= 1) return names.join("");
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
+
+/** "today", "yesterday", "Nov 12", "Nov 12, 2025" */
+export function formatDay(time: number, now = new Date()): string {
+  const date = new Date(time);
+  if (Number.isNaN(date.getTime())) return "";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === now.toDateString()) return "today";
+  if (date.toDateString() === yesterday.toDateString()) return "yesterday";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  });
+}
