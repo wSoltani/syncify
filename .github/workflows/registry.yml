@@ -1,0 +1,106 @@
+name: Registry
+
+# Checks pull requests that change the settings registry, and publishes it to
+# the releases bucket once it changes on master. Syncify reads it from there,
+# so a merged entry reaches everyone within about a minute.
+on:
+  # pull_request_target runs this file and its scripts as they are on master,
+  # so a pull request can't change the rules it is held to. Nothing from the
+  # pull request runs: its registry.json is only read as data. It runs on
+  # every pull request, so it can be a required check, and passes at once
+  # when registry/ is unchanged.
+  pull_request_target:
+    # edited, so a change to the Owner line is checked again.
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [master]
+    paths: [registry/**]
+
+permissions:
+  contents: read
+
+jobs:
+  owners:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          # History without file contents, to find where the pull request
+          # started from master.
+          fetch-depth: 0
+          filter: blob:none
+      # The pull request's own changes are those between the commit it
+      # started from and the exact commit this run is for.
+      - name: Read the registry the pull request started from and its own
+        id: registry
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --filter=blob:none origin "$HEAD_SHA"
+          start=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          if git diff --quiet "$start" "$HEAD_SHA" -- registry/; then
+            echo "registry/ is unchanged"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git show "$start:registry/registry.json" > "$RUNNER_TEMP/base-registry.json" 2> /dev/null || true
+          git show "$HEAD_SHA:registry/registry.json" > "$RUNNER_TEMP/head-registry.json"
+      - uses: actions/setup-node@v7
+        if: steps.registry.outputs.changed == 'true'
+        with:
+          node-version-file: .node-version
+          # Runs with the base branch's rights, so it skips the shared cache.
+          package-manager-cache: false
+      - if: steps.registry.outputs.changed == 'true'
+        run: npm ci --ignore-scripts
+      - name: Check who changed which entries
+        if: steps.registry.outputs.changed == 'true'
+        env:
+          PR_OPENER: ${{ github.event.pull_request.user.login }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          # The login of the app that opens owners' submissions, once it exists.
+          SUBMISSION_APP: ${{ vars.REGISTRY_SUBMISSION_APP }}
+          MAINTAINER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/registry/owners.mjs "$RUNNER_TEMP/base-registry.json" "$RUNNER_TEMP/head-registry.json"
+
+  upload:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: releases
+    # One upload at a time, so the newest master always lands last.
+    concurrency:
+      group: registry-upload
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          # The job holds the R2 keys, so it skips the shared cache.
+          package-manager-cache: false
+      # Only the upload step sees the R2 keys, and no install script runs.
+      - run: npm ci --ignore-scripts
+      - name: Check and build registry.json
+        run: node scripts/registry/check.mjs --out "$RUNNER_TEMP/registry.json"
+      - name: Upload registry.json
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # R2 doesn't accept the checksums AWS CLI 2.23+ sends by default.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket syncify-releases \
+            --key registry.json \
+            --body "$RUNNER_TEMP/registry.json" \
+            --content-type application/json \
+            --cache-control "public, max-age=60"

@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Syncify settings registry",
+  "description": "Lists, per Spicetify extension, theme or custom app, which saved keys hold its settings, so Syncify can back them up and sync them between a person's devices.",
+  "type": "object",
+  "required": ["format", "sizes", "accountLimit", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": {
+      "description": "Version of this file's format. Syncify skips a registry whose format it doesn't know.",
+      "const": 1
+    },
+    "sizes": {
+      "description": "Bytes each size tier allows for one item's synced settings.",
+      "type": "object",
+      "required": ["small", "medium", "large"],
+      "additionalProperties": false,
+      "properties": {
+        "small": { "$ref": "#/$defs/bytes" },
+        "medium": { "$ref": "#/$defs/bytes" },
+        "large": { "$ref": "#/$defs/bytes" }
+      }
+    },
+    "accountLimit": {
+      "description": "Bytes of synced settings one account can hold across all its items.",
+      "$ref": "#/$defs/bytes"
+    },
+    "items": {
+      "description": "One entry per item, sorted by id.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "bytes": { "type": "integer", "minimum": 1 },
+    "key": {
+      "description": "An exact key name, or a prefix ending in * that matches every key starting with it.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^*\\s]+\\*?$"
+    },
+    "keys": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/key" },
+      "uniqueItems": true
+    },
+    "item": {
+      "type": "object",
+      "required": ["id", "addedBy", "keys"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "The item's Marketplace id, {user}/{repo}/{path}, as in its marketplace:installed: key. The path is the manifest's main for an extension, usercss for a theme, and the name with spaces as dashes for a custom app.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/(?!\\.\\.?/)[A-Za-z0-9._-]+/[^\\s]+$"
+        },
+        "addedBy": {
+          "description": "owner: submitted by the GitHub account that owns the item's repo, or a public member of the organization that owns it. syncify: a placeholder Syncify added, which the owner's own entry replaces.",
+          "enum": ["owner", "syncify"]
+        },
+        "storage": {
+          "description": "Where the item saves the keys. localStorage when left out.",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["type"],
+              "additionalProperties": false,
+              "properties": { "type": { "const": "localStorage" } }
+            },
+            {
+              "type": "object",
+              "required": ["type", "database", "store"],
+              "additionalProperties": false,
+              "properties": {
+                "type": { "const": "indexedDB" },
+                "database": { "type": "string", "minLength": 1, "maxLength": 200 },
+                "store": { "type": "string", "minLength": 1, "maxLength": 200 },
+                "valueField": {
+                  "description": "When each record is an object, the field that holds the value. Left out when records are the values themselves.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              }
+            }
+          ]
+        },
+        "keys": {
+          "description": "The keys that hold the item's settings. Never caches, and never keys shared with Spicetify, Marketplace or other items.",
+          "$ref": "#/$defs/keys"
+        },
+        "exclude": {
+          "description": "Keys that never leave the device, not in backups and not in sync, such as API keys and tokens. They win over keys.",
+          "$ref": "#/$defs/keys"
+        },
+        "lists": {
+          "description": "Keys whose value is a list that people add to. Changes on two devices merge instead of the newest replacing the other. object: a JSON object, merged by member name. array: a JSON array of objects, merged by the field named in id.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/key", "pattern": "^[^*]+$" },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["merge"],
+                "additionalProperties": false,
+                "properties": { "merge": { "const": "object" } }
+              },
+              {
+                "type": "object",
+                "required": ["merge", "id"],
+                "additionalProperties": false,
+                "properties": {
+                  "merge": { "const": "array" },
+                  "id": { "type": "string", "minLength": 1, "maxLength": 200 }
+                }
+              }
+            ]
+          }
+        },
+        "size": {
+          "description": "The item's size tier. medium when left out.",
+          "enum": ["small", "medium", "large"],
+          "default": "medium"
+        },
+        "sizeReason": {
+          "description": "Why the item needs large. Required for large unless the owner added the entry.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "discover": {
+          "description": "The owner lists the item on Discover. Owner entries only.",
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["size", "addedBy"],
+            "properties": { "size": { "type": "string", "const": "large" }, "addedBy": { "type": "string", "const": "syncify" } }
+          },
+          "then": { "required": ["sizeReason"] }
+        },
+        {
+          "if": { "required": ["discover"], "properties": { "discover": { "type": "boolean", "const": true } } },
+          "then": { "properties": { "addedBy": { "type": "string", "const": "owner" } } },
+          "else": { "properties": { "keys": { "type": "array", "minItems": 1 } } }
+        }
+      ]
+    }
+  }
+}
