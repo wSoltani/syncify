@@ -3,20 +3,13 @@ import type { InstalledItem } from "../core/restorePreview";
 
 export const SYNCIFY_SCHEMA_VERSION = 2;
 
-export type SyncifyStatus =
-  | "idle"
-  | "loading"
-  | "success"
-  | "error"
-  | "needs-restore";
-
-export interface SyncifyMetadata {
+interface SyncifyMetadata {
   last_sync_datetime: string;
   device_info: string;
   marketplace_key_count: number;
 }
 
-export interface SyncifyMarketplaceData {
+interface SyncifyMarketplaceData {
   keys: Record<string, string>;
 }
 
@@ -41,7 +34,7 @@ export interface SyncifySpicetifyConfig {
   custom_apps: string[];
 }
 
-export interface SyncifyBackupInfo {
+interface SyncifyBackupInfo {
   id: string;
   /**
    * "anchor" is the safety copy. "quarantined" came from an install this

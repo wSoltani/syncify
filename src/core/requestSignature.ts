@@ -36,7 +36,7 @@ export async function signRequest(
   return base64UrlEncode(new Uint8Array(signature));
 }
 
-export async function signedMessage(
+async function signedMessage(
   salt: string,
   method: string,
   url: string,

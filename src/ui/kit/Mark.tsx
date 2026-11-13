@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 /** info is green, warning amber, error red. */
 export type Tone = "info" | "warning" | "error";
 
-export interface MarkProps {
+interface MarkProps {
   tone: Tone;
   /** A large mark holds an icon; a small one is a plain square. */
   icon?: ReactNode;

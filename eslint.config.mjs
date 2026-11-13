@@ -4,29 +4,19 @@ import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-// Code moves onto the shared kit screen by screen; each part is linted once
-// it's rebuilt, and the whole of src once the old window is gone.
-const linted = [
-  "src/react/**/*.ts",
-  "src/ui/kit/**/*.{ts,tsx}",
-  "src/ui/window/**/*.{ts,tsx}",
-  "src/ui/backups/**/*.{ts,tsx}",
-  "src/ui/account/**/*.{ts,tsx}",
-  "src/ui/settings/**/*.{ts,tsx}",
-  "src/ui/notices/**/*.{ts,tsx}",
-  "src/ui/share/**/*.{ts,tsx}",
-  "src/ui/changes/**/*.{ts,tsx}",
-  "src/ui/*.{ts,tsx}",
-  "src/test/**/*.ts",
-  "vitest.config.ts",
-];
+// Spicetify's own type declarations are copied in as they are.
+const vendored = ["src/types/spicetify.d.ts"];
 
 export default defineConfig(
-  { ignores: ["dist/**", "node_modules/**"] },
+  { ignores: ["dist/**", "node_modules/**", ...vendored] },
   {
-    files: linted,
+    files: ["src/**/*.{ts,tsx}", "vitest.config.ts"],
     extends: [js.configs.recommended, tseslint.configs.strict, reactHooks.configs.flat.recommended],
     languageOptions: { globals: globals.browser },
+    rules: {
+      // Marketplace's storage is a plain map of keys: dropping one is a delete.
+      "@typescript-eslint/no-dynamic-delete": "off",
+    },
   },
   {
     files: ["*.{js,mjs}", "scripts/**/*.mjs"],

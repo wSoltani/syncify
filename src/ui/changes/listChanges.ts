@@ -3,7 +3,7 @@ import { isWarning, type SourceCheck, type SourceChecks } from "../../core/sourc
 import { joinNames } from "../format";
 
 /** Colored text at a change row's end. */
-export type ChangeLabel = "Adds" | "Updates" | "Removes";
+type ChangeLabel = "Adds" | "Updates" | "Removes";
 
 export interface ItemRow {
   key: string;
@@ -24,7 +24,7 @@ export interface ChangeRow extends ItemRow {
 }
 
 /** Which changes are left off, and which of those were turned on. */
-export interface ChangeChoices {
+interface ChangeChoices {
   optional: ReadonlySet<string>;
   allowed: ReadonlySet<string>;
   /** Optional items left off for good: snippets Marketplace's list no longer has. */

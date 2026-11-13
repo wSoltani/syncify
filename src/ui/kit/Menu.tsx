@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { CheckIcon, ChevronDownIcon, MoreIcon } from "./icons";
 import { useStableId } from "./useStableId";
 
-export interface MenuItem {
+interface MenuItem {
   label: string;
   onSelect(): void;
   /** Destructive, drawn in red. */
@@ -12,7 +12,7 @@ export interface MenuItem {
   disabled?: boolean;
 }
 
-export interface MenuProps {
+interface MenuProps {
   items: MenuItem[];
   /** What the menu is for, read out on its button. */
   label: string;

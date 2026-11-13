@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
-export interface SwitchProps {
+interface SwitchProps {
   checked: boolean;
   onChange(checked: boolean): void;
   disabled?: boolean;
 }
 
 /** A switch takes effect at once. Use it inside a SwitchRow, which labels it. */
-export function Switch(props: SwitchProps) {
+function Switch(props: SwitchProps) {
   return (
     <input
       className="syncify-switch-control"
@@ -20,7 +20,7 @@ export function Switch(props: SwitchProps) {
   );
 }
 
-export interface SwitchRowProps extends SwitchProps {
+interface SwitchRowProps extends SwitchProps {
   /** Names the thing that is on, never the action. */
   label: ReactNode;
 }

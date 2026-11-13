@@ -15,7 +15,7 @@ export function ListDivider() {
   return <li className="syncify-list-divider" role="presentation" />;
 }
 
-export interface ListRowProps {
+interface ListRowProps {
   name: ReactNode;
   /** Right after the name, on its cap middle, such as the safety copy's shield. */
   nameMark?: ReactNode;

@@ -1,4 +1,4 @@
-export interface MeterProps {
+interface MeterProps {
   used: number;
   max: number;
   /** What's being counted, read out with the numbers. */

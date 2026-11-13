@@ -1,4 +1,5 @@
 import type { SyncifyShortcut } from "../types/syncify";
+import { debug, warn } from "./log";
 
 export const DEFAULT_SHORTCUT: SyncifyShortcut = {
   key: "s",
@@ -16,7 +17,7 @@ let handler: (() => void) | null = null;
 let desired: SyncifyShortcut | null = null;
 let registered: SyncifyShortcut | null = null;
 
-export function isMacPlatform(): boolean {
+function isMacPlatform(): boolean {
   return /mac/i.test(navigator.platform || navigator.userAgent);
 }
 
@@ -63,7 +64,7 @@ export function formatShortcut(shortcut: SyncifyShortcut | null): string {
     .join("+");
 }
 
-export type ShortcutCaptureResult =
+type ShortcutCaptureResult =
   | { kind: "ignore" }
   | { kind: "cancel" }
   | { kind: "error"; message: string }
@@ -150,7 +151,7 @@ export function initShortcut(
 
   if (!isKeyboardReady()) {
     if (attempt >= WAIT_ATTEMPTS) {
-      console.warn("[Syncify]", "Spicetify.Keyboard unavailable; shortcut not registered");
+      warn("Spicetify.Keyboard unavailable; shortcut not registered");
       return;
     }
 
@@ -182,9 +183,9 @@ export function applyShortcut(next: SyncifyShortcut | null): void {
       onTrigger();
     });
     registered = next;
-    console.debug("[Syncify]", "Keyboard shortcut registered", formatShortcut(next));
+    debug("Keyboard shortcut registered", formatShortcut(next));
   } catch (error) {
-    console.warn("[Syncify]", "Failed to register keyboard shortcut", error);
+    warn("Failed to register keyboard shortcut", error);
   }
 }
 

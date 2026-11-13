@@ -1,4 +1,4 @@
-export interface CheckboxProps {
+interface CheckboxProps {
   checked: boolean;
   onChange(checked: boolean): void;
   /** Read out in place of a visible label, when the row around it names it. */

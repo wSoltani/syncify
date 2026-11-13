@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { useStableId } from "./useStableId";
 
-export interface DialogContentProps {
+interface DialogContentProps {
   title: ReactNode;
   /** One or two short sentences: what happens, and what is lost. */
   children?: ReactNode;
@@ -26,7 +26,7 @@ export function DialogContent(props: DialogContentProps) {
   );
 }
 
-export interface DialogProps extends Omit<DialogContentProps, "titleId"> {
+interface DialogProps extends Omit<DialogContentProps, "titleId"> {
   open: boolean;
   /** Escape, or the safe button: nothing happens. */
   onClose(): void;

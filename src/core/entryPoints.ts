@@ -1,4 +1,5 @@
 import type { SyncifyEntryPoint } from "../types/syncify";
+import { warn } from "./log";
 
 export const DEFAULT_ENTRY_POINT: SyncifyEntryPoint = "both";
 
@@ -50,6 +51,6 @@ export function applyEntryPoint(mode: SyncifyEntryPoint): void {
       menuItemRegistered = false;
     }
   } catch (error) {
-    console.warn("[Syncify]", "Failed to update profile menu item", error);
+    warn("Failed to update profile menu item", error);
   }
 }

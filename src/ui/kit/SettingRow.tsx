@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export interface SettingRowProps {
+interface SettingRowProps {
   label: ReactNode;
   /** The current value under the label, such as a masked email. */
   value?: ReactNode;

@@ -9,7 +9,7 @@ import { createDeviceKey, exportPublicKey } from "./requestSignature";
 // key.
 const INSTALL_KEY = "install-key";
 
-export interface InstallKey {
+interface InstallKey {
   privateKey: CryptoKey;
   /** As the backup service reads it: raw, base64url without padding. */
   publicKey: string;

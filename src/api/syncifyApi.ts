@@ -353,7 +353,7 @@ function linkedPath(path: string, linkedHash?: string): string {
 }
 
 /** This install's state as the backup service describes it, or null. */
-export function readInstall(value: unknown): SyncifyInstallState | null {
+function readInstall(value: unknown): SyncifyInstallState | null {
   const install = value as { trust?: unknown; waiting?: unknown } | null | undefined;
   if (!install || typeof install.trust !== "string") return null;
   const waiting = Array.isArray(install.waiting) ? install.waiting : [];

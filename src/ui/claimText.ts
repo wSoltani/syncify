@@ -4,7 +4,7 @@ type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
 type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
 
 /** When a claim goes final, as a day: "today", or "Nov 16". */
-export function claimDay(at: number, now = new Date()): string {
+function claimDay(at: number, now = new Date()): string {
   const date = new Date(at);
   if (date.toDateString() === now.toDateString()) return "today";
   return date.toLocaleDateString(undefined, {

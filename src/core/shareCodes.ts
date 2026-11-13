@@ -43,8 +43,6 @@ const LISTS: [string, ItemType][] = [
   ["marketplace:installed-themes", "theme"],
   ["marketplace:installed-snippets", "snippet"],
 ];
-const ENTRY_PREFIX = "marketplace:installed:";
-const SNIPPET_PREFIX = `${ENTRY_PREFIX}snippet:`;
 const THEME_KEY = "marketplace:theme-installed";
 // What Spicetify's config says when Marketplace manages the theme.
 const MARKETPLACE_THEME = "marketplace";

@@ -77,7 +77,7 @@ export function compareVersions(a: string, b: string): number {
  * Reads a version pointer such as latest.json ({ "version": "1.4.0" }).
  * Returns null if it can't be read in time or holds anything but a version.
  */
-export async function fetchPointerVersion(
+async function fetchPointerVersion(
   url: string,
   timeoutMs = POINTER_TIMEOUT_MS,
 ): Promise<string | null> {
