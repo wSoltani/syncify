@@ -38,12 +38,34 @@
     stroke-width: 3;
 }
 
+/* Fills the window's height left under the tabs. The scroll area is padded
+   by the focus ring's reach, so a focused row's ring is never cut off. */
 .syncify-tab-panel {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
-    gap: var(--syncify-space-3);
+    min-height: 0;
 }
 
-.syncify-ui .syncify-tab-panel:focus-visible {
-    outline-offset: var(--syncify-space-1);
+.syncify-tab-scroll {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--syncify-space-3);
+    min-height: 0;
+    margin: 0 calc(-1 * var(--syncify-space-1));
+    padding: var(--syncify-space-3) var(--syncify-space-1);
+    overflow-y: auto;
+}
+
+.syncify-ui .syncify-tab-scroll:focus-visible {
+    outline-offset: calc(-1 * var(--syncify-ring));
+}
+
+.syncify-tab-actions {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    gap: var(--syncify-space-2);
+    padding-top: var(--syncify-space-3);
 }

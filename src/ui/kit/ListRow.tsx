@@ -30,19 +30,21 @@ export interface ListRowProps {
   /** What opening the row does, read out in place of its text. */
   openLabel?: string;
   disabled?: boolean;
+  /** So focus can come back to the row after what it opened closes. */
+  id?: string;
 }
 
 export function ListRow(props: ListRowProps) {
+  // Grid cells, so a leading pip sits on the name's line and the end and the
+  // chevron center on the whole row.
   const content = (
     <>
-      {props.leading}
-      <span className="syncify-row-text">
-        <span className="syncify-row-name">
-          <span className="syncify-row-name-text">{props.name}</span>
-          {props.nameMark}
-        </span>
-        {props.meta ? <span className="syncify-row-meta">{props.meta}</span> : null}
+      {props.leading ? <span className="syncify-row-leading">{props.leading}</span> : null}
+      <span className="syncify-row-name">
+        <span className="syncify-row-name-text">{props.name}</span>
+        {props.nameMark}
       </span>
+      {props.meta ? <span className="syncify-row-meta">{props.meta}</span> : null}
       {props.end ? <span className="syncify-row-end">{props.end}</span> : null}
     </>
   );
@@ -53,6 +55,7 @@ export function ListRow(props: ListRowProps) {
       {props.onOpen ? (
         <button
           className="syncify-row"
+          id={props.id}
           data-lines={lines}
           type="button"
           aria-label={props.openLabel}
@@ -63,7 +66,7 @@ export function ListRow(props: ListRowProps) {
           <ChevronRightIcon className="syncify-row-chevron" />
         </button>
       ) : (
-        <div className="syncify-row" data-lines={lines}>
+        <div className="syncify-row" id={props.id} data-lines={lines}>
           {content}
         </div>
       )}

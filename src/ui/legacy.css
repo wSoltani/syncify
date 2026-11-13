@@ -1,88 +1,3 @@
-/* Spotify PopupModal shell tweaks scoped to Syncify. Keep these minimal so the
-   Spotify modal can size naturally instead of being forced/cropped. */
-.syncify-modal-shell .main-trackCreditsModal-header,
-.main-trackCreditsModal-header:has(+ * .syncify-panel),
-.main-trackCreditsModal-header:has(~ * .syncify-panel) {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 12px !important;
-    padding: 16px 20px 8px !important;
-}
-
-.syncify-modal-shell .main-trackCreditsModal-header h1,
-.main-trackCreditsModal-header:has(+ * .syncify-panel) h1,
-.main-trackCreditsModal-header:has(~ * .syncify-panel) h1 {
-    margin: 0 !important;
-    font-size: 18px !important;
-    line-height: 1.25 !important;
-}
-
-/* The mark before the title. */
-.syncify-modal-shell .main-trackCreditsModal-header h1 {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-}
-
-.syncify-modal-mark {
-    display: inline-flex;
-    flex: 0 0 auto;
-}
-
-.syncify-modal-shell .main-trackCreditsModal-mainSection,
-.syncify-modal-shell .main-trackCreditsModal-content,
-.main-trackCreditsModal-mainSection:has(.syncify-panel),
-.main-trackCreditsModal-content:has(.syncify-panel) {
-    box-sizing: border-box !important;
-    max-height: calc(100vh - 140px) !important;
-    padding: 10px 20px 18px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-}
-
-.syncify-modal-shell .syncify-modal-close {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    padding: 0 !important;
-    border: 0 !important;
-    border-radius: 999px !important;
-    color: var(--spice-subtext) !important;
-    background: transparent !important;
-    cursor: pointer !important;
-    /* A tall window reaches up under Spotify's title bar, which drags the
-       window and takes the clicks. */
-    -webkit-app-region: no-drag !important;
-    transition:
-        color 120ms ease,
-        background-color 120ms ease,
-        transform 120ms ease !important;
-}
-
-.syncify-modal-shell .syncify-modal-close svg {
-    width: 18px !important;
-    height: 18px !important;
-    fill: none !important;
-    stroke: currentColor !important;
-    stroke-width: 2 !important;
-    stroke-linecap: round !important;
-    stroke-linejoin: round !important;
-    pointer-events: none !important;
-}
-
-.syncify-modal-shell .syncify-modal-close:hover {
-    color: var(--spice-text) !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-}
-
-.syncify-modal-shell .syncify-modal-close:active {
-    transform: scale(0.96) !important;
-}
-
 /* Colors come from the active Spicetify theme, with Spotify's defaults as
    fallbacks, so Syncify blends into whatever theme the user runs. */
 .syncify-panel {
@@ -124,29 +39,6 @@
     font-size: 13px;
 }
 
-/* Status */
-
-.syncify-status {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.syncify-status-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.syncify-status-title {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 1.25;
-}
-
 .syncify-alert {
     display: flex;
     align-items: center;
@@ -167,18 +59,6 @@
     display: flex;
     flex: 0 0 auto;
     align-items: center;
-    gap: 12px;
-}
-
-.syncify-manual {
-    flex-direction: column;
-    align-items: stretch;
-}
-
-.syncify-manual-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     gap: 12px;
 }
 
@@ -205,112 +85,6 @@
     font-weight: 700;
 }
 
-.syncify-inline-button {
-    font-size: inherit;
-    text-decoration: underline;
-}
-
-/* The Secure nudge, under the status */
-
-.syncify-nudge {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    background: var(--syncify-surface);
-}
-
-.syncify-nudge .syncify-setting-text {
-    flex: 1 1 auto;
-}
-
-.syncify-nudge-actions {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 16px;
-}
-
-/* Sections */
-
-.syncify-section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-top: 16px;
-    border-top: 1px solid var(--syncify-divider);
-}
-
-.syncify-section-title,
-.syncify-accordion-title {
-    margin: 0 0 4px;
-    color: var(--syncify-muted);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.syncify-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.syncify-section-header .syncify-section-title {
-    margin-bottom: 0;
-}
-
-.syncify-section-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-}
-
-/* Accordion: one section open at a time */
-
-.syncify-accordion {
-    display: flex;
-    flex-direction: column;
-}
-
-.syncify-accordion-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-height: 44px;
-    padding: 0 8px 0 0;
-    border: 0;
-    border-top: 1px solid var(--syncify-divider);
-    color: var(--syncify-muted);
-    background: none;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.syncify-accordion-title {
-    flex: 1 1 auto;
-    margin: 0;
-    color: inherit;
-}
-
-.syncify-accordion-header:hover,
-.syncify-accordion-header[aria-expanded="true"] {
-    color: var(--syncify-text);
-}
-
-.syncify-accordion-body {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 4px 0 12px;
-}
-
 .syncify-chevron {
     flex: 0 0 auto;
     width: 16px;
@@ -321,53 +95,6 @@
     stroke-linecap: round;
     stroke-linejoin: round;
     transition: transform 150ms ease;
-}
-
-/* A closed section's status, as an icon before its chevron. */
-.syncify-accordion-status {
-    display: inline-flex;
-    flex: 0 0 auto;
-}
-
-.syncify-accordion-status svg {
-    width: 16px;
-    height: 16px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.syncify-accordion-status[data-kind="ok"] {
-    color: var(--syncify-accent);
-}
-
-.syncify-accordion-status[data-kind="warning"],
-.syncify-accordion-status[data-kind="pending"] {
-    color: var(--syncify-warning);
-}
-
-.syncify-accordion-status[data-kind="count"] {
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    color: var(--syncify-text);
-    background: var(--syncify-surface-hover);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0;
-}
-
-.syncify-accordion-status[data-kind="dot"]::before {
-    content: "";
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: var(--syncify-accent);
 }
 
 [aria-expanded="true"] > .syncify-chevron {
@@ -383,14 +110,6 @@
 .syncify-disclosure .syncify-chevron {
     width: 14px;
     height: 14px;
-}
-
-/* Backups */
-
-.syncify-backup-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
 }
 
 .syncify-backup {
@@ -437,80 +156,10 @@
     min-width: 0;
 }
 
-.syncify-backup-date::first-letter {
-    text-transform: uppercase;
-}
-
 .syncify-backup-text > span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-/* Holds the first backup's place until the backups are read. */
-.syncify-backup-skeleton {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 10px;
-}
-
-.syncify-backup-text > .syncify-skeleton-line {
-    width: 120px;
-    height: 12px;
-    margin: 4px 0;
-    border-radius: 4px;
-    background: var(--syncify-surface-hover);
-}
-
-.syncify-backup-text > .syncify-skeleton-line.wide {
-    width: 200px;
-}
-
-/* The safety copy sits apart, below the recent backups. */
-.syncify-backup-divider {
-    margin: 6px 0 2px;
-    border-top: 1px dashed var(--syncify-divider);
-}
-
-.syncify-shield {
-    flex: 0 0 auto;
-    width: 18px;
-    height: 18px;
-    fill: var(--syncify-muted);
-}
-
-.syncify-backup-note {
-    color: var(--syncify-muted);
-    font-size: 12px;
-}
-
-/* The dot between facts: drawn, its middle on the middle of the capitals. */
-.syncify-sep {
-    display: inline-block;
-    flex-shrink: 0;
-    width: 4px;
-    height: 4px;
-    margin: 0 0.4em;
-    border-radius: 50%;
-    background: currentColor;
-    vertical-align: calc(0.5cap - 2px);
-}
-
-.syncify-sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: pre;
-    border: 0;
-}
-
-.syncify-parts {
-    min-width: 0;
 }
 
 .syncify-tag {
@@ -593,7 +242,6 @@
 }
 
 .syncify-clock,
-.syncify-lock,
 .syncify-external {
     flex: 0 0 auto;
     fill: none;
@@ -608,11 +256,6 @@
     height: 14px;
 }
 
-.syncify-lock {
-    width: 16px;
-    height: 16px;
-}
-
 .syncify-external {
     width: 12px;
     height: 12px;
@@ -623,17 +266,6 @@
     flex: 0 0 auto;
     flex-wrap: wrap;
     gap: 16px;
-}
-
-/* A secured backup on a device that isn't signed in to it */
-.syncify-locked {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    padding: 8px 10px;
-    color: var(--syncify-muted);
-    font-size: 13px;
 }
 
 /* Restore preview */
@@ -760,10 +392,6 @@
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-}
-
-.syncify-actions-hint {
-    flex: 1 1 200px;
 }
 
 /* Share codes */
@@ -1129,11 +757,6 @@ label.syncify-setting {
     min-width: 0;
 }
 
-/* In a section header the field sizes to its text, against the right edge. */
-.syncify-section-controls .syncify-select-field {
-    max-width: none;
-}
-
 .syncify-select-field .syncify-chevron {
     position: absolute;
     right: 10px;
@@ -1201,52 +824,7 @@ label.syncify-setting {
     outline-offset: 2px;
 }
 
-/* Footer */
-
-.syncify-footer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--syncify-divider);
-    color: var(--syncify-muted);
-    font-size: 12px;
-}
-
-.syncify-footer-version {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 12px;
-}
-
-.syncify-footer .syncify-update {
-    color: var(--syncify-accent);
-    font-weight: 700;
-}
-
-.syncify-footer-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-}
-
-.syncify-footer .syncify-text-button {
-    font-size: 12px;
-}
-
 @media (max-width: 560px) {
-    .syncify-modal-shell .main-trackCreditsModal-mainSection,
-    .syncify-modal-shell .main-trackCreditsModal-content,
-    .main-trackCreditsModal-mainSection:has(.syncify-panel),
-    .main-trackCreditsModal-content:has(.syncify-panel) {
-        max-height: calc(100vh - 110px) !important;
-        padding: 10px 14px 14px !important;
-    }
-
-    .syncify-status,
     .syncify-setting {
         align-items: stretch;
         flex-direction: column;
@@ -1256,5 +834,4 @@ label.syncify-setting {
     .syncify-select {
         max-width: none;
     }
-
 }

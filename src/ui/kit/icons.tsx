@@ -60,3 +60,13 @@ export function MoreIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** An exclamation mark, inside a warning mark that needs an answer. */
+export function AlertIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 6v7" />
+      <path d="M12 17.5v.5" />
+    </Icon>
+  );
+}

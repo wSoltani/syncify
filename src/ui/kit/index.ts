@@ -4,7 +4,7 @@ export { Button, IconButton, type ButtonProps, type ButtonSize, type ButtonVaria
 export { Checkbox } from "./Checkbox";
 export { Dialog, DialogContent } from "./Dialog";
 export { Field } from "./Field";
-export { CheckIcon, ChevronDownIcon, ChevronRightIcon, MoreIcon, ShieldIcon } from "./icons";
+export { AlertIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, MoreIcon, ShieldIcon } from "./icons";
 export { KeyButton } from "./KeyButton";
 export { List, ListDivider, ListRow, type ListRowProps } from "./ListRow";
 export { Badge, Mark, type Tone } from "./Mark";

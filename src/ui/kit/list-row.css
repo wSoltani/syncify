@@ -17,10 +17,15 @@
     border-top: var(--syncify-line) dashed var(--syncify-color-divider);
 }
 
+/* A grid: the leading pip shares the name's line, the facts go under the
+   name, and the end and the chevron center on the whole row. Parts a row
+   doesn't have take no space. */
 .syncify-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    align-content: center;
     align-items: center;
-    gap: var(--syncify-space-3);
     width: 100%;
     min-height: var(--syncify-size-row);
     margin: 0;
@@ -34,6 +39,7 @@
 }
 
 .syncify-row[data-lines="1"] {
+    grid-template-rows: auto;
     min-height: var(--syncify-size-row-single);
 }
 
@@ -50,15 +56,18 @@ button.syncify-row:disabled {
     opacity: 0.6;
 }
 
-.syncify-row-text {
+.syncify-row-leading {
     display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    min-width: 0;
+    grid-column: 1;
+    grid-row: 1;
+    align-items: center;
+    margin-right: var(--syncify-space-3);
 }
 
 .syncify-row-name {
     display: flex;
+    grid-column: 2;
+    grid-row: 1;
     align-items: center;
     gap: var(--syncify-space-2);
     min-width: 0;
@@ -70,7 +79,7 @@ button.syncify-row:disabled {
     overflow-wrap: anywhere;
 }
 
-/* A mark after the name sits on the capitals' middle. */
+/* A mark after the name, and the pip before it, sit on its capitals' middle. */
 @supports (text-box: trim-both cap alphabetic) {
     .syncify-row-name {
         padding-block: calc((1lh - 1cap) / 2);
@@ -81,13 +90,26 @@ button.syncify-row:disabled {
     }
 }
 
+/* A block, so the facts keep a full line's height under the name. */
+.syncify-row-meta {
+    display: block;
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+}
+
 .syncify-row-end {
     display: flex;
-    flex: 0 0 auto;
+    grid-column: 3;
+    grid-row: 1 / -1;
     align-items: center;
     gap: var(--syncify-space-1);
+    margin-left: var(--syncify-space-3);
 }
 
 .syncify-row-chevron {
+    grid-column: 4;
+    grid-row: 1 / -1;
+    margin-left: var(--syncify-space-3);
     color: var(--syncify-color-muted);
 }

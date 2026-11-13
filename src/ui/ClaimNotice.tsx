@@ -1,8 +1,8 @@
-import type { useState as useStateType } from "react";
+import { useState } from "react";
 import { cancelPendingClaim } from "../core/syncService";
 import { loadConfig } from "../core/config";
 import type { SyncifyClaim } from "../types/syncify";
-import { notMeToast, otherClaimText, undoneClaimText } from "./SyncifyModal";
+import { notMeToast, otherClaimText, undoneClaimText } from "./claimText";
 
 type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
 type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
@@ -14,8 +14,6 @@ type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
  * it.
  */
 export function ClaimNotice(props: { claim: PendingClaim; onClose(): void }) {
-  const React = Spicetify.React;
-  const useState = React.useState as typeof useStateType;
   const { claim } = props;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +65,6 @@ export function ClaimNotice(props: { claim: PendingClaim; onClose(): void }) {
  * claim on this Spotify account: that account no longer secures its backup.
  */
 export function UndoneClaimNotice(props: { claim: UndoneClaim; onClose(): void }) {
-  const React = Spicetify.React;
   return (
     <div className="syncify-panel">
       <p className="syncify-claim-notice">{undoneClaimText(props.claim)}</p>

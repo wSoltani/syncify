@@ -1,6 +1,5 @@
 import { bindReact } from "./react";
-import appStyles from "./styles/app.css";
-import { kitStyles } from "./ui/kit/styles";
+import { syncifyStyles } from "./ui/styles";
 import syncifyIcon from "../assets/icon.svg";
 import syncifyMark from "../assets/mark.svg";
 import { runStartupSyncCheck } from "./core/startupSync";
@@ -9,7 +8,7 @@ import { getProjectConfig } from "./core/projectConfig";
 import { loadConfig } from "./core/config";
 import { initShortcut } from "./core/shortcut";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
-import { SyncifyModal } from "./ui/SyncifyModal";
+import { SyncifyWindow } from "./ui/window/SyncifyWindow";
 import { ClaimNotice, UndoneClaimNotice } from "./ui/ClaimNotice";
 import { InstallNotice } from "./ui/InstallNotice";
 import { NudgeNotice } from "./ui/NudgeNotice";
@@ -79,7 +78,7 @@ function main(): void {
 function injectStyles(): void {
   const style = document.createElement("style");
   style.id = STYLE_ID;
-  style.textContent = `${kitStyles}\n${appStyles}`;
+  style.textContent = syncifyStyles;
   document.head.appendChild(style);
 }
 
@@ -293,7 +292,7 @@ function openSyncifyModal(): void {
   }
 
   debug("Opening modal");
-  openWindow(<SyncifyModal />);
+  openWindow(<SyncifyWindow />);
 }
 
 // Someone else's claim on this Spotify account, found when Spotify started.
@@ -341,7 +340,7 @@ function openNudgeNotice(): void {
   markNudgePanelShown();
   openWindow(
     <NudgeNotice
-      onSecure={() => openWindow(<SyncifyModal section="account" secure />)}
+      onSecure={() => openWindow(<SyncifyWindow tab="account" secure />)}
       onClose={() => Spicetify.PopupModal.hide()}
     />,
   );

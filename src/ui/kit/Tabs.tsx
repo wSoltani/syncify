@@ -76,16 +76,27 @@ export function Tabs<Id extends string>(props: TabsProps<Id>) {
   );
 }
 
-export function TabPanel(props: { idBase: string; id: string; children: ReactNode }) {
+/**
+ * The open tab's content. It scrolls on its own under the tabs; its actions,
+ * when it has any, stay in view below it.
+ */
+export function TabPanel(props: {
+  idBase: string;
+  id: string;
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <div
       className="syncify-tab-panel"
       id={panelId(props.idBase, props.id)}
       role="tabpanel"
       aria-labelledby={tabId(props.idBase, props.id)}
-      tabIndex={0}
     >
-      {props.children}
+      <div className="syncify-tab-scroll" tabIndex={0}>
+        {props.children}
+      </div>
+      {props.actions ? <div className="syncify-tab-actions">{props.actions}</div> : null}
     </div>
   );
 }
