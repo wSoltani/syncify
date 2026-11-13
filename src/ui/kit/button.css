@@ -1,0 +1,87 @@
+.syncify-btn,
+.syncify-icon-btn {
+    --syncify-btn-size: var(--syncify-size-control);
+
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: var(--syncify-space-2);
+    height: var(--syncify-btn-size);
+    margin: 0;
+    padding: 0 var(--syncify-space-4);
+    border: 0;
+    border-radius: calc(var(--syncify-btn-size) * var(--syncify-corner));
+    color: var(--syncify-color-on-accent);
+    background: var(--syncify-color-accent);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        filter 100ms ease,
+        background-color 100ms ease,
+        color 100ms ease;
+}
+
+.syncify-btn[data-size="small"] {
+    --syncify-btn-size: var(--syncify-size-control-small);
+    padding: 0 var(--syncify-space-3);
+    font-size: var(--syncify-text-small);
+}
+
+.syncify-btn[data-size="tiny"] {
+    --syncify-btn-size: var(--syncify-size-control-tiny);
+    padding: 0 var(--syncify-space-2);
+    font-size: var(--syncify-text-label);
+}
+
+.syncify-btn[data-variant="secondary"] {
+    color: var(--syncify-color-text);
+    background: var(--syncify-color-surface-strong);
+}
+
+.syncify-btn[data-variant="danger"] {
+    color: var(--syncify-color-on-accent);
+    background: var(--syncify-color-error);
+}
+
+.syncify-btn[data-variant="text"],
+.syncify-btn[data-variant="subtle"] {
+    padding: 0 var(--syncify-space-2);
+    color: var(--syncify-color-text);
+    background: transparent;
+    font-weight: 600;
+}
+
+.syncify-btn[data-variant="subtle"] {
+    color: var(--syncify-color-muted);
+}
+
+.syncify-btn:is([data-variant="primary"], [data-variant="danger"]):hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.syncify-btn[data-variant="secondary"]:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--syncify-color-surface-strong), var(--syncify-color-text) 8%);
+}
+
+.syncify-btn:is([data-variant="text"], [data-variant="subtle"]):hover:not(:disabled),
+.syncify-icon-btn:hover:not(:disabled) {
+    color: var(--syncify-color-text);
+    background: var(--syncify-color-surface);
+}
+
+.syncify-icon-btn {
+    --syncify-btn-size: var(--syncify-size-control-small);
+
+    width: var(--syncify-btn-size);
+    padding: 0;
+    color: var(--syncify-color-muted);
+    background: transparent;
+}
+
+.syncify-btn:disabled,
+.syncify-icon-btn:disabled {
+    cursor: default;
+    opacity: 0.45;
+}

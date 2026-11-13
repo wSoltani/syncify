@@ -1,0 +1,51 @@
+.syncify-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-3);
+    padding: var(--syncify-space-3) var(--syncify-space-3) var(--syncify-space-3) var(--syncify-space-4);
+    border-radius: var(--syncify-radius-surface);
+    background: var(--syncify-color-surface);
+}
+
+.syncify-notice[data-tone="warning"] {
+    background: var(--syncify-color-warning-surface);
+}
+
+/* The mark sits on the first line's capitals, however many lines follow. */
+.syncify-notice-body {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: flex-start;
+    gap: var(--syncify-space-3);
+    min-width: 0;
+}
+
+.syncify-notice-mark {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    height: 1lh;
+}
+
+.syncify-notice-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-notice-mark {
+        height: 1cap;
+    }
+
+    .syncify-notice-text {
+        text-box: trim-both cap alphabetic;
+    }
+}
+
+.syncify-notice-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--syncify-space-2);
+}

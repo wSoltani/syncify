@@ -1,0 +1,93 @@
+.syncify-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-0);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.syncify-list-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.syncify-list-divider {
+    margin: var(--syncify-space-1) var(--syncify-space-3);
+    border-top: var(--syncify-line) dashed var(--syncify-color-divider);
+}
+
+.syncify-row {
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-3);
+    width: 100%;
+    min-height: var(--syncify-size-row);
+    margin: 0;
+    padding: var(--syncify-space-2) var(--syncify-space-3);
+    border: 0;
+    border-radius: var(--syncify-radius-surface);
+    color: inherit;
+    background: none;
+    font: inherit;
+    text-align: left;
+}
+
+.syncify-row[data-lines="1"] {
+    min-height: var(--syncify-size-row-single);
+}
+
+button.syncify-row {
+    cursor: pointer;
+}
+
+button.syncify-row:hover:not(:disabled) {
+    background: var(--syncify-color-surface);
+}
+
+button.syncify-row:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.syncify-row-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.syncify-row-name {
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-2);
+    min-width: 0;
+    font-weight: 600;
+}
+
+.syncify-row-name-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* A mark after the name sits on the capitals' middle. */
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-row-name {
+        padding-block: calc((1lh - 1cap) / 2);
+    }
+
+    .syncify-row-name-text {
+        text-box: trim-both cap alphabetic;
+    }
+}
+
+.syncify-row-end {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--syncify-space-1);
+}
+
+.syncify-row-chevron {
+    color: var(--syncify-color-muted);
+}

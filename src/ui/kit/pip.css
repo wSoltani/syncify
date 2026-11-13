@@ -1,0 +1,19 @@
+.syncify-pip-square {
+    flex: 0 0 auto;
+    width: var(--syncify-size-pip);
+    height: var(--syncify-size-pip);
+    border-radius: calc(var(--syncify-size-pip) * var(--syncify-corner));
+    background: var(--syncify-kind-extension);
+}
+
+.syncify-pip-square[data-kind="theme"] {
+    background: var(--syncify-kind-theme);
+}
+
+.syncify-pip-square[data-kind="snippet"] {
+    background: var(--syncify-kind-snippet);
+}
+
+.syncify-pip-square[data-kind="app"] {
+    background: var(--syncify-kind-app);
+}

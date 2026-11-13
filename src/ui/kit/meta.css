@@ -1,0 +1,31 @@
+/* Facts on one line, wrapping between facts. Each fact is trimmed to its
+   capitals, so the dots sit on their middle; the row gap gives back the
+   space the trim takes from a wrapped line. */
+.syncify-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--syncify-space-2);
+    min-width: 0;
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-small);
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-meta {
+        row-gap: calc(1lh - 1cap);
+    }
+
+    .syncify-meta-part {
+        text-box: trim-both cap alphabetic;
+    }
+}
+
+.syncify-dot {
+    flex: 0 0 auto;
+    width: var(--syncify-size-dot);
+    height: var(--syncify-size-dot);
+    border-radius: calc(var(--syncify-size-dot) * var(--syncify-corner));
+    background: currentColor;
+    opacity: 0.7;
+}

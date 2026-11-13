@@ -1,0 +1,93 @@
+.syncify-menu {
+    position: fixed;
+    inset: auto;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    /* Grows to fit its longest choice, never wider than the window. */
+    width: max-content;
+    min-width: var(--syncify-size-menu);
+    max-width: calc(100vw - 2 * var(--syncify-space-1));
+    margin: 0;
+    padding: var(--syncify-space-1);
+    border: 0;
+    border-radius: var(--syncify-radius-surface);
+    color: var(--syncify-color-text);
+    background: var(--syncify-color-raised);
+    box-shadow: 0 0 0 var(--syncify-line) var(--syncify-color-divider);
+}
+
+.syncify-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--syncify-space-2);
+    width: 100%;
+    height: var(--syncify-size-control);
+    margin: 0;
+    padding: 0 var(--syncify-space-3);
+    border: 0;
+    border-radius: calc(var(--syncify-size-control) * var(--syncify-corner));
+    color: inherit;
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.syncify-menu-item:hover:not(:disabled),
+.syncify-menu-item:focus-visible {
+    background: var(--syncify-color-surface);
+}
+
+.syncify-ui .syncify-menu-item:focus-visible {
+    outline-offset: calc(-1 * var(--syncify-ring));
+}
+
+.syncify-menu-item[data-danger="true"] {
+    color: var(--syncify-color-error);
+}
+
+.syncify-menu-item[aria-checked="true"] .syncify-icon {
+    color: var(--syncify-color-accent);
+}
+
+.syncify-menu-item:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+/* The button that shows a setting's current choice. */
+.syncify-menu-value {
+    display: inline-flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: var(--syncify-space-2);
+    min-width: 0;
+    height: var(--syncify-size-control-medium);
+    margin: 0;
+    padding: 0 var(--syncify-space-3);
+    border: 0;
+    border-radius: calc(var(--syncify-size-control-medium) * var(--syncify-corner));
+    color: var(--syncify-color-text);
+    background: var(--syncify-color-surface);
+    font: inherit;
+    font-size: var(--syncify-text-small);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.syncify-menu-value:hover:not(:disabled) {
+    background: var(--syncify-color-surface-strong);
+}
+
+.syncify-menu-value .syncify-icon {
+    color: var(--syncify-color-muted);
+}
+
+.syncify-menu-value:disabled {
+    cursor: default;
+    opacity: 0.45;
+}

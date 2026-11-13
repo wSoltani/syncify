@@ -1,0 +1,77 @@
+.syncify-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-2);
+    min-width: 0;
+}
+
+.syncify-field-label {
+    align-self: flex-start;
+    font-size: var(--syncify-text-small);
+    font-weight: 700;
+}
+
+.syncify-field-row {
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-2);
+}
+
+.syncify-input-box {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    min-width: 0;
+    height: var(--syncify-size-control);
+    padding: 0 var(--syncify-space-3);
+    border-radius: calc(var(--syncify-size-control) * var(--syncify-corner));
+    color: var(--syncify-color-muted);
+    background: var(--syncify-color-surface);
+    cursor: text;
+}
+
+.syncify-input-box:focus-within {
+    outline: var(--syncify-ring) solid var(--syncify-color-text);
+    outline-offset: var(--syncify-ring);
+}
+
+.syncify-input-box[data-invalid="true"] {
+    box-shadow: inset 0 0 0 var(--syncify-ring) var(--syncify-color-error);
+}
+
+.syncify-input-box[data-disabled="true"] {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.syncify-input-control {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: var(--syncify-color-text);
+    background: none;
+    font: inherit;
+}
+
+.syncify-ui .syncify-input-control:focus-visible {
+    outline: 0;
+}
+
+.syncify-input-control::placeholder {
+    color: var(--syncify-color-muted);
+    opacity: 1;
+}
+
+.syncify-input-control[data-mono="true"]:not(:placeholder-shown) {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    letter-spacing: 0.05em;
+}
+
+.syncify-field-error {
+    color: var(--syncify-color-error);
+    font-size: var(--syncify-text-small);
+}

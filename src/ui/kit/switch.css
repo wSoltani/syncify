@@ -1,0 +1,47 @@
+.syncify-switch-control {
+    --syncify-switch-width: 32px;
+    --syncify-switch-height: 18px;
+    --syncify-switch-knob: 12px;
+    --syncify-switch-inset: calc((var(--syncify-switch-height) - var(--syncify-switch-knob)) / 2);
+
+    position: relative;
+    flex: 0 0 auto;
+    width: var(--syncify-switch-width);
+    height: var(--syncify-switch-height);
+    margin: 0;
+    border-radius: calc(var(--syncify-switch-height) * var(--syncify-corner));
+    background: var(--syncify-color-surface-strong);
+    appearance: none;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+}
+
+.syncify-switch-control::before {
+    position: absolute;
+    top: var(--syncify-switch-inset);
+    left: var(--syncify-switch-inset);
+    width: var(--syncify-switch-knob);
+    height: var(--syncify-switch-knob);
+    border-radius: calc(var(--syncify-switch-knob) * var(--syncify-corner));
+    background: var(--syncify-color-muted);
+    content: "";
+    transition:
+        transform 150ms ease,
+        background-color 150ms ease;
+}
+
+.syncify-switch-control:checked {
+    background: var(--syncify-color-accent);
+}
+
+.syncify-switch-control:checked::before {
+    background: var(--syncify-color-on-accent);
+    transform: translateX(
+        calc(var(--syncify-switch-width) - var(--syncify-switch-knob) - 2 * var(--syncify-switch-inset))
+    );
+}
+
+.syncify-switch-control:disabled {
+    cursor: default;
+    opacity: 0.45;
+}

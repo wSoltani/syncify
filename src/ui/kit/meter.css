@@ -1,0 +1,37 @@
+.syncify-meter {
+    --syncify-meter-bar-width: 16px;
+    --syncify-meter-bar-height: 8px;
+    --syncify-meter-bar-gap: 3px;
+
+    display: inline-flex;
+    align-items: center;
+    gap: var(--syncify-space-3);
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-small);
+    font-weight: 600;
+}
+
+.syncify-meter-bars {
+    display: flex;
+    gap: var(--syncify-meter-bar-gap);
+}
+
+.syncify-meter-bar {
+    width: var(--syncify-meter-bar-width);
+    height: var(--syncify-meter-bar-height);
+    border-radius: calc(var(--syncify-meter-bar-height) * var(--syncify-corner));
+    background: var(--syncify-color-surface-strong);
+}
+
+.syncify-meter-bar[data-used="true"] {
+    background: var(--syncify-color-accent);
+}
+
+/* Full: the count says so in the warning color. */
+.syncify-meter[data-full="true"] {
+    color: var(--syncify-color-warning);
+}
+
+.syncify-meter[data-full="true"] .syncify-meter-bar[data-used="true"] {
+    background: var(--syncify-color-warning);
+}

@@ -1,0 +1,51 @@
+.syncify-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--syncify-space-4);
+    min-height: var(--syncify-size-row-single);
+}
+
+label.syncify-setting-row {
+    cursor: pointer;
+}
+
+label.syncify-setting-row[data-disabled="true"] {
+    cursor: default;
+}
+
+.syncify-setting-row-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.syncify-setting-row-label {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.syncify-setting-row-value {
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-small);
+    overflow-wrap: anywhere;
+}
+
+/* Inside a group, the dashed line; solid lines only split sections. */
+.syncify-setting-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Drawn over the row's edge, so the line doesn't move the row's content. */
+.syncify-setting-group > * + * {
+    position: relative;
+}
+
+.syncify-setting-group > * + *::before {
+    position: absolute;
+    inset: 0 0 auto;
+    border-top: var(--syncify-line) dashed var(--syncify-color-divider);
+    content: "";
+}

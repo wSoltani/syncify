@@ -10,6 +10,8 @@
     "install:dev": "node scripts/install-dev.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "test": "vitest run",
     "version": "node scripts/sync-version.mjs && npm run build && git add manifest.json dist/syncify.js dist/syncify.bundle.js"
   },
   "keywords": [
@@ -20,10 +22,21 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "esbuild": "^0.27.0",
-    "typescript": "^5.9.3"
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "happy-dom": "^21.0.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
   }
 }

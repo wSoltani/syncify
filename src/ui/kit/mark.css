@@ -1,0 +1,49 @@
+.syncify-mark-square {
+    --syncify-mark-size: var(--syncify-size-mark);
+    --syncify-mark-color: var(--syncify-color-accent);
+
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: var(--syncify-mark-size);
+    height: var(--syncify-mark-size);
+    border-radius: calc(var(--syncify-mark-size) * var(--syncify-corner));
+    color: var(--syncify-color-on-accent);
+    background: var(--syncify-mark-color);
+}
+
+.syncify-mark-square[data-size="large"] {
+    --syncify-mark-size: var(--syncify-size-mark-large);
+}
+
+.syncify-mark-square[data-tone="warning"] {
+    --syncify-mark-color: var(--syncify-color-warning);
+}
+
+.syncify-mark-square[data-tone="error"] {
+    --syncify-mark-color: var(--syncify-color-error);
+}
+
+.syncify-mark-square .syncify-icon {
+    --syncify-size-icon: calc(var(--syncify-mark-size) * 0.7);
+
+    stroke-width: 3;
+}
+
+.syncify-badge {
+    --syncify-badge-size: var(--syncify-size-check);
+
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--syncify-badge-size);
+    height: var(--syncify-badge-size);
+    padding: 0 var(--syncify-space-1);
+    border-radius: calc(var(--syncify-badge-size) * var(--syncify-corner));
+    color: var(--syncify-color-text);
+    background: var(--syncify-color-surface-strong);
+    font-size: var(--syncify-text-tiny);
+    font-weight: 700;
+}

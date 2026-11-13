@@ -57,7 +57,13 @@ const options = {
     "process.env.SYNCIFY_SHARE_URL": defineEnvValue(env.SYNCIFY_SHARE_URL),
     "process.env.SYNCIFY_EXTENSION_NAME": JSON.stringify(extensionName),
   },
-  external: ["react", "react-dom"],
+  // Spotify provides React. JSX and imports from "react" use it through
+  // src/react, which Spicetify's copy is bound to at startup.
+  jsx: "automatic",
+  alias: {
+    react: "./src/react/index.ts",
+    "react/jsx-runtime": "./src/react/jsx-runtime.ts",
+  },
   plugins: [normalizeLineEndings],
   loader: {
     ".css": "text",

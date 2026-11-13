@@ -1,0 +1,15 @@
+/* A bar as tall as the capitals of the text it stands in for. */
+.syncify-skeleton {
+    display: block;
+    width: 30%;
+    height: 1cap;
+    border-radius: calc(1cap * var(--syncify-corner));
+    background: var(--syncify-color-surface-strong);
+}
+
+/* The meta line isn't trimmed like the name, so its bar keeps the line's height. */
+.syncify-skeleton[data-width="meta"] {
+    width: 50%;
+    margin-block: calc((1lh - 1cap) / 2);
+    font-size: var(--syncify-text-small);
+}

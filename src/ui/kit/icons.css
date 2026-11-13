@@ -1,0 +1,15 @@
+.syncify-icon {
+    flex: 0 0 auto;
+    width: var(--syncify-size-icon);
+    height: var(--syncify-size-icon);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.syncify-icon[data-filled="true"] {
+    fill: currentColor;
+    stroke: none;
+}
