@@ -38,7 +38,10 @@ export function useShareLoad(props: {
   const [input, setInput] = useState("");
   // The code being fetched, from the field or a pick.
   const [fetching, setFetching] = useState<{ code: string; pick: boolean } | null>(null);
+  // A code that couldn't be read, under the field.
   const [error, setError] = useState<string | null>(null);
+  // Loading the previewed setup failed, inside the preview.
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [shared, setShared] = useState<LoadedShare | null>(null);
   const [mode, setMode] = useState<ShareMode>("add");
   const [allowed, setAllowed] = useState<ReadonlySet<string>>(() => new Set());
@@ -117,6 +120,7 @@ export function useShareLoad(props: {
   async function open(picked?: string) {
     const code = picked ?? parseCode(input);
     setError(null);
+    setApplyError(null);
     setShared(null);
     if (!code) {
       setError(describeShareError(new AccountError("no_code")));
@@ -148,16 +152,16 @@ export function useShareLoad(props: {
   async function apply() {
     if (!shared || !preview) return;
     setApplying(true);
-    setError(null);
+    setApplyError(null);
     const skipped = [...new Set([...optional, ...unloadable])].filter((key) => unloadable.has(key) || !allowed.has(key));
     try {
       await loadShare(props.config, shared.file, mode, skipped, snippets ?? null, shared.pick);
       Spicetify.showNotification("Syncify: setup loaded. Reloading…");
       savePendingRestore(preview.manual, "share");
       setTimeout(() => window.location.reload(), 1000);
-    } catch (applyError) {
+    } catch (failure) {
       setApplying(false);
-      setError(describeApplyError(applyError));
+      setApplyError(describeApplyError(failure));
     }
   }
 
@@ -166,8 +170,12 @@ export function useShareLoad(props: {
     setInput,
     fetching,
     error,
+    applyError,
     shared,
-    close: () => setShared(null),
+    close: () => {
+      setShared(null);
+      setApplyError(null);
+    },
     mode,
     setMode,
     changes,

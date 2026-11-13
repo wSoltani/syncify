@@ -64,7 +64,7 @@ export function SharePreview(props: {
           ) : undefined
         }
       />
-      {load.error ? <Notice tone="error">{load.error}</Notice> : null}
+      {load.applyError ? <Notice tone="error">{load.applyError}</Notice> : null}
       {marketplaceMissing ? <Notice tone="warning">Install Spicetify Marketplace to load a setup.</Notice> : null}
       <SettingRow label="How to load it">
         <Menu

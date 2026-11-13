@@ -10,13 +10,20 @@ const shares = vi.hoisted(() => ({
   deleteShare: vi.fn(),
   createShare: vi.fn(),
   fetchPicks: vi.fn(),
+  fetchShare: vi.fn(),
+}));
+const sync = vi.hoisted(() => ({ loadShare: vi.fn() }));
+vi.mock("../../core/syncService", async (original) => ({
+  ...(await original<typeof import("../../core/syncService")>()),
+  ...sync,
 }));
 vi.mock("../../api/sharesApi", async (original) => ({
   ...(await original<typeof import("../../api/sharesApi")>()),
   ...shares,
 }));
 // This device's items: one extension from GitHub.
-vi.mock("../../core/marketplace", () => ({
+vi.mock("../../core/marketplace", async (original) => ({
+  ...(await original<typeof import("../../core/marketplace")>()),
   collectMarketplaceKeys: () =>
     Promise.resolve({
       "marketplace:installed-extensions": JSON.stringify(["marketplace:installed:a/b/one.js"]),
@@ -31,6 +38,7 @@ vi.mock("../../core/marketplace", () => ({
 vi.mock("../../core/sourceChecks", async (original) => ({
   ...(await original<typeof import("../../core/sourceChecks")>()),
   checkCatalog: (_items: unknown, checks: unknown) => Promise.resolve(checks),
+  fetchSnippetCatalog: () => Promise.resolve(null),
 }));
 
 const code = (changes: Partial<ShareCode> = {}): ShareCode => ({
@@ -134,6 +142,38 @@ describe("ShareTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create code" }));
     expect(screen.getByRole("alert").textContent).toBe("At least 3 characters");
     expect(shares.createShare).not.toHaveBeenCalled();
+  });
+  it("keeps a failed load inside the preview, and leaves the field clean after Cancel", async () => {
+    shares.fetchShare.mockResolvedValue({
+      code: "ABCDEF",
+      name: "Night drive",
+      creator: null,
+      updated_at: 0,
+      keys: {
+        "marketplace:installed-extensions": JSON.stringify(["marketplace:installed:c/d/two.js"]),
+        "marketplace:installed:c/d/two.js": JSON.stringify({
+          title: "Two",
+          user: "c",
+          repo: "d",
+          extensionURL: "https://raw.githubusercontent.com/c/d/main/two.js",
+        }),
+      },
+    });
+    sync.loadShare.mockRejectedValue(new Error("Couldn't load this setup."));
+    await renderTab();
+    const field = screen.getByLabelText("Load a setup");
+    fireEvent.change(field, { target: { value: "ABCDEF" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Load" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^Load \d+ change/ }));
+    });
+    expect(screen.getByText("Couldn't load this setup.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText("Couldn't load this setup.")).toBeNull();
+    expect(screen.getByLabelText("Load a setup").getAttribute("aria-invalid")).not.toBe("true");
   });
 });
 
