@@ -20,6 +20,17 @@ You don't need an account. Without one, your backups follow the Spotify account 
 
 Syncify also keeps app-wide counts, like how many people backed up each day. Nothing in them points back to you, so they stay after your data is deleted.
 
+## Extension settings sync
+
+This is coming in a later version of Syncify. Nothing is stored for it yet.
+
+With an account and a secured backup, Syncify copies the saved settings of your extensions, themes and custom apps between your devices. You can turn it off for each device and for each item.
+
+- **What's stored:** only the keys each item lists in Syncify's public registry, with when each changed, its size and which install sent it. A removed key is kept without its value, so the removal reaches your other devices. Syncify also keeps which of these items your devices still have installed.
+- **What never leaves your device:** keys an item marks as secret, like API keys and tokens. They're never synced or backed up. Share codes never include extension settings.
+- **Where:** in a separate D1 database, and in your backups in R2. Like backups, they aren't encrypted end to end.
+- **How long:** until you delete them. **Delete synced copy** in Syncify, or **Delete** on your account page, removes one item. **Delete everything** removes them all. An item's synced copy is also deleted 30 days after none of your devices has it installed.
+
 ## Where it's stored
 
 Syncify runs on Cloudflare:
