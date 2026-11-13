@@ -9,9 +9,7 @@ import { loadConfig } from "./core/config";
 import { initShortcut } from "./core/shortcut";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { SyncifyWindow } from "./ui/window/SyncifyWindow";
-import { ClaimNotice, UndoneClaimNotice } from "./ui/ClaimNotice";
-import { InstallNotice } from "./ui/InstallNotice";
-import { NudgeNotice } from "./ui/NudgeNotice";
+import { ClaimNotice, InstallNotice, NudgeNotice, UndoneClaimNotice } from "./ui/notices/LaunchNotices";
 import { markNudgePanelShown } from "./core/nudge";
 import type { ReactElement } from "react";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "./types/syncify";
@@ -323,12 +321,7 @@ function openInstallNotice(install: SyncifyWaitingInstall): void {
   // Syncify's own window already shows it.
   if (openModal?.container.isConnected) return;
   debug("Opening install notice");
-  const close = () => Spicetify.PopupModal.hide();
-  openWindow(
-    <div className="syncify-panel">
-      <InstallNotice install={install} onDone={close} onClose={close} />
-    </div>,
-  );
+  openWindow(<InstallNotice install={install} onDone={() => Spicetify.PopupModal.hide()} />);
 }
 
 // The Secure nudge's launch panel, once per install. Secure opens Syncify at

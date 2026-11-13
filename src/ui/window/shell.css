@@ -1,8 +1,8 @@
 /* Spotify PopupModal shell tweaks scoped to Syncify. Keep these minimal so the
    Spotify modal can size naturally instead of being forced/cropped. */
 .syncify-modal-shell .main-trackCreditsModal-header,
-.main-trackCreditsModal-header:has(+ * :is(.syncify-panel, .syncify-window)),
-.main-trackCreditsModal-header:has(~ * :is(.syncify-panel, .syncify-window)) {
+.main-trackCreditsModal-header:has(+ * .syncify-ui),
+.main-trackCreditsModal-header:has(~ * .syncify-ui) {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -11,8 +11,8 @@
 }
 
 .syncify-modal-shell .main-trackCreditsModal-header h1,
-.main-trackCreditsModal-header:has(+ * :is(.syncify-panel, .syncify-window)) h1,
-.main-trackCreditsModal-header:has(~ * :is(.syncify-panel, .syncify-window)) h1 {
+.main-trackCreditsModal-header:has(+ * .syncify-ui) h1,
+.main-trackCreditsModal-header:has(~ * .syncify-ui) h1 {
     margin: 0 !important;
     font-size: 18px !important;
     line-height: 1.25 !important;
@@ -32,8 +32,8 @@
 
 .syncify-modal-shell .main-trackCreditsModal-mainSection,
 .syncify-modal-shell .main-trackCreditsModal-content,
-.main-trackCreditsModal-mainSection:has(.syncify-panel),
-.main-trackCreditsModal-content:has(.syncify-panel) {
+.main-trackCreditsModal-mainSection:has(.syncify-ui),
+.main-trackCreditsModal-content:has(.syncify-ui) {
     /* The window reads these to fit inside without the shell scrolling. */
     --syncify-shell-height: calc(100vh - 140px);
     --syncify-shell-padding-top: 10px;
@@ -91,8 +91,8 @@
 @media (max-width: 560px) {
     .syncify-modal-shell .main-trackCreditsModal-mainSection,
     .syncify-modal-shell .main-trackCreditsModal-content,
-    .main-trackCreditsModal-mainSection:has(.syncify-panel),
-    .main-trackCreditsModal-content:has(.syncify-panel) {
+    .main-trackCreditsModal-mainSection:has(.syncify-ui),
+    .main-trackCreditsModal-content:has(.syncify-ui) {
         --syncify-shell-height: calc(100vh - 110px);
         --syncify-shell-padding-bottom: 14px;
 

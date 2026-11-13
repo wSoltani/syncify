@@ -1,0 +1,7 @@
+/* Turn off or Use default, then the key. */
+.syncify-settings-shortcut {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--syncify-space-2);
+}

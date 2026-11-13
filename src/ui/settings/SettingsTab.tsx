@@ -1,18 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { saveConfig } from "../../core/config";
 import { applyEntryPoint, isMenuEntryPointAvailable } from "../../core/entryPoints";
-import {
-  applyShortcut,
-  DEFAULT_SHORTCUT,
-  formatShortcut,
-  isShortcutTaken,
-  shortcutFromEvent,
-} from "../../core/shortcut";
+import { applyShortcut, DEFAULT_SHORTCUT, formatShortcut } from "../../core/shortcut";
 import type { SyncifyConfig, SyncifyEntryPoint, SyncifyShortcut } from "../../types/syncify";
-import { TabPanel } from "../kit";
-import { ChevronIcon } from "../legacyIcons";
+import { Button, KeyButton, Menu, Notice, SettingGroup, SettingRow, SwitchRow, TabPanel, useStableId } from "../kit";
+import { useShortcutRecorder } from "./useShortcutRecorder";
 
-const ENTRY_POINT_OPTIONS: { value: SyncifyEntryPoint; label: string }[] = [
+const ENTRY_POINTS: { value: SyncifyEntryPoint; label: string }[] = [
   { value: "both", label: "Top bar and profile menu" },
   { value: "topbar", label: "Top bar" },
   { value: "menu", label: "Profile menu" },
@@ -29,188 +23,82 @@ export function SettingsTab(props: {
   unsupported: boolean;
 }) {
   const { config } = props;
-  const isBusy = props.busy;
-  const isUnsupported = props.unsupported;
-  const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
-  const [shortcutError, setShortcutError] = useState<string | null>(null);
   const [menuAvailable] = useState(() => isMenuEntryPointAvailable());
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  // Capture phase on window runs before Mousetrap (bubble phase on document),
-  // so recording never triggers the current shortcut or Spotify's own ones.
-  useEffect(() => {
-    if (!isRecordingShortcut) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      // The window was closed while recording: stop, and let the key through.
-      if (!panelRef.current?.isConnected) {
-        setIsRecordingShortcut(false);
-        setShortcutError(null);
-        return;
-      }
-
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      const result = shortcutFromEvent(event);
-      if (result.kind === "ignore") return;
-      if (result.kind === "cancel") {
-        setIsRecordingShortcut(false);
-        setShortcutError(null);
-        return;
-      }
-      if (result.kind === "error") {
-        setShortcutError(result.message);
-        return;
-      }
-
-      if (isShortcutTaken(result.shortcut)) {
-        setShortcutError(
-          `${formatShortcut(result.shortcut)} is already used by Spotify or another extension. Try a different combo.`,
-        );
-        return;
-      }
-
-      setIsRecordingShortcut(false);
-      updateShortcut(result.shortcut);
-    };
-
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [isRecordingShortcut, config]);
+  const keyId = useStableId("shortcut");
+  const recorder = useShortcutRecorder(keyId, updateShortcut);
+  const entryPoint = menuAvailable ? config.entryPoint : "topbar";
 
   function save(next: SyncifyConfig) {
     saveConfig(next);
     props.onConfigChange(next);
   }
 
-  function updateAutoBackup(enabled: boolean) {
-    save({ ...config, autoBackupEnabled: enabled });
-  }
-
   function updateShortcut(shortcut: SyncifyShortcut | null) {
     save({ ...config, shortcut });
     applyShortcut(shortcut);
-    setShortcutError(null);
+    recorder.clearError();
   }
 
-  function updateEntryPoint(entryPoint: SyncifyEntryPoint) {
-    save({ ...config, entryPoint });
-    applyEntryPoint(entryPoint);
-  }
-
-  function startRecordingShortcut() {
-    setShortcutError(null);
-    setIsRecordingShortcut(true);
+  function updateEntryPoint(next: SyncifyEntryPoint) {
+    save({ ...config, entryPoint: next });
+    applyEntryPoint(next);
   }
 
   return (
     <TabPanel idBase={props.idBase} id="settings">
-      <div className="syncify-panel" ref={panelRef}>
-        <label className="syncify-setting">
-          <span className="syncify-setting-text">
-            <span>Back up automatically</span>
-            <span className="syncify-muted">
-              When Spotify starts and something has changed
-            </span>
-          </span>
-          <input
-            className="syncify-switch"
-            type="checkbox"
-            role="switch"
-            checked={config.autoBackupEnabled && !isUnsupported}
-            onChange={(event) => updateAutoBackup(event.currentTarget.checked)}
-            disabled={isBusy || isUnsupported}
+      <SettingGroup>
+        <SwitchRow
+          label="Automatic backup when Spotify starts"
+          checked={config.autoBackupEnabled && !props.unsupported}
+          onChange={(enabled) => save({ ...config, autoBackupEnabled: enabled })}
+          disabled={props.busy || props.unsupported}
+        />
+        <SettingRow label="Open Syncify from">
+          <Menu
+            label="Open Syncify from"
+            trigger={{ value: ENTRY_POINTS.find((option) => option.value === entryPoint)?.label ?? "" }}
+            items={ENTRY_POINTS.map((option) => ({
+              label: option.label,
+              checked: option.value === entryPoint,
+              onSelect: () => updateEntryPoint(option.value),
+            }))}
+            disabled={!menuAvailable}
           />
-        </label>
-
-        <label className="syncify-setting">
-          <span className="syncify-setting-text">
-            <span>Open Syncify from</span>
-            {!menuAvailable ? (
-              <span className="syncify-muted">
-                The profile menu isn't available in this Spicetify version
-              </span>
-            ) : config.entryPoint === "menu" && !config.shortcut ? (
-              <span className="syncify-muted">
-                Keep a shortcut in case a Spotify update breaks the menu
-              </span>
-            ) : null}
-          </span>
-          <span className="syncify-select-field">
-            <select
-              className="syncify-select"
-              value={menuAvailable ? config.entryPoint : "topbar"}
-              onChange={(event) =>
-                updateEntryPoint(
-                  event.currentTarget.value as SyncifyEntryPoint,
-                )
-              }
-              disabled={!menuAvailable}
-            >
-              {ENTRY_POINT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronIcon />
-          </span>
-        </label>
-
-        <div className="syncify-setting">
-          <span className="syncify-setting-text">
-            <span>Keyboard shortcut</span>
-            {isRecordingShortcut && !shortcutError ? (
-              <span className="syncify-muted">
-                Press a key combination, or Esc to cancel
-              </span>
-            ) : null}
-          </span>
-          <span className="syncify-shortcut">
-            {config.shortcut && !isRecordingShortcut ? (
-              <button
-                className="syncify-text-button"
-                type="button"
-                onClick={() => updateShortcut(null)}
-              >
+        </SettingRow>
+        <SettingRow
+          label="Keyboard shortcut"
+          value={recorder.recording && !recorder.error ? "Press a key combination, or Esc to cancel" : undefined}
+        >
+          <span className="syncify-settings-shortcut">
+            {recorder.recording ? null : config.shortcut ? (
+              <Button variant="text" onClick={() => updateShortcut(null)}>
                 Turn off
-              </button>
-            ) : null}
-            {!config.shortcut && !isRecordingShortcut ? (
-              <button
-                className="syncify-text-button"
-                type="button"
-                onClick={() => updateShortcut(DEFAULT_SHORTCUT)}
-              >
+              </Button>
+            ) : (
+              <Button variant="text" onClick={() => updateShortcut(DEFAULT_SHORTCUT)}>
                 Use default
-              </button>
-            ) : null}
-            <button
-              className="syncify-key"
-              type="button"
-              data-recording={isRecordingShortcut ? "true" : "false"}
-              onClick={() =>
-                isRecordingShortcut
-                  ? setIsRecordingShortcut(false)
-                  : startRecordingShortcut()
+              </Button>
+            )}
+            <KeyButton
+              id={keyId}
+              keys={recorder.recording ? "Press keys" : config.shortcut ? formatShortcut(config.shortcut) : "Off"}
+              recording={recorder.recording}
+              aria-label={
+                recorder.recording
+                  ? "Recording a keyboard shortcut"
+                  : `Change the keyboard shortcut${config.shortcut ? `, now ${formatShortcut(config.shortcut)}` : ""}`
               }
-              title="Click to change"
-            >
-              {isRecordingShortcut
-                ? "Press keys…"
-                : config.shortcut
-                  ? formatShortcut(config.shortcut)
-                  : "Off"}
-            </button>
+              onClick={recorder.toggle}
+            />
           </span>
-        </div>
-        {shortcutError ? (
-          <div className="syncify-alert" role="alert">
-            {shortcutError}
-          </div>
-        ) : null}
-      </div>
+        </SettingRow>
+      </SettingGroup>
+      {recorder.error ? <Notice tone="warning">{recorder.error}</Notice> : null}
+      {!menuAvailable ? (
+        <Notice tone="info">The profile menu isn't available in this Spicetify version.</Notice>
+      ) : config.entryPoint === "menu" && !config.shortcut ? (
+        <Notice tone="warning">Keep a shortcut in case a Spotify update breaks the profile menu.</Notice>
+      ) : null}
     </TabPanel>
   );
 }

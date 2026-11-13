@@ -27,12 +27,6 @@
     box-sizing: border-box;
 }
 
-/* The claim notice shown when Spotify starts */
-
-.syncify-claim-notice {
-    margin: 0;
-}
-
 .syncify-muted {
     margin: 0;
     color: var(--syncify-muted);
@@ -218,30 +212,12 @@
     opacity: 1;
 }
 
-.syncify-code-input {
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    letter-spacing: 0.3em;
-}
-
-.syncify-account-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-}
-
 .syncify-account-email {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.syncify-account-state {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.syncify-clock,
 .syncify-external {
     flex: 0 0 auto;
     fill: none;
@@ -249,11 +225,6 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-}
-
-.syncify-clock {
-    width: 14px;
-    height: 14px;
 }
 
 .syncify-external {
@@ -709,116 +680,6 @@ label.syncify-setting {
     min-width: 0;
 }
 
-.syncify-switch {
-    position: relative;
-    flex: 0 0 auto;
-    width: 36px;
-    height: 20px;
-    margin: 0;
-    border-radius: 999px;
-    background: var(--syncify-muted);
-    appearance: none;
-    cursor: pointer;
-    transition: background-color 150ms ease;
-}
-
-.syncify-switch::before {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #fff;
-    content: "";
-    transition: transform 150ms ease;
-}
-
-.syncify-switch:checked {
-    background: var(--syncify-accent);
-}
-
-.syncify-switch:checked::before {
-    transform: translateX(16px);
-}
-
-.syncify-switch:disabled {
-    cursor: default;
-    opacity: 0.5;
-}
-
-/* Selects draw their own chevron, away from the edge. */
-.syncify-select-field {
-    position: relative;
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    max-width: 55%;
-    min-width: 0;
-}
-
-.syncify-select-field .syncify-chevron {
-    position: absolute;
-    right: 10px;
-    width: 14px;
-    height: 14px;
-    color: var(--syncify-muted);
-    transform: rotate(90deg);
-    pointer-events: none;
-}
-
-.syncify-select {
-    max-width: 100%;
-    padding: 6px 32px 6px 10px;
-    appearance: none;
-    border: 0;
-    border-radius: 4px;
-    color: var(--syncify-text);
-    background: var(--syncify-surface);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.syncify-select:hover:not(:disabled) {
-    background: var(--syncify-surface-hover);
-}
-
-.syncify-select option {
-    color: #fff;
-    background: #282828;
-}
-
-.syncify-shortcut {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 12px;
-}
-
-.syncify-key {
-    min-width: 80px;
-    padding: 5px 10px;
-    border: 0;
-    border-radius: 4px;
-    color: var(--syncify-text);
-    background: var(--syncify-surface);
-    box-shadow: inset 0 -2px 0 var(--syncify-divider);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.syncify-key:hover {
-    background: var(--syncify-surface-hover);
-}
-
-.syncify-key[data-recording="true"] {
-    color: var(--syncify-accent);
-    box-shadow: inset 0 0 0 1px var(--syncify-accent);
-}
-
 .syncify-panel :focus-visible {
     outline: 2px solid var(--syncify-text);
     outline-offset: 2px;
@@ -829,9 +690,5 @@ label.syncify-setting {
         align-items: stretch;
         flex-direction: column;
         gap: 10px;
-    }
-
-    .syncify-select {
-        max-width: none;
     }
 }
