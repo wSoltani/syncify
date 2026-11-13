@@ -6,13 +6,22 @@ import type { SyncifySnapshotSummary } from "../../types/syncify";
 export function useLocalSetup(): {
   /** null until read once. */
   local: SyncifySnapshotSummary | null;
+  /** The last read failed; it throws, so the window says why. */
+  localFailed: boolean;
   refreshLocal(): Promise<SyncifySnapshotSummary>;
 } {
   const [local, setLocal] = useState<SyncifySnapshotSummary | null>(null);
+  const [localFailed, setLocalFailed] = useState(false);
   const refreshLocal = useCallback(async () => {
-    const summary = await summarizeMarketplaceState();
-    setLocal(summary);
-    return summary;
+    try {
+      const summary = await summarizeMarketplaceState();
+      setLocal(summary);
+      setLocalFailed(false);
+      return summary;
+    } catch (error) {
+      setLocalFailed(true);
+      throw error;
+    }
   }, []);
-  return { local, refreshLocal };
+  return { local, localFailed, refreshLocal };
 }

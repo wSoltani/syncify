@@ -39,9 +39,13 @@ export function BackupsTab(props: {
   config: SyncifyConfig;
   /** null until the backups were read once. */
   remote: SyncifyRemoteState | null;
-  /** The backups couldn't be read: the status says why and offers Try again. */
+  /**
+   * The backups or this device's setup couldn't be read: the status or the
+   * message above says why and offers Try again.
+   */
   failed: boolean;
   lockedBy: LockedError["code"] | null;
+  /** null until read once: the rows wait for it to know which backup is current. */
   local: SyncifySnapshotSummary | null;
   otherAccounts: OtherAccount[];
   /** Notices about this device's backups, shown above the list. */
@@ -171,7 +175,7 @@ export function BackupsTab(props: {
             ? "Sign in with the account that secured them"
             : "Sign in to see and restore your backups"}
         </p>
-      ) : !remote && props.failed ? null : !remote || (linked && !linked.remote) ? (
+      ) : (!remote || !local) && props.failed ? null : !remote || !local || (linked && !linked.remote) ? (
         <List label="Loading backups">
           <SkeletonRow />
           <SkeletonRow />

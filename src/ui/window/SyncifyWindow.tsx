@@ -48,7 +48,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   const idBase = useStableId("syncify");
   const project = getProjectConfig();
   const [config, setConfig] = useState<SyncifyConfig>(() => loadConfig());
-  const { local, refreshLocal } = useLocalSetup();
+  const { local, localFailed, refreshLocal } = useLocalSetup();
   const backups = useBackupCheck(config);
   const shareInfo = useStoredShareInfo();
   const newerVersion = useNewerVersion();
@@ -338,7 +338,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           idBase={idBase}
           config={config}
           remote={backups.check ? remote : null}
-          failed={checkError !== null}
+          failed={checkError !== null || localFailed}
           lockedBy={locked}
           local={local}
           otherAccounts={otherAccounts}

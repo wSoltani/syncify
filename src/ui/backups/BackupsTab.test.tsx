@@ -92,6 +92,16 @@ describe("BackupsTab", () => {
     expect(screen.queryByRole("list")).toBeNull();
   });
 
+  it("keeps the rows loading until this device's setup is read", () => {
+    const { rerender } = renderTab({ local: null });
+    expect(screen.getByRole("list", { name: "Loading backups" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Preview restore/ })).toBeNull();
+    rerender(<BackupsTab {...tabProps({ local: null, failed: true })} />);
+    expect(screen.queryByRole("list")).toBeNull();
+    rerender(<BackupsTab {...tabProps()} />);
+    expect(screen.getByRole("list", { name: "Backups" })).toBeTruthy();
+  });
+
   it("asks for a sign-in when the backups are locked", () => {
     renderTab({ remote: null, lockedBy: "claimed" });
     expect(screen.getByText("Sign in to see and restore your backups")).toBeTruthy();
