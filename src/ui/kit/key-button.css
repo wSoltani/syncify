@@ -1,0 +1,26 @@
+.syncify-keycap {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    height: var(--syncify-size-control-medium);
+    margin: 0;
+    padding: 0 var(--syncify-space-3);
+    border: 0;
+    border-radius: calc(var(--syncify-size-control-medium) * var(--syncify-corner));
+    color: var(--syncify-color-text);
+    background: var(--syncify-color-surface);
+    font: inherit;
+    font-size: var(--syncify-text-small);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.syncify-keycap:hover {
+    background: var(--syncify-color-surface-strong);
+}
+
+.syncify-keycap[data-recording="true"] {
+    color: var(--syncify-color-accent);
+    box-shadow: inset 0 0 0 var(--syncify-line) var(--syncify-color-accent);
+}

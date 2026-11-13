@@ -1,0 +1,98 @@
+/* Shared values for every part. Colors come from the active Spicetify theme,
+   with Spotify's own as fallbacks, so Syncify fits any theme. Every corner is
+   a quarter of the side it sits on, like Syncify's pips. */
+.syncify-ui {
+    --syncify-color-text: var(--spice-text, #fff);
+    --syncify-color-muted: var(--spice-subtext, #b3b3b3);
+    --syncify-color-accent: var(--spice-button, #1ed760);
+    --syncify-color-on-accent: var(--spice-button-text, #000);
+    --syncify-color-warning: #f6c343;
+    --syncify-color-error: var(--spice-notification-error, #f15e6c);
+    --syncify-color-surface: rgba(var(--spice-rgb-text, 255, 255, 255), 0.07);
+    --syncify-color-surface-strong: rgba(var(--spice-rgb-text, 255, 255, 255), 0.12);
+    --syncify-color-divider: rgba(var(--spice-rgb-text, 255, 255, 255), 0.1);
+    --syncify-color-warning-surface: color-mix(in srgb, var(--syncify-color-warning) 10%, transparent);
+    --syncify-color-raised: color-mix(in srgb, var(--spice-card, #282828), var(--syncify-color-text) 6%);
+    --syncify-color-backdrop: rgba(0, 0, 0, 0.6);
+
+    /* Syncify's kind colors, the same as on the website. */
+    --syncify-kind-extension: #6cd1d1;
+    --syncify-kind-theme: #efa4c1;
+    --syncify-kind-snippet: #d3c48c;
+    --syncify-kind-app: #88bcf2;
+
+    --syncify-corner: 0.25;
+    --syncify-radius-surface: 10px;
+
+    --syncify-size-control: 36px;
+    --syncify-size-control-medium: 32px;
+    --syncify-size-control-small: 28px;
+    --syncify-size-control-tiny: 24px;
+    --syncify-size-tab: 40px;
+    --syncify-size-row: 56px;
+    --syncify-size-row-single: 44px;
+    --syncify-size-check: 18px;
+    --syncify-size-pip: 12px;
+    --syncify-size-mark: 8px;
+    --syncify-size-mark-large: 20px;
+    --syncify-size-dot: 4px;
+    --syncify-size-icon: 16px;
+    --syncify-size-menu: 200px;
+    --syncify-line: 1px;
+    --syncify-ring: 2px;
+
+    --syncify-space-0: 2px;
+    --syncify-space-1: 4px;
+    --syncify-space-2: 8px;
+    --syncify-space-3: 12px;
+    --syncify-space-4: 16px;
+    --syncify-space-5: 20px;
+    --syncify-space-6: 24px;
+
+    --syncify-text-title: 20px;
+    --syncify-text-heading: 18px;
+    --syncify-text-body: 14px;
+    --syncify-text-small: 13px;
+    --syncify-text-label: 12px;
+    --syncify-text-tiny: 11px;
+
+    color: var(--syncify-color-text);
+    font-size: var(--syncify-text-body);
+    line-height: 1.45;
+}
+
+.syncify-ui *,
+.syncify-ui *::before,
+.syncify-ui *::after {
+    box-sizing: border-box;
+}
+
+.syncify-ui :focus-visible {
+    outline: var(--syncify-ring) solid var(--syncify-color-text);
+    outline-offset: var(--syncify-ring);
+}
+
+/* Text inside a control is trimmed to its capitals, so centering the box
+   centers the capitals and an icon beside them sits on their middle. */
+.syncify-cap {
+    white-space: nowrap;
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+    .syncify-cap {
+        text-box: trim-both cap alphabetic;
+    }
+}
+
+/* Read by screen readers, not shown. */
+.syncify-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: pre;
+    border: 0;
+}

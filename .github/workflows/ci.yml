@@ -16,6 +16,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
       - run: node scripts/check-release.mjs
       - run: npm run build
       # Marketplace runs the committed loader, and it falls back to the

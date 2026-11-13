@@ -1,0 +1,46 @@
+.syncify-dialog {
+    --syncify-dialog-width: 420px;
+
+    width: min(var(--syncify-dialog-width), 100% - 2 * var(--syncify-space-4));
+    margin: auto;
+    padding: var(--syncify-space-6);
+    border: 0;
+    border-radius: var(--syncify-radius-surface);
+    color: var(--syncify-color-text);
+    background: var(--syncify-color-raised);
+}
+
+.syncify-dialog::backdrop {
+    background: var(--syncify-color-backdrop);
+}
+
+.syncify-dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-4);
+}
+
+.syncify-dialog-title {
+    margin: 0;
+    font-size: var(--syncify-text-heading);
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.syncify-dialog-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-2);
+}
+
+.syncify-dialog-text p {
+    margin: 0;
+}
+
+.syncify-dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--syncify-space-2);
+}

@@ -1,4 +1,6 @@
+import { bindReact } from "./react";
 import appStyles from "./styles/app.css";
+import { kitStyles } from "./ui/kit/styles";
 import syncifyIcon from "../assets/icon.svg";
 import syncifyMark from "../assets/mark.svg";
 import { runStartupSyncCheck } from "./core/startupSync";
@@ -12,6 +14,7 @@ import { ClaimNotice, UndoneClaimNotice } from "./ui/ClaimNotice";
 import { InstallNotice } from "./ui/InstallNotice";
 import { NudgeNotice } from "./ui/NudgeNotice";
 import { markNudgePanelShown } from "./core/nudge";
+import type { ReactElement } from "react";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "./types/syncify";
 
 const LOG_PREFIX = "[Syncify]";
@@ -56,6 +59,7 @@ function main(): void {
     return;
   }
 
+  bindReact(Spicetify.React);
   injectStyles();
   const config = loadConfig();
   setEntryPointTargets({
@@ -75,7 +79,7 @@ function main(): void {
 function injectStyles(): void {
   const style = document.createElement("style");
   style.id = STYLE_ID;
-  style.textContent = appStyles;
+  style.textContent = `${kitStyles}\n${appStyles}`;
   document.head.appendChild(style);
 }
 
@@ -289,7 +293,7 @@ function openSyncifyModal(): void {
   }
 
   debug("Opening modal");
-  openWindow(Spicetify.React.createElement(SyncifyModal));
+  openWindow(<SyncifyModal />);
 }
 
 // Someone else's claim on this Spotify account, found when Spotify started.
@@ -298,10 +302,7 @@ async function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" 
   if (openModal?.container.isConnected) return;
   debug("Opening claim notice");
   openWindow(
-    Spicetify.React.createElement(ClaimNotice, {
-      claim,
-      onClose: () => Spicetify.PopupModal.hide(),
-    }),
+    <ClaimNotice claim={claim} onClose={() => Spicetify.PopupModal.hide()} />,
   );
 }
 
@@ -312,10 +313,7 @@ function openUndoneNotice(claim: Extract<SyncifyClaim, { status: "undone" }>): b
   if (openModal?.container.isConnected) return false;
   debug("Opening undone claim notice");
   openWindow(
-    Spicetify.React.createElement(UndoneClaimNotice, {
-      claim,
-      onClose: () => Spicetify.PopupModal.hide(),
-    }),
+    <UndoneClaimNotice claim={claim} onClose={() => Spicetify.PopupModal.hide()} />,
   );
   return true;
 }
@@ -328,11 +326,9 @@ function openInstallNotice(install: SyncifyWaitingInstall): void {
   debug("Opening install notice");
   const close = () => Spicetify.PopupModal.hide();
   openWindow(
-    Spicetify.React.createElement(
-      "div",
-      { className: "syncify-panel" },
-      Spicetify.React.createElement(InstallNotice, { install, onDone: close, onClose: close }),
-    ),
+    <div className="syncify-panel">
+      <InstallNotice install={install} onDone={close} onClose={close} />
+    </div>,
   );
 }
 
@@ -344,14 +340,14 @@ function openNudgeNotice(): void {
   debug("Opening nudge notice");
   markNudgePanelShown();
   openWindow(
-    Spicetify.React.createElement(NudgeNotice, {
-      onSecure: () => openWindow(Spicetify.React.createElement(SyncifyModal, { section: "account", secure: true })),
-      onClose: () => Spicetify.PopupModal.hide(),
-    }),
+    <NudgeNotice
+      onSecure={() => openWindow(<SyncifyModal section="account" secure />)}
+      onClose={() => Spicetify.PopupModal.hide()}
+    />,
   );
 }
 
-function openWindow(element: ReturnType<typeof Spicetify.React.createElement>): void {
+function openWindow(element: ReactElement): void {
   openModal?.root?.unmount();
   const container = document.createElement("div");
   openModal = { container, root: null };
@@ -417,7 +413,7 @@ function findSyncifyModalShell(container: Element): HTMLElement | null {
 
 function renderReact(
   container: Element,
-  element: ReturnType<typeof Spicetify.React.createElement>,
+  element: ReactElement,
 ): void {
   try {
     if (typeof Spicetify.ReactDOM.createRoot === "function") {

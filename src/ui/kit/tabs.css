@@ -1,0 +1,49 @@
+.syncify-tabs {
+    display: flex;
+    gap: var(--syncify-space-1);
+    box-shadow: inset 0 calc(-1 * var(--syncify-line)) 0 var(--syncify-color-divider);
+}
+
+/* The open tab's bar is drawn over its bottom edge, so it doesn't move the
+   label off center. */
+.syncify-tab {
+    --syncify-tab-bar: var(--syncify-ring);
+
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--syncify-space-2);
+    height: var(--syncify-size-tab);
+    margin: 0;
+    padding: 0 var(--syncify-space-3);
+    border: 0;
+    color: var(--syncify-color-muted);
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.syncify-tab:hover {
+    color: var(--syncify-color-text);
+}
+
+.syncify-tab[aria-selected="true"] {
+    color: var(--syncify-color-text);
+    box-shadow: inset 0 calc(-1 * var(--syncify-tab-bar)) 0 var(--syncify-color-accent);
+}
+
+.syncify-tab .syncify-icon {
+    color: var(--syncify-color-accent);
+    stroke-width: 3;
+}
+
+.syncify-tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--syncify-space-3);
+}
+
+.syncify-ui .syncify-tab-panel:focus-visible {
+    outline-offset: var(--syncify-space-1);
+}

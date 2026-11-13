@@ -1,0 +1,16 @@
+.syncify-section-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--syncify-space-3);
+    min-height: var(--syncify-size-control-small);
+}
+
+.syncify-section-label-title {
+    margin: 0;
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-label);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
