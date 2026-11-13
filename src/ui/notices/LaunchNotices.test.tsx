@@ -4,7 +4,7 @@ import { answerWaitingInstall, cancelPendingClaim } from "../../core/syncService
 import type { SyncifyConfig } from "../../types/syncify";
 import { ClaimNotice, InstallNotice, NudgeNotice } from "./LaunchNotices";
 
-const config: SyncifyConfig = { workerUrl: null, autoBackupEnabled: true, shortcut: null, entryPoint: "both", settingsSyncEnabled: true, shareRestoredSettings: true };
+const config: SyncifyConfig = { workerUrl: null, autoBackupEnabled: true, shortcut: null, entryPoint: "both", settingsSyncEnabled: true, settingsSyncOff: [], shareRestoredSettings: true };
 
 vi.mock("../../core/config", () => ({ loadConfig: () => config }));
 vi.mock("../../core/syncService", () => ({ answerWaitingInstall: vi.fn(), cancelPendingClaim: vi.fn() }));

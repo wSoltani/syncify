@@ -20,7 +20,7 @@ const DATABASE_TIMEOUT_MS = 2000;
 // The last restore that wrote extension settings, kept in Syncify's own
 // database. Sync between devices reads it to know whether the restored
 // values go to the account's other devices.
-const RESTORED_SETTINGS_KEY = "restored-settings";
+export const RESTORED_SETTINGS_KEY = "restored-settings";
 
 /** A restore that wrote extension settings. */
 export interface RestoredSettings {

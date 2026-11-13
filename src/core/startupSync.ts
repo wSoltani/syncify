@@ -3,7 +3,8 @@ import { InstallRefusedError, LockedError } from "../api/syncifyApi";
 import { loadConfig } from "./config";
 import { shouldBlockAutoBackup, summarizeMarketplaceState } from "./marketplace";
 import { wasNudgePanelShown } from "./nudge";
-import type { SyncifyClaim, SyncifyRemoteState, SyncifyWaitingInstall } from "../types/syncify";
+import { arrivedText, clearArrived, finishSettingsSync, prepareSettingsSync, type SettingsSync } from "./settingsSync";
+import type { SyncifyClaim, SyncifyPayload, SyncifyRemoteState, SyncifyWaitingInstall } from "../types/syncify";
 
 type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
 type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
@@ -11,13 +12,15 @@ type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
 /**
  * What a launch can open: someone else's claim, or else that an admin undid
  * one, once, or else a new install waiting for approval, or else the Secure
- * nudge's panel, once per install. `onUndone` says whether it opened.
+ * nudge's panel, once per install, or else the first-sync choice of extension
+ * settings. `onUndone` says whether it opened.
  */
 interface LaunchNotices {
   onClaim(claim: PendingClaim): void;
   onUndone(claim: UndoneClaim): boolean;
   onInstall(install: SyncifyWaitingInstall): void;
   onNudge(): void;
+  onFirstSync(): void;
 }
 
 // The local day of the last launch check made with auto-backup off.
@@ -35,12 +38,20 @@ const UNDONE_SHOWN_KEY = "syncify:undone-claim-shown";
  */
 export async function runStartupSyncCheck(notices: LaunchNotices): Promise<void> {
   const config = loadConfig();
+  // Spotify just started, so extension settings that arrived before are in use.
+  clearArrived();
   if (!config.workerUrl) return;
   if (!config.autoBackupEnabled) return checkClaimOncePerDay(notices);
 
   try {
-    const [localSummary, remoteState] = await Promise.all([summarizeMarketplaceState(), fetchRemoteState(config)]);
-    openNotice(remoteState, notices);
+    // This device's extension settings ride the launch check.
+    const sync = await prepareSettingsSync(config).catch(() => null);
+    const [localSummary, remoteState] = await Promise.all([
+      summarizeMarketplaceState(),
+      fetchRemoteState(config, undefined, sync),
+    ]);
+    const choose = await settleSettings(sync, remoteState);
+    openNotice(remoteState, notices, choose);
     const cloudKeyCount = remoteState.payload?.metadata.marketplace_key_count ?? 0;
 
     if (remoteState.exists && shouldBlockAutoBackup(localSummary.keyCount, cloudKeyCount)) {
@@ -72,9 +83,13 @@ async function checkClaimOncePerDay(notices: LaunchNotices): Promise<void> {
   if (read(CLAIM_CHECK_KEY) === today) return;
 
   try {
-    const found = await fetchLaunchNotices(loadConfig());
+    const config = loadConfig();
+    // Extension settings ride this check too: no request of their own.
+    const sync = await prepareSettingsSync(config).catch(() => null);
+    const found = await fetchLaunchNotices(config, sync);
     write(CLAIM_CHECK_KEY, today);
-    openNotice(found, notices);
+    const choose = await settleSettings(sync, found);
+    openNotice(found, notices, choose);
   } catch (error) {
     // A secured backup refuses a device that isn't signed in: it has no claim
     // to show. Anything else is tried again on the next launch.
@@ -86,7 +101,31 @@ async function checkClaimOncePerDay(notices: LaunchNotices): Promise<void> {
   }
 }
 
-function openNotice(remote: Pick<SyncifyRemoteState, "claim" | "install" | "nudge">, notices: LaunchNotices): void {
+/**
+ * Takes the account's extension settings from the answer. New ones get one
+ * Spotify toast. True when the first-sync choice is waiting. A failure here
+ * never stops the launch check.
+ */
+async function settleSettings(
+  sync: SettingsSync | null,
+  remote: { settings?: unknown; backups: SyncifyPayload[] },
+): Promise<boolean> {
+  if (!sync) return false;
+  try {
+    const outcome = await finishSettingsSync(sync, remote.settings, remote.backups);
+    if (outcome.arrived.length > 0) Spicetify.showNotification(arrivedText(outcome.arrived));
+    return outcome.choose;
+  } catch (error) {
+    console.warn("Syncify extension settings sync failed:", error);
+    return false;
+  }
+}
+
+function openNotice(
+  remote: Pick<SyncifyRemoteState, "claim" | "install" | "nudge">,
+  notices: LaunchNotices,
+  choose: boolean,
+): void {
   const claim = otherClaim(remote.claim);
   const undone = newUndone(remote.claim);
   const waiting = remote.install?.waiting[0];
@@ -95,6 +134,7 @@ function openNotice(remote: Pick<SyncifyRemoteState, "claim" | "install" | "nudg
     if (notices.onUndone(undone)) write(UNDONE_SHOWN_KEY, String(undone.undone_at));
   } else if (waiting) notices.onInstall(waiting);
   else if (remote.nudge && !wasNudgePanelShown()) notices.onNudge();
+  else if (choose) notices.onFirstSync();
 }
 
 // Someone else's claim, unless this install already pressed Not me on it.

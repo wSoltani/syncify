@@ -27,15 +27,18 @@ import {
 import { applyShare, type ShareFile, type ShareMode } from "./shareCodes";
 import { saveRestoredSettings, writeSettings } from "./extensionSettings";
 import { loadRegistry } from "./settingsRegistry";
+import type { SettingsSync } from "./settingsSync";
 import type { SnippetCatalog } from "./sourceChecks";
 
 /**
  * `unapproved`: the backup is kept apart until this install is approved from
- * a trusted install of this Spotify account, or signs in.
+ * a trusted install of this Spotify account, or signs in. With `sync`, this
+ * device's extension settings go with it, and `settings` is the answer.
  */
 export async function backupNow(
   config: SyncifyConfig,
-): Promise<{ payload: SyncifyPayload; unchanged: boolean; unapproved: boolean }> {
+  sync?: SettingsSync | null,
+): Promise<{ payload: SyncifyPayload; unchanged: boolean; unapproved: boolean; settings: unknown }> {
   if (!hasWorkerUrl(config)) {
     throw new Error("Syncify backup service is not configured.");
   }
@@ -51,21 +54,24 @@ export async function backupNow(
     );
   }
 
-  const { unchanged, unapproved } = await uploadPayload(
+  const { unchanged, unapproved, settings } = await uploadPayload(
     config.workerUrl,
     identity,
     payload,
+    sync?.part,
   );
-  return { payload, unchanged, unapproved };
+  return { payload, unchanged, unapproved, settings };
 }
 
 /**
  * This Spotify account's backups, or with `linkedHash` those of another
- * Spotify account linked to the signed-in account.
+ * Spotify account linked to the signed-in account. With `sync`, this
+ * device's extension settings go with the read.
  */
 export async function fetchRemoteState(
   config: SyncifyConfig,
   linkedHash?: string,
+  sync?: SettingsSync | null,
 ): Promise<SyncifyRemoteState> {
   if (!hasWorkerUrl(config)) {
     throw new Error("Syncify backup service is not configured.");
@@ -75,6 +81,7 @@ export async function fetchRemoteState(
     config.workerUrl,
     await getUserIdentity(),
     linkedHash,
+    sync?.part,
   );
 
   // Backups made by older versions carry a hash computed over every key, so
@@ -140,16 +147,20 @@ async function withCurrentHash(
 
 /**
  * The claim on this Spotify account and this install's state, read with its
- * backups but without rehashing them, for the daily launch check.
+ * backups but without rehashing them, for the daily launch check. With
+ * `sync`, this device's extension settings go with it.
  */
 export async function fetchLaunchNotices(
   config: SyncifyConfig,
-): Promise<Pick<SyncifyRemoteState, "claim" | "install" | "nudge">> {
+  sync?: SettingsSync | null,
+): Promise<Pick<SyncifyRemoteState, "claim" | "install" | "nudge" | "backups" | "settings">> {
   const remote = await downloadPayload(
     requireWorkerUrl(config),
     await getUserIdentity(),
+    undefined,
+    sync?.part,
   );
-  return { claim: remote.claim, install: remote.install, nudge: remote.nudge };
+  return { claim: remote.claim, install: remote.install, nudge: remote.nudge, backups: remote.backups, settings: remote.settings };
 }
 
 /** The extension settings a restore writes, from its preview. */

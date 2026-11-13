@@ -85,6 +85,11 @@ export interface SyncifyRemoteState {
    * backups, no account and no pending claim, and the nudge is open to it today.
    */
   nudge: boolean;
+  /**
+   * The account's extension settings, as the launch check or a backup
+   * answers them when this device sent its own. Read by settingsSync.
+   */
+  settings?: unknown;
 }
 
 /**
@@ -145,6 +150,8 @@ export interface SyncifyConfig {
   entryPoint: SyncifyEntryPoint;
   /** This device syncs extension settings with the account's other devices. */
   settingsSyncEnabled: boolean;
+  /** Registry ids of the items whose switch is off on this device. */
+  settingsSyncOff: string[];
   /** The restore preview's choice to use restored extension settings on the other devices too. */
   shareRestoredSettings: boolean;
 }

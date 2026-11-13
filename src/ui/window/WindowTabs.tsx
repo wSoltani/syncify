@@ -17,6 +17,8 @@ export function WindowTabs(props: {
   account: AccountTabStatus | null;
   /** A newer Syncify is out. */
   newerVersion: string | null;
+  /** An item's extension settings are held: Settings says why. */
+  settingsHeld: boolean;
 }) {
   const { codeCount, account, newerVersion } = props;
   const tabs: TabItem<WindowTab>[] = [
@@ -40,7 +42,11 @@ export function WindowTabs(props: {
     {
       id: "settings",
       label: "Settings",
-      status: newerVersion ? <Mark tone="info" label={`Syncify ${newerVersion} is out`} /> : undefined,
+      status: props.settingsHeld ? (
+        <Mark tone="warning" label="An item's extension settings aren't syncing" />
+      ) : newerVersion ? (
+        <Mark tone="info" label={`Syncify ${newerVersion} is out`} />
+      ) : undefined,
     },
   ];
 

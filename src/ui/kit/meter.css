@@ -35,3 +35,36 @@
 .syncify-meter[data-full="true"] .syncify-meter-bar[data-used="true"] {
     background: var(--syncify-color-warning);
 }
+
+/* Space used: one bar that fills, between its label and the numbers. */
+.syncify-usage {
+    --syncify-usage-bar-height: 8px;
+
+    display: flex;
+    align-items: center;
+    gap: var(--syncify-space-4);
+    min-height: var(--syncify-size-control-small);
+    color: var(--syncify-color-muted);
+    font-size: var(--syncify-text-small);
+    font-weight: 600;
+}
+
+.syncify-usage-bar {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: var(--syncify-size-control);
+    height: var(--syncify-usage-bar-height);
+    overflow: hidden;
+    border-radius: calc(var(--syncify-usage-bar-height) * var(--syncify-corner));
+    background: var(--syncify-color-surface-strong);
+}
+
+.syncify-usage-fill {
+    display: block;
+    height: 100%;
+    background: var(--syncify-color-accent);
+}
+
+.syncify-usage[data-warning="true"] .syncify-usage-fill {
+    background: var(--syncify-color-warning);
+}

@@ -33,6 +33,8 @@ describe("parseRegistry", () => {
   it("drops entries that name keys Spicetify, Marketplace or Syncify keep", () => {
     const parsed = parseRegistry({
       format: 1,
+      sizes: { small: 16384, medium: 65536, large: 131072 },
+      accountLimit: 262144,
       items: [
         { id: "a/b/c.js", addedBy: "owner", keys: ["marketplace:installed-extensions"] },
         { id: "a/b/d.js", addedBy: "owner", keys: ["sync*"] },
@@ -51,7 +53,7 @@ describe("readLocalSettings", () => {
     localStorage.setItem("loop:token", "secret");
     localStorage.setItem("unrelated", "x");
 
-    const { settings } = await readLocalSettings({ items: registry.items.slice(0, 2) });
+    const { settings } = await readLocalSettings({ ...registry, items: registry.items.slice(0, 2) });
     expect(settings).toEqual({
       "someone/trash/trash.js": { storage: "localStorage", values: { "trash-enabled": "true" } },
       "someone/loop/loop.js": { storage: "localStorage", values: { "loop:song1": "{\"start\":1}" } },

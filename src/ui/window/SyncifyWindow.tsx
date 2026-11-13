@@ -8,6 +8,13 @@ import { getProjectConfig } from "../../core/projectConfig";
 import { getLoaderInfo } from "../../core/releases";
 import { reloadAndCheck, savePendingRestore } from "../../core/restoreSummary";
 import {
+  arrivedText,
+  finishSettingsSync,
+  hideArrived,
+  prepareSettingsSync,
+  watchSyncStatus,
+} from "../../core/settingsSync";
+import {
   answerWaitingInstall,
   backupNow,
   cancelPendingClaim,
@@ -21,8 +28,11 @@ import { backupItems } from "../backups/backupItems";
 import { BackupsTab } from "../backups/BackupsTab";
 import type { RestoreRequest } from "../backups/RestorePreview";
 import { notMeToast } from "../claimText";
-import { useStableId } from "../kit";
+import { Button, Notice, useStableId } from "../kit";
+import { FirstSyncDialog } from "../settings/FirstSyncDialog";
 import { SettingsTab } from "../settings/SettingsTab";
+import { heldItems } from "../settings/syncText";
+import { useSyncStatus } from "../settings/useSyncStatus";
 import { ShareTab } from "../share/ShareTab";
 import { useStoredShareInfo } from "../share/useStoredShareInfo";
 import { useLatest } from "../useLatest";
@@ -44,6 +54,9 @@ import { WindowTabs, type WindowTab } from "./WindowTabs";
  * secure: opened from the Secure nudge's launch panel, so signing in secures
  * the backup, and signed in it's secured at once.
  */
+// Ask me later on the first-sync choice holds until Spotify starts again.
+let firstSyncPutOff = false;
+
 export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   const idBase = useStableId("syncify");
   const project = getProjectConfig();
@@ -53,6 +66,8 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   const shareInfo = useStoredShareInfo();
   const newerVersion = useNewerVersion();
   const restoreResult = useRestoreResult();
+  const syncStatus = useSyncStatus();
+  const [firstSyncOpen, setFirstSyncOpen] = useState(() => !firstSyncPutOff);
   const [loadedByLoader] = useState(() => getLoaderInfo() !== null);
 
   const [tab, setTab] = useState<WindowTab>(props.tab ?? "backups");
@@ -77,6 +92,11 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   // Someone else's claim on this Spotify account: the real owner can cancel it.
   const otherClaim = remote.claim?.status === "pending" && !remote.claim.mine ? remote.claim : null;
   const secureState = describeSecureState(claims, locked, otherClaim !== null);
+  // Extension settings sync only for a signed-in owner of a secured backup.
+  const secured = session != null && secureState.kind === "secured";
+  const syncsSettings = secured && config.settingsSyncEnabled;
+  const arrived = syncsSettings && syncStatus.arrived && !syncStatus.arrived.hidden ? syncStatus.arrived : null;
+  const settingsHeld = syncsSettings && heldItems(syncStatus, config.settingsSyncOff).length > 0;
   // What's on this device is backed up when any of the backups holds it, so
   // restoring an older backup doesn't ask to back the same data up again.
   // The safety copy doesn't count: it's replaced every week.
@@ -165,7 +185,10 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     try {
       setActivity("backing-up");
       setMessage(null);
-      const { payload, unchanged, unapproved } = await backupNow(config);
+      // This device's extension settings go with a backup made here.
+      const sync = await prepareSettingsSync(config).catch(() => null);
+      const { payload, unchanged, unapproved, settings } = await backupNow(config, sync);
+      await finishSettingsSync(sync, settings, remote.backups).catch(() => null);
       await refreshLocal();
 
       // Kept apart from the approved backups: shown with them after a check.
@@ -247,6 +270,12 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     }
   }
 
+  /** Extension settings' Secure: signed in it secures, signed out Account opens. */
+  function secureFromSettings() {
+    if (session) void runSecure();
+    else setTab("account");
+  }
+
   /** The nudge's Secure: signed in it secures, signed out Account opens. */
   function secureFromNudge() {
     setFromNudge(true);
@@ -278,6 +307,12 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     else if (action === "how-to-update") openExternal(`${project.githubUrl}#updating`);
     else reloadAndCheck();
   }
+
+  // Sync can turn items off; the switches here follow.
+  useEffect(
+    () => watchSyncStatus(() => setConfig((current) => ({ ...current, settingsSyncOff: loadConfig().settingsSyncOff }))),
+    [],
+  );
 
   // The window opens with the session it last knew, then checks the backups.
   const openWindow = useLatest(() => {
@@ -323,6 +358,23 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
             onDismiss={() => setMessage(null)}
           />
         ) : null}
+        {arrived ? (
+          <Notice
+            tone="info"
+            actions={
+              <>
+                <Button variant="subtle" size="small" onClick={hideArrived}>
+                  Not now
+                </Button>
+                <Button size="small" onClick={() => window.location.reload()}>
+                  Reload Spotify
+                </Button>
+              </>
+            }
+          >
+            {arrivedText(arrived.names)}
+          </Notice>
+        ) : null}
         <WindowTabs
           idBase={idBase}
           selected={tab}
@@ -330,6 +382,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           codeCount={session ? shareInfo.codeCount : null}
           account={accountTabStatus(session, locked, secureState)}
           newerVersion={newerVersion}
+          settingsHeld={settingsHeld}
         />
       </div>
 
@@ -355,7 +408,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
               restoreResult={restoreResult.result}
             />
           }
-          canShareSettings={session != null && secureState.kind === "secured" && config.settingsSyncEnabled}
+          canShareSettings={syncsSettings}
           shareSettings={config.shareRestoredSettings}
           onShareSettingsChange={(share) => {
             const next = { ...config, shareRestoredSettings: share };
@@ -404,8 +457,23 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           onConfigChange={setConfig}
           busy={busy}
           unsupported={unsupported}
+          syncStatus={syncStatus}
+          secured={secured}
+          securing={securing}
+          onSecure={secureFromSettings}
         />
       )}
+
+      {syncsSettings && syncStatus.choices.length > 0 ? (
+        <FirstSyncDialog
+          choices={syncStatus.choices}
+          open={firstSyncOpen}
+          onClose={() => {
+            firstSyncPutOff = true;
+            setFirstSyncOpen(false);
+          }}
+        />
+      ) : null}
 
       <WindowFooter newerVersion={newerVersion} loadedByLoader={loadedByLoader} />
     </div>

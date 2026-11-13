@@ -27,6 +27,13 @@ const SALT_HEADER = "x-syncify-salt";
 // refused as stale, with the day's salt to sign again with.
 const NO_SALT = "none";
 const RESTORES_PATH = "/restores";
+// The launch check of a Syncify that syncs extension settings: the same read
+// as GET /, with the settings part as its body, which a GET can't carry.
+const SYNC_PATH = "/sync";
+// Delete synced copy: the account's copy of one item's extension settings.
+const DELETE_SETTINGS_PATH = "/settings/delete";
+// A backup with the settings part ahead of it: how many bytes that part takes.
+const SETTINGS_BYTES_HEADER = "x-syncify-settings-bytes";
 const INSTALLS_PATH = "/installs";
 // A linked Spotify account's backups are read and restored with ?hash=.
 const LINKED_HASH_PARAM = "hash";
@@ -77,11 +84,19 @@ export async function uploadPayload(
   workerUrl: string,
   identity: UserIdentity,
   payload: SyncifyPayload,
-): Promise<{ unchanged: boolean; unapproved: boolean }> {
+  /** The extension settings part, sent ahead of the backup in the same body. */
+  settingsPart?: string,
+): Promise<{ unchanged: boolean; unapproved: boolean; settings: unknown }> {
+  const backup = JSON.stringify(payload);
   const response = await request(workerUrl, identity, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
+    headers: {
+      "content-type": "application/json",
+      ...(settingsPart !== undefined
+        ? { [SETTINGS_BYTES_HEADER]: String(new TextEncoder().encode(settingsPart).byteLength) }
+        : {}),
+    },
+    body: settingsPart !== undefined ? settingsPart + backup : backup,
   });
 
   if (response.status === 403) {
@@ -99,10 +114,12 @@ export async function uploadPayload(
   const result = (await response.json().catch(() => null)) as {
     unchanged?: boolean;
     quarantined?: boolean;
+    settings?: unknown;
   } | null;
   return {
     unchanged: result?.unchanged === true,
     unapproved: result?.quarantined === true,
+    settings: result?.settings ?? null,
   };
 }
 
@@ -134,26 +151,32 @@ export async function answerInstall(
 
 /**
  * The backups of this Spotify account, or with `linkedHash` of another one
- * linked to the signed-in account.
+ * linked to the signed-in account. With `settingsPart`, this device's
+ * extension settings go with the read, and the answer carries the account's.
  */
 export async function downloadPayload(
   workerUrl: string,
   identity: UserIdentity,
   linkedHash?: string,
+  settingsPart?: string,
 ): Promise<SyncifyRemoteState> {
   const response = await request(
     workerUrl,
     identity,
-    { method: "GET" },
-    linkedPath("/", linkedHash),
+    settingsPart !== undefined && !linkedHash
+      ? { method: "POST", headers: { "content-type": "application/json" }, body: settingsPart }
+      : { method: "GET" },
+    settingsPart !== undefined && !linkedHash ? SYNC_PATH : linkedPath("/", linkedHash),
   );
 
   if (response.status === 404) {
     const result = (await response.json().catch(() => null)) as {
       claim?: unknown;
       install?: unknown;
+      settings?: unknown;
     } | null;
     return {
+      settings: result?.settings ?? null,
       exists: false,
       payload: null,
       backups: [],
@@ -173,15 +196,18 @@ export async function downloadPayload(
     claim?: unknown;
     install?: unknown;
     nudge?: unknown;
+    settings?: unknown;
   };
   // The notice of a pending claim, this install's state and the Secure nudge
   // come with the backups.
   const claim = readClaim(body.claim);
   const install = readInstall(body.install);
   const nudge = body.nudge === true;
+  const settings = body.settings ?? null;
   delete body.claim;
   delete body.install;
   delete body.nudge;
+  delete body.settings;
   const all = [body, ...(body.backup_history ?? [])];
 
   if (!all.every((backup) => backup.backup)) {
@@ -194,6 +220,7 @@ export async function downloadPayload(
       unapproved: [],
       install,
       nudge,
+      settings,
     };
   }
 
@@ -216,6 +243,7 @@ export async function downloadPayload(
       unapproved,
       install,
       nudge,
+      settings,
     };
   }
 
@@ -230,10 +258,38 @@ export async function downloadPayload(
       unapproved,
       install,
       nudge,
+      settings,
     };
   }
 
-  return { exists: true, payload, backups, safetyCopy, claim, unapproved, install, nudge };
+  return { exists: true, payload, backups, safetyCopy, claim, unapproved, install, nudge, settings };
+}
+
+/**
+ * Deletes the account's copy of an item's extension settings: it's marked
+ * off, so every device turns it off. `version`: the account version the
+ * delete made.
+ */
+export async function deleteSettingsCopy(
+  workerUrl: string,
+  identity: UserIdentity,
+  item: string,
+): Promise<{ version: number }> {
+  const response = await request(
+    workerUrl,
+    identity,
+    { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ item }) },
+    DELETE_SETTINGS_PATH,
+  );
+  const result = (await response.json().catch(() => null)) as { version?: unknown; code?: unknown } | null;
+  if (!response.ok || typeof result?.version !== "number") {
+    throw new Error(
+      response.status === 429
+        ? "Syncify can't delete more synced copies today. Try again tomorrow."
+        : `Couldn't delete the synced copy with HTTP ${response.status}.`,
+    );
+  }
+  return { version: result.version };
 }
 
 /**

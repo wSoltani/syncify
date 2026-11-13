@@ -1,6 +1,6 @@
 .syncify-switch-control {
-    --syncify-switch-width: 32px;
-    --syncify-switch-height: 18px;
+    --syncify-switch-width: var(--syncify-size-switch-width);
+    --syncify-switch-height: var(--syncify-size-switch-height);
     --syncify-switch-knob: 12px;
     --syncify-switch-inset: calc((var(--syncify-switch-height) - var(--syncify-switch-knob)) / 2);
 

@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { saveConfig } from "../../core/config";
 import { applyEntryPoint, isMenuEntryPointAvailable } from "../../core/entryPoints";
 import { applyShortcut, DEFAULT_SHORTCUT, isShortcutTaken } from "../../core/shortcut";
+import type { SettingsSyncStatus } from "../../core/settingsSync";
 import type { SyncifyConfig } from "../../types/syncify";
 import { SettingsTab } from "./SettingsTab";
 
-vi.mock("../../core/config", () => ({ saveConfig: vi.fn() }));
+vi.mock("../../core/config", () => ({ saveConfig: vi.fn(), loadConfig: vi.fn(() => ({ settingsSyncOff: [] })) }));
 vi.mock("../../core/entryPoints", () => ({ applyEntryPoint: vi.fn(), isMenuEntryPointAvailable: vi.fn() }));
 vi.mock("../../core/shortcut", async (original) => ({
   ...(await original<typeof import("../../core/shortcut")>()),
@@ -20,13 +21,27 @@ const config: SyncifyConfig = {
   entryPoint: "both",
   shortcut: DEFAULT_SHORTCUT,
   settingsSyncEnabled: true,
+  settingsSyncOff: [],
   shareRestoredSettings: true,
 };
 
 type TabProps = Parameters<typeof SettingsTab>[0];
 
+const syncStatus: SettingsSyncStatus = { bytes: 0, limit: 262144, items: [], choices: [], arrived: null, budgetDay: null };
+const baseProps: TabProps = {
+  idBase: "t",
+  config,
+  onConfigChange: () => {},
+  busy: false,
+  unsupported: false,
+  syncStatus,
+  secured: false,
+  securing: false,
+  onSecure: () => {},
+};
+
 const renderTab = (changes: Partial<TabProps> = {}) =>
-  render(<SettingsTab idBase="t" config={config} onConfigChange={() => {}} busy={false} unsupported={false} {...changes} />);
+  render(<SettingsTab {...baseProps} {...changes} />);
 
 const keyButton = () => screen.getByRole("button", { name: /keyboard shortcut/i });
 
@@ -66,7 +81,7 @@ describe("SettingsTab", () => {
     expect(applyShortcut).toHaveBeenCalledWith(null);
 
     const off = { ...config, shortcut: null };
-    rerender(<SettingsTab idBase="t" config={off} onConfigChange={() => {}} busy={false} unsupported={false} />);
+    rerender(<SettingsTab {...baseProps} config={off} />);
     expect(screen.getByRole("button", { name: "Off, change the keyboard shortcut" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Use default" }));
     expect(applyShortcut).toHaveBeenLastCalledWith(DEFAULT_SHORTCUT);

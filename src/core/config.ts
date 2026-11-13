@@ -11,6 +11,7 @@ const DEFAULT_CONFIG: SyncifyConfig = {
   shortcut: DEFAULT_SHORTCUT,
   entryPoint: DEFAULT_ENTRY_POINT,
   settingsSyncEnabled: true,
+  settingsSyncOff: [],
   shareRestoredSettings: true,
 };
 
@@ -32,6 +33,7 @@ export function loadConfig(): SyncifyConfig {
           : parseShortcut(parsed.shortcut),
       entryPoint: parseEntryPoint(parsed.entryPoint),
       settingsSyncEnabled: parseFlag(parsed.settingsSyncEnabled, DEFAULT_CONFIG.settingsSyncEnabled),
+      settingsSyncOff: parseIds(parsed.settingsSyncOff),
       shareRestoredSettings: parseFlag(parsed.shareRestoredSettings, DEFAULT_CONFIG.shareRestoredSettings),
     };
   } catch {
@@ -46,6 +48,7 @@ export function saveConfig(config: SyncifyConfig): void {
     shortcut: config.shortcut,
     entryPoint: config.entryPoint,
     settingsSyncEnabled: config.settingsSyncEnabled,
+    settingsSyncOff: config.settingsSyncOff,
     shareRestoredSettings: config.shareRestoredSettings,
   } satisfies SyncifyConfig);
 
@@ -55,6 +58,10 @@ export function saveConfig(config: SyncifyConfig): void {
   }
 
   window.localStorage.setItem(CONFIG_STORAGE_KEY, serialized);
+}
+
+function parseIds(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
 }
 
 function parseFlag(value: unknown, fallback: boolean): boolean {

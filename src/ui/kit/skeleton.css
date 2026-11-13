@@ -13,3 +13,27 @@
     margin-block: calc((1lh - 1cap) / 2);
     font-size: var(--syncify-text-small);
 }
+
+/* An item row's parts, each the size of what it stands in for. */
+.syncify-skeleton[data-width="pip"] {
+    width: var(--syncify-size-pip);
+    height: var(--syncify-size-pip);
+    border-radius: calc(var(--syncify-size-pip) * var(--syncify-corner));
+}
+
+/* As wide as a short size, such as "12 KB". */
+.syncify-skeleton[data-width="size"] {
+    width: 5ch;
+    margin-right: var(--syncify-space-2);
+}
+
+.syncify-skeleton[data-width="switch"] {
+    width: var(--syncify-size-switch-width);
+    height: var(--syncify-size-switch-height);
+    border-radius: calc(var(--syncify-size-switch-height) * var(--syncify-corner));
+}
+
+/* A bar as wide as the menu button, like its dots. */
+.syncify-skeleton[data-width="menu"] {
+    width: var(--syncify-size-control-small);
+}
