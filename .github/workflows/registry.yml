@@ -6,9 +6,12 @@ name: Registry
 on:
   # pull_request_target runs this file and its scripts as they are on master,
   # so a pull request can't change the rules it is held to. Nothing from the
-  # pull request runs: its registry.json is only read as data.
+  # pull request runs: its registry.json is only read as data. It runs on
+  # every pull request, so it can be a required check, and passes at once
+  # when registry/ is unchanged.
   pull_request_target:
-    paths: [registry/**]
+    # edited, so a change to the Owner line is checked again.
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [master]
     paths: [registry/**]
@@ -25,20 +28,34 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
-      - name: Read the pull request's registry
+      # GitHub's test merge of the pull request into master shows exactly
+      # what merging would change, even when master moved on since.
+      - name: Read the registry before and after the merge
+        id: registry
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          git fetch --no-tags --depth=1 origin "refs/pull/$PR_NUMBER/head"
-          git show "$HEAD_SHA:registry/registry.json" > "$RUNNER_TEMP/head-registry.json"
+          if ! git fetch --no-tags --depth=2 origin "refs/pull/$PR_NUMBER/merge"; then
+            echo "::error::GitHub has no test merge for this pull request. Resolve its conflicts with master."
+            exit 1
+          fi
+          if git diff --quiet FETCH_HEAD^1 FETCH_HEAD -- registry/; then
+            echo "registry/ is unchanged"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git show FETCH_HEAD^1:registry/registry.json > "$RUNNER_TEMP/base-registry.json" 2> /dev/null || true
+          git show FETCH_HEAD:registry/registry.json > "$RUNNER_TEMP/head-registry.json"
       - uses: actions/setup-node@v7
+        if: steps.registry.outputs.changed == 'true'
         with:
           node-version-file: .node-version
           # Runs with the base branch's rights, so it skips the shared cache.
           package-manager-cache: false
-      - run: npm ci --ignore-scripts
+      - if: steps.registry.outputs.changed == 'true'
+        run: npm ci --ignore-scripts
       - name: Check who changed which entries
+        if: steps.registry.outputs.changed == 'true'
         env:
           PR_OPENER: ${{ github.event.pull_request.user.login }}
           PR_BODY: ${{ github.event.pull_request.body }}
@@ -46,7 +63,7 @@ jobs:
           SUBMISSION_APP: ${{ vars.REGISTRY_SUBMISSION_APP }}
           MAINTAINER: ${{ github.repository_owner }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/registry/owners.mjs registry/registry.json "$RUNNER_TEMP/head-registry.json"
+        run: node scripts/registry/owners.mjs "$RUNNER_TEMP/base-registry.json" "$RUNNER_TEMP/head-registry.json"
 
   upload:
     if: github.event_name == 'push'
