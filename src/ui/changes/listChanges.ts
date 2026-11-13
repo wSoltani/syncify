@@ -3,7 +3,7 @@ import { isWarning, type SourceCheck, type SourceChecks } from "../../core/sourc
 import { joinNames } from "../format";
 
 /** Colored text at a change row's end. */
-export type ChangeLabel = "Adds" | "Updates" | "Removes";
+type ChangeLabel = "Adds" | "Updates" | "Removes";
 
 export interface ItemRow {
   key: string;

@@ -17,7 +17,7 @@ const IDENTITY_FIELDS = [
   "displayName",
 ] as const;
 
-export type IdentityField = (typeof IDENTITY_FIELDS)[number];
+type IdentityField = (typeof IDENTITY_FIELDS)[number];
 
 export interface UserIdentity {
   hash: string;
