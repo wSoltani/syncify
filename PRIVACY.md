@@ -28,7 +28,7 @@ With an account and a secured backup, Syncify copies the saved settings of your 
 
 - **What's stored:** only the keys each item lists in Syncify's public registry, with when each changed, its size and which install sent it. A removed key is kept without its value, so the removal reaches your other devices. Syncify also keeps which of these items your devices still have installed.
 - **What never leaves your device:** keys the registry marks as secret, like API keys and tokens. They're never synced or backed up.
-- **How long:** until you delete them. **Delete synced copy** in Syncify, or **Delete** on your account page, removes one item, and Syncify keeps that it's off so your other devices turn it off too. **Delete everything** removes them all. An item's synced copy is also deleted 30 days after none of your devices has it installed.
+- **How long:** until you delete them. **Delete synced copy** in Syncify, or **Delete** on your account page, removes one item, and Syncify keeps that it's off so your other devices turn it off too. **Delete everything** removes them all. An item's synced copy is also deleted 30 days after none of your devices has it installed, or once its item is out of Syncify's registry and the copy hasn't changed for 30 days.
 
 ## For makers
 
