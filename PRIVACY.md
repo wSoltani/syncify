@@ -30,6 +30,14 @@ With an account and a secured backup, Syncify copies the saved settings of your 
 - **What never leaves your device:** keys the registry marks as secret, like API keys and tokens. They're never synced or backed up.
 - **How long:** until you delete them. **Delete synced copy** in Syncify, or **Delete** on your account page, removes one item, and Syncify keeps that it's off so your other devices turn it off too. **Delete everything** removes them all. An item's synced copy is also deleted 30 days after none of your devices has it installed.
 
+## For makers
+
+Extension, theme and app makers can sign in with GitHub at [syncify.wsoltani.com/makers](https://syncify.wsoltani.com/makers) to choose which of their item's settings sync. This sign-in is separate from a Syncify account.
+
+- **What's stored:** your GitHub user ID and username, your signed-in sessions with when each ends, and for each item you submit, its entry, its pull request and whether it's live. Syncify reads your GitHub account once when you sign in, then gives up its access to it.
+- **What's public:** what you submit becomes a pull request on Syncify's public registry, with your GitHub username in it, and its entry joins the registry once merged.
+- **How long:** a session ends when you sign out or after 30 days. An item is forgotten when you remove it and its removal merges. Pull requests stay on GitHub.
+
 ## Where it's stored
 
 Syncify runs on Cloudflare:
