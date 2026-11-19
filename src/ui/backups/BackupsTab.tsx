@@ -16,6 +16,7 @@ import {
   Meta,
   Notice,
   SettingRow,
+  PinIcon,
   ShieldIcon,
   SkeletonRow,
   TabPanel,
@@ -118,6 +119,7 @@ export function BackupsTab(props: {
   const rowsOf = (backups: SyncifyPayload[], kind: BackupKind) =>
     backups.map((backup) => describeBackupRow(backup, kind, localHash));
   const backups = rowsOf(shown?.backups ?? [], "backup");
+  const pinned = rowsOf(shown?.pinned ?? [], "pinned");
   const safetyCopy = rowsOf(shown?.safetyCopy ? [shown.safetyCopy] : [], "safety-copy");
   const unapproved = linked ? [] : rowsOf(remote?.unapproved ?? [], "unapproved");
 
@@ -130,6 +132,8 @@ export function BackupsTab(props: {
         nameMark={
           row.kind === "safety-copy" ? (
             <ShieldIcon className="syncify-safety-mark" />
+          ) : row.kind === "pinned" ? (
+            <PinIcon className="syncify-safety-mark" />
           ) : row.kind === "unapproved" ? (
             <Mark tone="warning" />
           ) : undefined
@@ -187,11 +191,13 @@ export function BackupsTab(props: {
           <SkeletonRow />
           <SkeletonRow />
         </List>
-      ) : backups.length + safetyCopy.length + unapproved.length === 0 ? (
+      ) : backups.length + pinned.length + safetyCopy.length + unapproved.length === 0 ? (
         linked ? <p className="syncify-tab-text">No backups yet.</p> : null
       ) : (
         <List label="Backups">
           {backups.map(renderRow)}
+          {pinned.length > 0 ? <ListDivider /> : null}
+          {pinned.map(renderRow)}
           {safetyCopy.length > 0 ? <ListDivider /> : null}
           {safetyCopy.map(renderRow)}
           {unapproved.length > 0 ? <ListDivider /> : null}

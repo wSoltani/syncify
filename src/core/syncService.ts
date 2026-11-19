@@ -90,9 +90,10 @@ export async function fetchRemoteState(
   // Recomputing can also make older backups identical to each other, so keep
   // only the newest backup for each distinct set of data. The safety copy is
   // left out when it holds the same data as a recent backup.
-  const [rehashed, safetyCopy, unapproved] = await Promise.all([
+  const [rehashed, safetyCopy, pinned, unapproved] = await Promise.all([
     Promise.all(remote.backups.map(withCurrentHash)),
     remote.safetyCopy ? withCurrentHash(remote.safetyCopy) : null,
+    Promise.all(remote.pinned.map(withCurrentHash)),
     Promise.all(remote.unapproved.map(withCurrentHash)),
   ]);
   const backups = rehashed.filter(
@@ -109,6 +110,9 @@ export async function fetchRemoteState(
       !backups.some((backup) => backup.payload_hash === safetyCopy.payload_hash)
         ? safetyCopy
         : null,
+    // Pinned backups stay even with the same data as a recent one: unlike
+    // it, they don't rotate out.
+    pinned,
     // An unapproved backup with the same data as an approved one adds nothing.
     unapproved: unapproved.filter(
       (backup) =>

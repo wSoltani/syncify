@@ -2,8 +2,11 @@ import type { SyncifyPayload } from "../../types/syncify";
 import { formatBackupDate, formatItemCount } from "../format";
 import { backupItems } from "./backupItems";
 
-/** A rolling backup, the weekly safety copy, or one from an install not approved yet. */
-export type BackupKind = "backup" | "safety-copy" | "unapproved";
+/**
+ * A rolling backup, one pinned on the website, the weekly safety copy, or one
+ * from an install not approved yet.
+ */
+export type BackupKind = "backup" | "pinned" | "safety-copy" | "unapproved";
 
 export interface BackupRowModel {
   backup: SyncifyPayload;
@@ -38,6 +41,18 @@ export function describeBackupRow(
       meta: [given, date, items, "updated weekly"].filter(isText),
       current,
       title: `the safety copy from ${date}`,
+    };
+  }
+  // Pinned on the website, the only place backups are pinned: kept until
+  // it's unpinned there, so it never rotates out.
+  if (kind === "pinned") {
+    return {
+      backup,
+      kind,
+      name: "Pinned",
+      meta: [given, date, items, from].filter(isText),
+      current,
+      title: given ?? `the backup pinned ${date}`,
     };
   }
   if (kind === "unapproved") {

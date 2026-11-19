@@ -29,6 +29,14 @@ describe("describeBackupRow", () => {
     expect(row.title).toMatch(/^the safety copy from /);
   });
 
+  it("names a pinned backup and keeps its own name in the meta", () => {
+    const row = describeBackupRow(makeBackup("h4", extensions, { name: "Clean setup" }), "pinned", null);
+    expect(row.name).toBe("Pinned");
+    expect(row.meta[0]).toBe("Clean setup");
+    expect(row.meta.slice(2)).toEqual(["2 items", "from Windows"]);
+    expect(row.title).toBe("Clean setup");
+  });
+
   it("marks a backup from an install not approved", () => {
     const row = describeBackupRow(makeBackup("h3", extensions, { device: "Linux" }), "unapproved", null);
     expect(row.name).toBe("Not approved");
