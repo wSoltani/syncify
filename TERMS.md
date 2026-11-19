@@ -1,0 +1,54 @@
+# Terms
+
+Updated November 19, 2026
+
+These terms cover Syncify: the Spicetify extension, its website and the server behind them. Syncify is free, and Wassim Soltani makes and runs it. By using Syncify, you agree to these terms. What it stores, and why, is in the [privacy note](PRIVACY.md).
+
+## Using Syncify
+
+- **Age:** you need to be at least 13, and old enough where you live to agree to these terms.
+- **Your account:** you sign in with codes sent to your email, so keep that inbox safe. You're responsible for what's done with your account.
+- **Limits:** Syncify limits how often and how much you can back up, share and post, so it stays free for everyone.
+
+## What you share
+
+- **It stays yours:** share codes, Discover posts and their images, your handle and your socials are yours. You let Syncify store them, show them on its website and in the extension, and copy them as it needs to run, until you delete them.
+- **Public by design:** anyone with a code or its link can see what's in it and apply it in their own Spotify. Public Discover posts, handles and profile pages can be seen by anyone.
+- **Only what you may share:** post only images and words you have the right to share, and follow [what's allowed on Discover](https://syncify.wsoltani.com/discover/rules).
+- **Handles:** a handle can't pretend to be someone else or be offensive. Syncify can reset one that does.
+
+## Not allowed
+
+- Getting into backups, accounts or installs that aren't yours
+- Getting around Syncify's limits, or flooding it with requests
+- Sharing setups made to harm the people who apply them
+- Using reports to harass someone
+- Anything illegal where you live
+
+If you break these terms, Syncify can remove what you posted, reset your handle, stop you from posting to Discover, ban your account for a while or for good, or delete it.
+
+## Other people's extensions and setups
+
+- **Marketplace items:** extensions, themes, snippets and apps are made by their own developers, not by Syncify. Syncify checks where each one loads from, but not what its code does.
+- **Share codes:** applying a code installs the items in it. Look through them before you apply it.
+- **Spotify and Spicetify:** Syncify isn't made by Spotify or Spicetify, or tied to either. Their own terms still apply when you use them.
+
+## For developers
+
+- **Your items:** only choose settings for items you made or help maintain.
+- **Public entries:** what you submit becomes a pull request on Syncify's public registry. Once merged, it's shared under the same MIT license as the rest of the repository.
+
+## No promises
+
+- **As is:** Syncify comes as is, with no promise that it always works. It can have bugs or be down, and a backup or restore can fail.
+- **Liability:** as far as the law allows, Wassim isn't liable for lost data, or for harm caused by Syncify, an item it installs or a code you apply. Nothing here takes away rights that the law where you live gives you.
+
+## Changes
+
+- **To Syncify:** features can change or go away. If Syncify ever shuts down, the website and the Discord say so at least 30 days before.
+- **To these terms:** a change shows here with a new date. Big changes are posted in the Discord before they apply.
+- **Leaving:** you can stop using Syncify any time. **Delete everything** on your [account page](https://syncify.wsoltani.com/account) removes your data, as the privacy note explains.
+
+## Questions
+
+Ask in the [Syncify Discord](https://syncify.wsoltani.com/discord). Wassim answers.

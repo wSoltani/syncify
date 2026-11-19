@@ -1,0 +1,51 @@
+name: Privacy and terms
+
+# The website's /privacy and /terms pages are built from PRIVACY.md and
+# TERMS.md on master. A change to either needs a new "Updated" date, and once
+# merged it rebuilds the website through its Workers Builds deploy hook.
+on:
+  pull_request:
+    paths: [PRIVACY.md, TERMS.md]
+  push:
+    branches: [master]
+    paths: [PRIVACY.md, TERMS.md]
+
+jobs:
+  date:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Each changed file has a new date
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          failed=0
+          for file in $(git diff --name-only "$BASE" HEAD -- PRIVACY.md TERMS.md); do
+            now=$(grep -m1 '^Updated ' "$file" || true)
+            before=$(git show "$BASE:$file" 2>/dev/null | grep -m1 '^Updated ' || true)
+            if [ -z "$now" ]; then
+              echo "::error file=$file::$file needs an \"Updated <Month> <day>, <year>\" line under its title."
+              failed=1
+            elif [ "$now" = "$before" ]; then
+              echo "::error file=$file::$file changed, so its \"$now\" line needs today's date."
+              failed=1
+            fi
+          done
+          exit $failed
+
+  rebuild:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Rebuild the website
+        env:
+          HOOK: ${{ secrets.WEBSITE_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Add the website's deploy hook URL as the WEBSITE_DEPLOY_HOOK secret, then re-run this job."
+            exit 1
+          fi
+          curl --fail-with-body -sS -X POST "$HOOK"

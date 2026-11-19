@@ -1,5 +1,7 @@
 # Privacy
 
+Updated November 19, 2026
+
 You don't need an account. Without one, your backups follow the Spotify account you're signed in with. An account adds your email, and lets you secure your backups so only you can restore them.
 
 ## What Syncify stores
@@ -10,19 +12,18 @@ You don't need an account. Without one, your backups follow the Spotify account 
 - **Backups from installs your Spotify account doesn't trust yet:** kept apart from yours, the 3 latest at most. They join your backups when the install is approved, and are deleted when newer ones replace them or someone presses **Not mine**.
 - **Activity counts:** how many backups and restores you made, by month and by day of the week and hour, when you first had each item, the names of the items in your latest backup, and which items you added and removed each year. Your time zone is used to count these and isn't stored.
 - **With an account:** your email, the Spotify accounts you linked, and your signed-in devices, each with its user agent, the country it signed in from and when it was last used. IP addresses aren't stored.
-- **Share codes:** for each code you create, its name if you give one, the Marketplace items in it, when it was made and changed, and how many Spotify accounts applied it. A code and its page are public: anyone with the code or the link can see its name and items. Never extension settings or your Spicetify config.
+- **Share codes:** for each code you create, its name if you give one, the Marketplace items in it, when it was made and changed, and how many Spotify accounts applied it. A code and its page are public: anyone with the code or the link can see its name and items. They never hold extension settings or your Spicetify config.
 - **Imports of share codes:** when you apply someone's code, the hash of your Spotify username is kept with that code, so each Spotify account counts once.
 - **Your handle:** the name you pick when you first share a setup or on your account page, like @mellow-beat427, and when you last changed it. It's public: your share pages show it, and its profile page lists your codes. It's never made from your email or your Spotify username. When you change it or delete your account, the old one is held for 30 days so nobody else can take it while old links still point to it.
 - **Your socials:** the GitHub, Reddit, X and Discord usernames you add on your account page, if any. They're public on your profile page. Delete one by emptying it. They're also deleted with your account, and when Syncify resets your handle.
 - **Discover posts:** for each share code you post, its description, up to 3 images, when it was posted and changed, and whether it's public, waiting for a check or not allowed. A public post is public like its code: anyone can see it, its images and your handle. Images are checked by Cloudflare's Workers AI before anyone sees them, and its answer is kept with each one.
 - **Hearts:** which setups you hearted and when, so you can heart each once, and how many hearts you gave or took back today, so one account can't give too many. Others see only how many hearts a setup has, never who gave them. Syncify also counts the hearts your setups get, in total and by month.
 - **Reports:** when you report a setup or a handle, which one, why and when. The person you report never sees who reported them.
+- **Moderation:** whether your account is banned, until when and why, and whether it can post to Discover. Each change an admin makes to your account is logged.
 
 Syncify also keeps app-wide counts, like how many people backed up each day. Nothing in them points back to you, so they stay after your data is deleted.
 
 ## Extension settings sync
-
-This is coming in a later version of Syncify. Nothing is stored for it yet.
 
 With an account and a secured backup, Syncify copies the saved settings of your extensions, themes and custom apps between your devices.
 
