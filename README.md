@@ -51,7 +51,8 @@ Syncify updates itself when Spotify starts. If it says your version is no longer
 
 - Syncify needs [Spicetify Marketplace](https://github.com/spicetify/marketplace)
 - Things you set up manually in Spicetify's config are listed in your backups with the commands to add them back
-- You can delete everything any time. [What Syncify stores](https://github.com/wSoltani/Syncify/blob/master/PRIVACY.md)
+- You can delete everything any time. [What Syncify stores](https://syncify.wsoltani.com/privacy)
+- Using Syncify means you agree to its [terms](https://syncify.wsoltani.com/terms)
 
 ### Support
 
