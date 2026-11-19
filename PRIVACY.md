@@ -28,9 +28,9 @@ Syncify also keeps app-wide counts, like how many people backed up each day. Not
 Support goes through Ko-fi, which takes the payment. What you give Ko-fi is covered by [its privacy policy](https://more.ko-fi.com/privacy). Ko-fi then tells Syncify about the payment, and Syncify keeps:
 
 - **For each payment:** Ko-fi's ID for it, when it was made, whether it's monthly or one-time, a one-way hash of the email you used on Ko-fi, and the Syncify account it's linked to. Never the amount, your name or your message. Shop orders and commissions aren't kept at all.
-- **Linking:** a payment links to the Syncify account with the same email. If you used another email on Ko-fi, your account page can send a code to it. While the code is valid, for 10 minutes, Syncify keeps it as a hash, with a hash of that email.
+- **Linking:** a payment links to the Syncify account with the same email. If you used another email on Ko-fi, your account page can send a code to it. While the code is valid, for 10 minutes, Syncify keeps it as a hash, with a hash of that email. Once you enter it, Syncify keeps that email's hash with your account, so its later payments link too.
 - **As a supporter:** how many months or times you supported each year, when you last did, whether your badge shows, and the profile color, featured setup and pinned backups you pick. Your badge shows those years on your share pages, profile page and Discover posts, until you turn it off. It never shows an amount.
-- **How long:** a payment no Syncify account has claimed loses its email hash after 12 months. Deleting your account unlinks your payments and removes their email hash, so nothing ties them to you. They stay only as counts.
+- **How long:** a payment no Syncify account has claimed loses its email hash after 12 months. Deleting your account unlinks your payments, removes their email hash and forgets any other email you linked, so nothing ties them to you. They stay only as counts.
 
 ## Extension settings sync
 
