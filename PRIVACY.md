@@ -30,7 +30,7 @@ Support goes through Ko-fi, which takes the payment. What you give Ko-fi is cove
 - **For each payment:** Ko-fi's ID for it, when it was made, whether it's monthly or one-time, a one-way hash of the email you used on Ko-fi, and the Syncify account it's linked to. Never the amount, your name or your message. Shop orders and commissions aren't kept at all.
 - **Linking:** a payment links to the Syncify account with the same email. If you used another email on Ko-fi, your account page can send a code to it. While the code is valid, for 10 minutes, Syncify keeps it as a hash, with a hash of that email. Once you enter it, Syncify keeps that email's hash with your account, so its later payments link too.
 - **As a supporter:** how many months or times you supported each year, when you last did, whether your badge shows, and the profile color, featured setup and pinned backups you pick. Your badge shows those years on your share pages, profile page and Discover posts, until you turn it off. It never shows an amount.
-- **How long:** a payment no Syncify account has claimed loses its email hash after 12 months. Deleting your account unlinks your payments, removes their email hash and forgets any other email you linked, so nothing ties them to you. They stay only as counts.
+- **How long:** a payment no Syncify account has claimed loses its email hash after 12 months. Deleting your account unlinks your payments, replaces Ko-fi's ID for each with a random one, keeps only the month they were made, removes their email hash and forgets any other email you linked, so nothing ties them to you. They stay only as counts.
 
 ## Extension settings sync
 
@@ -86,7 +86,7 @@ For this, Syncify keeps when each claim was made, when it was held for a check a
 
 ## Deleting your data
 
-- **With an account:** sign in at [syncify.wsoltani.com](https://syncify.wsoltani.com/account) and press **Delete everything**. It deletes your account, your email, your signed-in devices, your share codes and their pages, your Discover posts and their images, the hearts you gave, your reports, your handle, your socials, your profile page and your supporter badge, and every linked Spotify account with all its backups, activity counts and the codes it imported. Your Ko-fi payments are unlinked and lose their email hash. This can't be undone.
+- **With an account:** sign in at [syncify.wsoltani.com](https://syncify.wsoltani.com/account) and press **Delete everything**. It deletes your account, your email, your signed-in devices, your share codes and their pages, your Discover posts and their images, the hearts you gave, your reports, your handle, your socials, your profile page and your supporter badge, and every linked Spotify account with all its backups, activity counts and the codes it imported. Your Ko-fi payments are unlinked and keep only the month and whether they were monthly. This can't be undone.
 - **Without an account:** secure your backup first, then delete everything once it's secured.
 - **One share code:** delete it in Syncify or on your account page. Its link stops working, and who imported it goes with it, with its Discover post and hearts.
 - **One Discover post:** press **Remove from Discover** on your account page. Its images come off Discover at once, its hearts are deleted, and the code stays.
