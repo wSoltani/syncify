@@ -2,8 +2,8 @@ name: Privacy and terms
 
 # The website's /privacy and /terms pages are built from PRIVACY.md and
 # TERMS.md on master. A change to either needs an "Updated" date that's newer
-# than before, or the same one when that date is from the last 2 days (a
-# second change the same day). Once merged, it rebuilds the website through
+# than before, or the same one when it's at most 2 days older than the pull
+# request's last commit (a second change the same day). Once merged, it rebuilds the website through
 # its Workers Builds deploy hook.
 on:
   pull_request:
@@ -23,16 +23,20 @@ jobs:
       - name: Each changed file has a new date
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
+          TIP: ${{ github.event.pull_request.head.sha }}
         run: |
           failed=0
+          committed=$(git show -s --format=%ct "$TIP")
           for file in $(git diff --name-only "$BASE" HEAD -- PRIVACY.md TERMS.md); do
             now=$(grep -m1 '^Updated ' "$file" || true)
             before=$(git show "$BASE:$file" 2>/dev/null | grep -m1 '^Updated ' || true)
             day=$(date -ud "${now#Updated }" +%s 2>/dev/null || true)
+            # An old date that can't be read counts as none.
+            last=$( [ -n "$before" ] && date -ud "${before#Updated }" +%s 2>/dev/null || true)
             if [ -z "$now" ] || [ -z "$day" ]; then
               echo "::error file=$file::$file needs an \"Updated <Month> <day>, <year>\" line under its title."
               failed=1
-            elif [ -n "$before" ] && [ "$day" -le "$(date -ud "${before#Updated }" +%s)" ] && { [ "$now" != "$before" ] || [ $(( $(date -u +%s) - day )) -gt 172800 ]; }; then
+            elif [ -n "$last" ] && [ "$day" -le "$last" ] && { [ "$now" != "$before" ] || [ $(( committed - day )) -gt 172800 ]; }; then
               echo "::error file=$file::$file changed, so its \"$now\" line needs today's date."
               failed=1
             fi
