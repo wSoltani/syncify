@@ -34,9 +34,9 @@ With an account and a secured backup, Syncify copies the saved settings of your 
 
 Developers of extensions, themes and apps can sign in with GitHub at [syncify.wsoltani.com/developers](https://syncify.wsoltani.com/developers) to choose which of their item's settings sync. This sign-in is separate from a Syncify account.
 
-- **What's stored:** your GitHub user ID and username, your signed-in sessions with when each ends, and for each item you submit, its entry, its pull request and whether it's live. Syncify reads your GitHub account once when you sign in, then gives up its access to it.
+- **What's stored:** your GitHub user ID and username, when you first and last signed in, your signed-in sessions with when each ends, and for each item you submit, its entry, its pull request and whether it's live or removed. Syncify reads your GitHub account once when you sign in, then gives up its access to it.
 - **What's public:** what you submit becomes a pull request on Syncify's public registry, with your GitHub username in it, and its entry joins the registry once merged.
-- **How long:** a session ends when you sign out or after 30 days. An item is forgotten when you remove it and its removal merges. Pull requests stay on GitHub.
+- **How long:** a session ends when you sign out or after 30 days. Your username and sign-in times are kept, and so is each item you submitted, marked removed once you remove it, so Syncify can see who added what. Pull requests stay on GitHub.
 
 ## Where it's stored
 
