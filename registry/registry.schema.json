@@ -48,13 +48,20 @@
     },
     "item": {
       "type": "object",
-      "required": ["id", "addedBy", "keys"],
+      "required": ["id", "name", "addedBy", "keys"],
       "additionalProperties": false,
       "properties": {
         "id": {
           "description": "The item's Marketplace id, {user}/{repo}/{path}, as in its marketplace:installed: key. The path is the manifest's main for an extension, usercss for a theme, and the name with spaces as dashes for a custom app.",
           "type": "string",
           "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/(?!\\.\\.?/)[A-Za-z0-9._-]+/[^\\s]+$"
+        },
+        "name": {
+          "description": "The item's name, as its manifest.json gives it. Syncify, the website and the developers pages show it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "addedBy": {
           "description": "owner: submitted by the GitHub account that owns the item's repo, or a public member of the organization that owns it. syncify: a placeholder Syncify added, which the owner's own entry replaces.",

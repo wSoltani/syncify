@@ -2,8 +2,11 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { deleteSyncedCopy, loadSyncItems, type SettingsSyncStatus, type SyncItem } from "../../core/settingsSync";
 import type { SyncifyConfig } from "../../types/syncify";
+import { openExternal } from "../window/openExternal";
 import { ExtensionSettingsSection, SyncItemsView } from "./ExtensionSettings";
 
+vi.mock("../window/openExternal", () => ({ openExternal: vi.fn() }));
+vi.mock("../../core/projectConfig", () => ({ getProjectConfig: () => ({ webUrl: "https://syncify.test/" }) }));
 vi.mock("../../core/config", () => ({ loadConfig: vi.fn(() => ({ settingsSyncOff: [] })) }));
 vi.mock("../../core/settingsSync", async (original) => ({
   ...(await original<typeof import("../../core/settingsSync")>()),
@@ -98,6 +101,24 @@ describe("ExtensionSettingsSection", () => {
     section({ status: { ...status, items: [] } });
     expect(screen.getByText("None of your items have settings Syncify can sync")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Items/ })).toBeNull();
+  });
+
+  it("ends with Supported extensions in every state, which opens the website's list", () => {
+    const states = [
+      { secured: false },
+      { config: { ...config, settingsSyncEnabled: false } },
+      { status: { ...status, items: [] } },
+      {},
+    ];
+    for (const changes of states) {
+      const { container, unmount } = section(changes);
+      const rows = container.querySelectorAll(".syncify-list-item");
+      const last = rows[rows.length - 1];
+      expect(last?.textContent).toBe("Supported extensions");
+      fireEvent.click(screen.getByRole("button", { name: "Supported extensions" }));
+      unmount();
+    }
+    expect(vi.mocked(openExternal).mock.calls).toEqual(Array(4).fill(["https://syncify.test/supported"]));
   });
 });
 

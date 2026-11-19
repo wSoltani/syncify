@@ -25,15 +25,31 @@ export function splitId(id) {
 // The ids an item's manifest.json gives it in Marketplace, which keys
 // extensions by main, themes by usercss and custom apps by name.
 export function manifestPaths(manifest) {
+  return manifestEntries(manifest).flatMap(entryPaths);
+}
+
+// The manifest entry Marketplace builds the id's path from, or undefined.
+export function manifestEntry(manifest, path) {
+  return manifestEntries(manifest).find((entry) => entryPaths(entry).includes(path));
+}
+
+// The name an entry gives its item, as the developers pages read it: its
+// name without spaces at either end, else the path the id ends in.
+export function manifestName(entry, path) {
+  return typeof entry.name === "string" && entry.name.trim() ? entry.name.trim() : path;
+}
+
+function manifestEntries(manifest) {
   const entries = Array.isArray(manifest) ? manifest : [manifest];
-  return entries.flatMap((entry) => {
-    if (!entry || typeof entry !== "object") return [];
-    const paths = [];
-    if (typeof entry.main === "string") paths.push(entry.main);
-    if (typeof entry.usercss === "string") paths.push(entry.usercss);
-    if (typeof entry.name === "string") paths.push(entry.name.replaceAll(" ", "-"));
-    return paths;
-  });
+  return entries.filter((entry) => entry && typeof entry === "object");
+}
+
+function entryPaths(entry) {
+  const paths = [];
+  if (typeof entry.main === "string") paths.push(entry.main);
+  if (typeof entry.usercss === "string") paths.push(entry.usercss);
+  if (typeof entry.name === "string") paths.push(entry.name.replaceAll(" ", "-"));
+  return paths;
 }
 
 export function diffItems(base, head) {
@@ -130,8 +146,11 @@ export async function checkPullRequest({ base, head, opener, submitter, maintain
       continue;
     }
     const manifest = await github.manifest(user, name, repo.default_branch);
-    if (!manifest || !manifestPaths(manifest).includes(path)) {
+    const entry = manifest ? manifestEntry(manifest, path) : undefined;
+    if (!entry) {
       errors.push(`${id}: ${repo.full_name}'s manifest.json has no item at ${path}`);
+    } else if (item.addedBy === "owner" && item.name !== manifestName(entry, path)) {
+      errors.push(`${id}: name must match manifest.json, which says ${manifestName(entry, path)}`);
     }
     if (isMaintainer) continue;
     if (item.addedBy !== "owner") {

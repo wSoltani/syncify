@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { loadConfig } from "../../core/config";
+import { getProjectConfig } from "../../core/projectConfig";
 import { deleteSyncedCopy, loadSyncItems, type SettingsSyncStatus, type SyncItem } from "../../core/settingsSync";
 import type { SyncifyConfig } from "../../types/syncify";
 import {
@@ -18,7 +19,13 @@ import {
   UsageMeter,
   useStableId,
 } from "../kit";
+import { openExternal } from "../window/openExternal";
 import { heldItems, holdText, itemCounts, sizeText, spaceUsed, type HeldItem } from "./syncText";
+
+// The website's list of items whose settings sync.
+function supportedUrl(): string {
+  return `${getProjectConfig().webUrl.replace(/\/+$/, "")}/supported`;
+}
 
 // As many placeholder rows as a short list.
 const SKELETON_ROWS = 4;
@@ -26,7 +33,8 @@ const SKELETON_ROWS = 4;
 /**
  * The Settings tab's Extension settings section: the device switch, the
  * space used, why an item isn't syncing, and the Items row that opens the
- * list in place. Without a secured backup, only how to start.
+ * list in place. Without a secured backup, only how to start. Supported
+ * extensions, last in every state, opens the website's list.
  */
 export function ExtensionSettingsSection(props: {
   config: SyncifyConfig;
@@ -78,17 +86,20 @@ export function ExtensionSettingsSection(props: {
             <>
               <SpaceUsed status={status} off={config.settingsSyncOff} />
               <HoldNotices items={held} accountLimit={status.limit} />
-              <List>
-                {status.items.length === 0 ? (
-                  <ListRow name="None of your items have settings Syncify can sync" plain />
-                ) : (
-                  <ListRow name="Items" meta={<ItemCounts status={status} off={config.settingsSyncOff} />} onOpen={props.onOpenItems} />
-                )}
-              </List>
             </>
           ) : null}
         </>
       )}
+      <List>
+        {props.secured && config.settingsSyncEnabled ? (
+          status.items.length === 0 ? (
+            <ListRow name="None of your items have settings Syncify can sync" plain />
+          ) : (
+            <ListRow name="Items" meta={<ItemCounts status={status} off={config.settingsSyncOff} />} onOpen={props.onOpenItems} />
+          )
+        ) : null}
+        <ListRow name="Supported extensions" external onOpen={() => openExternal(supportedUrl())} />
+      </List>
     </div>
   );
 }

@@ -10,7 +10,7 @@ import {
   writeSettings,
   type RestoredSettings,
 } from "./extensionSettings";
-import { nameLocalItems, type NamedItem } from "./settingsNames";
+import { nameItems, type NamedItem } from "./settingsNames";
 import { isSettingKey, loadRegistry, type RegistryItem, type SettingsRegistry } from "./settingsRegistry";
 import { getUserIdentity } from "./user";
 
@@ -380,7 +380,7 @@ export async function finishSettingsSync(
   }
 
   if (choices.length === 0) state.firstSyncDone = true;
-  const names = await nameLocalItems([...local.keys()]);
+  const names = nameItems(registry.items);
 
   await saveState(state);
   if (off.size !== config.settingsSyncOff.length) saveConfig({ ...config, settingsSyncOff: [...off] });
@@ -540,7 +540,7 @@ export async function loadSyncItems(): Promise<SyncItem[]> {
   const registry = await loadRegistry();
   if (!registry) return readSyncStatus().items;
   const [state, local] = await Promise.all([loadState(), readLocalValues(registry)]);
-  const names = await nameLocalItems([...local.keys()]);
+  const names = nameItems(registry.items);
   const status = readSyncStatus();
   const described = describe(registry, state, local, names, status.bytes);
   saveSyncStatus({ ...status, ...described });

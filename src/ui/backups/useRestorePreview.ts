@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { previewSettings } from "../../core/extensionSettings";
 import { previewRestore, type InstalledItem } from "../../core/restorePreview";
+import type { NamedItem } from "../../core/settingsNames";
 import {
   checkCatalog,
   checkSources,
@@ -43,15 +44,15 @@ export function useRestorePreview(
     };
   }, [backup, preview, localChecks]);
 
-  // Registry ids whose settings differ. A failure to read them leaves the
+  // Registry items whose settings differ. A failure to read them leaves the
   // settings as they are rather than holding the restore up.
-  const [settings, setSettings] = useState<{ for: SyncifyPayload; ids: string[] } | null>(null);
+  const [settings, setSettings] = useState<{ for: SyncifyPayload; items: NamedItem[] } | null>(null);
   useEffect(() => {
     let current = true;
     void previewSettings(backup.extension_settings)
       .catch(() => [])
-      .then((ids) => {
-        if (current) setSettings({ for: backup, ids });
+      .then((items) => {
+        if (current) setSettings({ for: backup, items });
       });
     return () => {
       current = false;
@@ -85,11 +86,11 @@ export function useRestorePreview(
   );
 
   const skipped = useMemo(() => [...optional].filter((key) => !allowed.has(key)), [optional, allowed]);
-  const settingsIds = settings?.for === backup ? settings.ids : null;
+  const settingsItems = settings?.for === backup ? settings.items : null;
   // An item left off keeps its settings too.
   const settingsRows = useMemo(
-    () => describeSettings(settingsIds ?? [], backupItems(backup), localItems).filter((row) => !skipped.includes(row.key)),
-    [settingsIds, backup, localItems, skipped],
+    () => describeSettings(settingsItems ?? []).filter((row) => !skipped.includes(row.key)),
+    [settingsItems, skipped],
   );
 
   const changes = useMemo(
@@ -115,7 +116,7 @@ export function useRestorePreview(
     changes,
     unapproved,
     /** Catalog lookups or settings still being read: Restore waits. */
-    checking: catalogChecks === null || settingsIds === null,
+    checking: catalogChecks === null || settingsItems === null,
     /** Optional items left off: the restore skips them. */
     skipped,
     /** Registry ids of the items whose settings the restore writes. */

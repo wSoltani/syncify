@@ -44,6 +44,20 @@ describe("parseRegistry", () => {
     });
     expect(parsed?.items.map((item) => item.id)).toEqual(["a/b/f.js"]);
   });
+
+  it("takes each entry's name, and names a copy kept from before names by its file", () => {
+    const parsed = parseRegistry({
+      format: 1,
+      sizes: { small: 16384, medium: 65536, large: 131072 },
+      accountLimit: 262144,
+      items: [
+        { id: "a/b/cover.js", name: "Cover Ambience", addedBy: "owner", keys: ["x"] },
+        { id: "spicetify/cli/Extensions/trashbin.js", addedBy: "syncify", keys: ["y"] },
+        { id: "a/b/padded.js", name: " Padded", addedBy: "owner", keys: ["z"] },
+      ],
+    });
+    expect(parsed?.items.map((item) => item.name)).toEqual(["Cover Ambience", "Trashbin", "Padded"]);
+  });
 });
 
 describe("readLocalSettings", () => {

@@ -26,6 +26,16 @@ export function ChevronRightIcon(props: IconProps) {
   );
 }
 
+/** Opens a page outside Spotify. */
+export function ArrowUpRightIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 7h10v10" />
+      <path d="M7 17 17 7" />
+    </Icon>
+  );
+}
+
 export function ChevronDownIcon(props: IconProps) {
   return (
     <Icon {...props}>

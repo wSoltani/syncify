@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { listItems } from "../../core/restorePreview";
+import type { NamedItem } from "../../core/settingsNames";
 import { makeBackup } from "../../test/fixtures";
 import type { SyncifyConfig, SyncifyRemoteState, SyncifySnapshotSummary } from "../../types/syncify";
 import { BackupsTab } from "./BackupsTab";
@@ -14,7 +15,13 @@ vi.mock("../../core/sourceChecks", async (original) => ({
 }));
 
 // Extension settings: none differ unless a test says so.
-const previewSettings = vi.hoisted(() => vi.fn(async (): Promise<string[]> => []));
+const previewSettings = vi.hoisted(() => vi.fn(async (): Promise<NamedItem[]> => []));
+const TRASHBIN: NamedItem = {
+  id: "spicetify/cli/Extensions/trashbin.js",
+  key: "marketplace:installed:spicetify/cli/Extensions/trashbin.js",
+  name: "Trashbin",
+  kind: "extension",
+};
 vi.mock("../../core/extensionSettings", () => ({ previewSettings }));
 
 const one = "marketplace:installed:a/b/one.js";
@@ -93,7 +100,7 @@ describe("BackupsTab", () => {
   });
 
   it("lists extension settings after the items, and offers them to the other devices", async () => {
-    previewSettings.mockResolvedValueOnce(["spicetify/cli/Extensions/trashbin.js"]);
+    previewSettings.mockResolvedValueOnce([TRASHBIN]);
     const onRestore = vi.fn();
     const onShareSettingsChange = vi.fn();
     renderTab({ onRestore, canShareSettings: true, onShareSettingsChange });
@@ -114,7 +121,7 @@ describe("BackupsTab", () => {
   });
 
   it("keeps the extension settings choice off this device when it can't be shared", async () => {
-    previewSettings.mockResolvedValueOnce(["spicetify/cli/Extensions/trashbin.js"]);
+    previewSettings.mockResolvedValueOnce([TRASHBIN]);
     const onRestore = vi.fn();
     renderTab({ onRestore });
     fireEvent.click(screen.getByRole("button", { name: /^Preview restore of / }));
