@@ -90,7 +90,7 @@ If an admin ever changed your account manually, for example by signing out your 
 
 ## Questions and problems
 
-Ask about your data in the [Syncify Discord](https://syncify.wsoltani.com/discord). If you find a security problem, report it privately from the [Security tab](https://github.com/wSoltani/Syncify/security) instead of in public. Wassim answers both.
+Ask about your data in the [Syncify Discord](https://syncify.wsoltani.com/discord) or at [syncify@wsoltani.com](mailto:syncify@wsoltani.com). If you find a security problem, report it privately from the [Security tab](https://github.com/wSoltani/Syncify/security) instead of in public. Wassim answers both.
 
 You can ask for a copy of your data, or to have it corrected or deleted, and you can complain to your data protection authority.
 

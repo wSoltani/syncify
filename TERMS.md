@@ -25,7 +25,7 @@ These terms cover Syncify: the Spicetify extension, its website and the server b
 - Using reports to harass someone
 - Anything illegal where you live
 
-If you break these terms, Syncify can delete your codes or posts, reset your handle, stop you from posting to Discover, ban your account for a while or for good, or delete it. A ban signs you out, takes your codes, posts and profile page off the website, and locks your secured backups until it ends. Deleting an account also deletes the backups of every Spotify account linked to it. If you think Syncify got it wrong, ask in the Discord.
+If you break these terms, Syncify can delete your codes or posts, reset your handle, stop you from posting to Discover, ban your account for a while or for good, or delete it. A ban signs you out, takes your codes, posts and profile page off the website, and locks your secured backups until it ends. Deleting an account also deletes the backups of every Spotify account linked to it. If you think Syncify got it wrong, say so in the Discord or at [syncify@wsoltani.com](mailto:syncify@wsoltani.com).
 
 ## Other people's extensions and setups
 
@@ -47,8 +47,8 @@ If you break these terms, Syncify can delete your codes or posts, reset your han
 
 - **To Syncify:** features can change or go away. If Syncify ever shuts down, the website and the Discord say so at least 30 days before.
 - **To these terms:** a change shows here with a new date. Big changes are posted in the Discord before they apply.
-- **Leaving:** you can stop using Syncify any time. **Delete everything** on your [account page](https://syncify.wsoltani.com/account) removes your data, as the privacy note explains. If you can't sign in, ask in the Discord.
+- **Leaving:** you can stop using Syncify any time. **Delete everything** on your [account page](https://syncify.wsoltani.com/account) removes your data, as the privacy note explains. If you can't sign in, ask in the Discord or at [syncify@wsoltani.com](mailto:syncify@wsoltani.com).
 
 ## Questions
 
-Ask in the [Syncify Discord](https://syncify.wsoltani.com/discord). Wassim answers.
+Ask in the [Syncify Discord](https://syncify.wsoltani.com/discord) or email [syncify@wsoltani.com](mailto:syncify@wsoltani.com). To have something taken down that was posted without your permission, email the same address. Wassim answers.
