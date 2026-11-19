@@ -50,6 +50,7 @@ Syncify runs on Cloudflare, so your data can be handled outside your country:
 - **Workers Analytics Engine** keeps your username hash with each request for 3 months, to count how many people use Syncify.
 - **Workers Logs** keep each request for 3 days, to fix problems.
 - **Workers AI** checks Discover images.
+- **Web Analytics** counts visits to the website and how fast its pages load. It doesn't use cookies or follow you across sites.
 
 Sign-in codes go out by email through Resend, Brevo or Mailjet, so they see your email address. Syncify only emails you codes, to sign in or to delete your account.
 
