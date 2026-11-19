@@ -33,6 +33,12 @@ export function manifestEntry(manifest, path) {
   return manifestEntries(manifest).find((entry) => entryPaths(entry).includes(path));
 }
 
+// The name an entry gives its item, as the developers pages read it: its
+// name without spaces at either end, else the path the id ends in.
+export function manifestName(entry, path) {
+  return typeof entry.name === "string" && entry.name.trim() ? entry.name.trim() : path;
+}
+
 function manifestEntries(manifest) {
   const entries = Array.isArray(manifest) ? manifest : [manifest];
   return entries.filter((entry) => entry && typeof entry === "object");
@@ -143,8 +149,8 @@ export async function checkPullRequest({ base, head, opener, submitter, maintain
     const entry = manifest ? manifestEntry(manifest, path) : undefined;
     if (!entry) {
       errors.push(`${id}: ${repo.full_name}'s manifest.json has no item at ${path}`);
-    } else if (item.addedBy === "owner" && item.name !== entry.name) {
-      errors.push(`${id}: name must match manifest.json, which says ${entry.name}`);
+    } else if (item.addedBy === "owner" && item.name !== manifestName(entry, path)) {
+      errors.push(`${id}: name must match manifest.json, which says ${manifestName(entry, path)}`);
     }
     if (isMaintainer) continue;
     if (item.addedBy !== "owner") {

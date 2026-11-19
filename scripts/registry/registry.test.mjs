@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkRegistry, keysOverlap, readJson, registryPath, schemaPath } from "./check.mjs";
-import { checkPullRequest, diffItems, manifestPaths, submitterOf } from "./owners.mjs";
+import { checkPullRequest, diffItems, manifestName, manifestPaths, submitterOf } from "./owners.mjs";
 
 const schema = await readJson(schemaPath);
 
@@ -137,6 +137,13 @@ describe("manifestPaths", () => {
         { name: "My App" },
       ]),
     ).toEqual(["dist/one.js", "One", "user.css", "Theme", "My-App"]);
+  });
+});
+
+describe("manifestName", () => {
+  it("takes the manifest's name without outer spaces, else the item's path", () => {
+    expect(manifestName({ name: " Cover Ambience " }, "a.js")).toBe("Cover Ambience");
+    expect(manifestName({ main: "dist/a.js" }, "dist/a.js")).toBe("dist/a.js");
   });
 });
 
