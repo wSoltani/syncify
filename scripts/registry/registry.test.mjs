@@ -12,7 +12,7 @@ const registry = (items, extra = {}) => ({
   ...extra,
 });
 
-const item = (id, fields = {}) => ({ id, addedBy: "owner", keys: [`${id.split("/")[1]}:*`], ...fields });
+const item = (id, fields = {}) => ({ id, name: "Ext", addedBy: "owner", keys: [`${id.split("/")[1]}:*`], ...fields });
 
 describe("checkRegistry", () => {
   it("accepts the registry in the repo", async () => {
@@ -35,6 +35,16 @@ describe("checkRegistry", () => {
       checkRegistry(registry([item("a/b/c.js", { addedBy: "syncify", discover: true })]), schema),
     ).not.toEqual([]);
     expect(checkRegistry(registry([item("a/b/c.js", { keys: [] })]), schema)).not.toEqual([]);
+  });
+
+  it("needs a name of 1 to 100 characters with no space at either end", () => {
+    const nameless = item("a/b/c.js");
+    delete nameless.name;
+    expect(checkRegistry(registry([nameless]), schema)).not.toEqual([]);
+    for (const name of ["", "x".repeat(101), " Ext", "Ext "]) {
+      expect(checkRegistry(registry([item("a/b/c.js", { name })]), schema)).not.toEqual([]);
+    }
+    expect(checkRegistry(registry([item("a/b/c.js", { name: "x".repeat(100) })]), schema)).toEqual([]);
   });
 
   it("refuses ids that don't name a repo", () => {
@@ -208,6 +218,12 @@ describe("checkPullRequest", () => {
     ]);
     expect(await run({ author: "wSoltani", head: registry([item("carol/repo/ext.js")]) })).toEqual([
       "carol/repo/ext.js: no public GitHub repo carol/repo",
+    ]);
+  });
+
+  it("needs an owner's name to match the manifest's", async () => {
+    expect(await run({ head: registry([item("alice/repo/ext.js", { name: "Other" })]) })).toEqual([
+      "alice/repo/ext.js: name must match manifest.json, which says Ext",
     ]);
   });
 

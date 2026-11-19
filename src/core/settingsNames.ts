@@ -1,5 +1,5 @@
-import { collectMarketplaceKeys } from "./marketplace";
-import { listItems, type InstalledItem, type ItemType } from "./restorePreview";
+import type { ItemType } from "./restorePreview";
+import type { RegistryItem } from "./settingsRegistry";
 
 const ENTRY_PREFIX = "marketplace:installed:";
 
@@ -12,31 +12,17 @@ export interface NamedItem {
   /** Its Marketplace entry's key, which a restore can leave off. */
   key: string;
   name: string;
-  kind: SettingsKind | "snippet";
+  kind: SettingsKind;
 }
 
-/**
- * Names a registry item like the item: by Marketplace's title when one of
- * `items` has it, by its file's name otherwise, as for Spicetify's own
- * extensions.
- */
-export function nameItem(id: string, items: InstalledItem[]): NamedItem {
-  const key = `${ENTRY_PREFIX}${id}`;
-  const item = items.find((entry) => entry.key === key);
-  return { id, key, name: item?.name ?? nameFromPath(id), kind: item ? item.type : kindFromPath(id) };
+/** A registry item, by the name its entry gives it and the kind its id says. */
+export function nameItem(item: Pick<RegistryItem, "id" | "name">): NamedItem {
+  return { id: item.id, key: `${ENTRY_PREFIX}${item.id}`, name: item.name, kind: kindFromPath(item.id) };
 }
 
-/** Names registry items by this device's Marketplace items. */
-export async function nameLocalItems(ids: string[]): Promise<Map<string, NamedItem>> {
-  const items = listItems(await collectMarketplaceKeys().catch(() => ({})));
-  return new Map(ids.map((id) => [id, nameItem(id, items)]));
-}
-
-// "spicetify/cli/Extensions/trashbin.js" is "Trashbin".
-function nameFromPath(id: string): string {
-  const file = id.split("/").pop() ?? id;
-  const stem = file.replace(/\.[^.]+$/, "") || file;
-  return stem.charAt(0).toUpperCase() + stem.slice(1);
+/** Every registry item, named, by id. */
+export function nameItems(items: Pick<RegistryItem, "id" | "name">[]): Map<string, NamedItem> {
+  return new Map(items.map((item) => [item.id, nameItem(item)]));
 }
 
 // An extension is a script and a theme a stylesheet; anything else is a

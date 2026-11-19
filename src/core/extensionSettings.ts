@@ -1,5 +1,6 @@
 import { stableStringify } from "./crypto";
 import { writeState } from "./database";
+import { nameItems, type NamedItem } from "./settingsNames";
 import {
   isSettingKey,
   loadRegistry,
@@ -148,10 +149,15 @@ export function compareSettings(
 }
 
 /** What restoring a backup changes in the registered items' settings here. */
-export async function previewSettings(backup: SyncifyExtensionSettings | undefined): Promise<string[]> {
+export async function previewSettings(backup: SyncifyExtensionSettings | undefined): Promise<NamedItem[]> {
   if (!backup) return [];
   const registry = await loadRegistry();
-  return registry ? compareSettings(registry, backup, await readLocalSettings(registry)) : [];
+  if (!registry) return [];
+  const names = nameItems(registry.items);
+  return compareSettings(registry, backup, await readLocalSettings(registry)).flatMap((id) => {
+    const named = names.get(id);
+    return named ? [named] : [];
+  });
 }
 
 /**

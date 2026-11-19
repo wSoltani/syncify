@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ChevronRightIcon } from "./icons";
+import { ArrowUpRightIcon, ChevronRightIcon } from "./icons";
 
 /** A list of the person's things, one ListRow each. */
 export function List(props: {
@@ -39,6 +39,8 @@ interface ListRowProps {
   end?: ReactNode;
   /** Makes the whole row a button that opens something, with a chevron. */
   onOpen?(): void;
+  /** What it opens is a page outside Spotify: an arrow up and right in place of the chevron. */
+  external?: boolean;
   /** What opening the row does, read out in place of its text. */
   openLabel?: string;
   disabled?: boolean;
@@ -77,7 +79,11 @@ export function ListRow(props: ListRowProps) {
           disabled={props.disabled}
         >
           {content}
-          <ChevronRightIcon className="syncify-row-chevron" />
+          {props.external ? (
+            <ArrowUpRightIcon className="syncify-row-chevron" />
+          ) : (
+            <ChevronRightIcon className="syncify-row-chevron" />
+          )}
         </button>
       ) : (
         <div className="syncify-row" id={props.id} data-lines={lines} data-plain={props.plain ? "true" : undefined}>

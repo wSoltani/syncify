@@ -32,6 +32,8 @@ const DEFAULT_TIER: Tier = "medium";
 export interface RegistryItem {
   /** {user}/{repo}/{path}, as in the item's marketplace:installed: key. */
   id: string;
+  /** The item's name, as its manifest.json gives it. */
+  name: string;
   /** Exact names, or a prefix ending in "*". */
   keys: string[];
   /** Never leave the device. They win over keys. */
@@ -122,7 +124,21 @@ function parseItem(raw: unknown, tiers: Record<Tier, number>): RegistryItem | nu
     return null;
   }
 
-  return { id: raw.id, keys, exclude, storage, lists, limit: tiers[tier] };
+  const name = isName(raw.name) ? raw.name : nameFromPath(raw.id);
+  return { id: raw.id, name, keys, exclude, storage, lists, limit: tiers[tier] };
+}
+
+// As registry.schema.json allows it: 1 to 100 characters, no space at either end.
+function isName(value: unknown): value is string {
+  return typeof value === "string" && value.length <= 100 && /^\S(?:.*\S)?$/.test(value);
+}
+
+// A copy kept from before entries had names: "spicetify/cli/Extensions/trashbin.js"
+// is "Trashbin" until the next registry read brings the name.
+function nameFromPath(id: string): string {
+  const file = id.split("/").pop() ?? id;
+  const stem = file.replace(/\.[^.]+$/, "") || file;
+  return stem.charAt(0).toUpperCase() + stem.slice(1);
 }
 
 function parseLists(raw: unknown): Record<string, ListRule> | null {

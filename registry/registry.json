@@ -10,6 +10,7 @@
   "items": [
     {
       "id": "Theblockbuster1/spicetify-extensions/CoverAmbience/CoverAmbience.js",
+      "name": "Cover Ambience",
       "addedBy": "syncify",
       "keys": [
         "CoverAmbienceBorderOpacity"
@@ -18,6 +19,7 @@
     },
     {
       "id": "hoeci/sort-play/sort-play-loader.mjs",
+      "name": "Sort Play",
       "addedBy": "syncify",
       "storage": {
         "type": "indexedDB",
@@ -208,6 +210,7 @@
     },
     {
       "id": "spicetify/cli/Extensions/bookmark.js",
+      "name": "Bookmark",
       "addedBy": "syncify",
       "keys": [
         "bookmark_spicetify"
@@ -221,6 +224,7 @@
     },
     {
       "id": "spicetify/cli/Extensions/loopyLoop.js",
+      "name": "Loopy loop",
       "addedBy": "syncify",
       "keys": [
         "loopyLoop:*"
@@ -228,6 +232,7 @@
     },
     {
       "id": "spicetify/cli/Extensions/trashbin.js",
+      "name": "Trashbin",
       "addedBy": "syncify",
       "keys": [
         "TrashArtistList",

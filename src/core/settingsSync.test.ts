@@ -23,9 +23,9 @@ const registry = parseRegistry({
   sizes: { small: 64, medium: 65536, large: 131072 },
   accountLimit: 262144,
   items: [
-    { id: "a/trash/trash.js", addedBy: "owner", keys: ["TrashSongList", "trash-on"], lists: { TrashSongList: { merge: "object" } } },
-    { id: "a/loop/loop.js", addedBy: "owner", keys: ["loop:*"] },
-    { id: "a/tiny/tiny.js", addedBy: "owner", keys: ["tiny"], size: "small" },
+    { id: "a/trash/trash.js", name: "Trash Bin", addedBy: "owner", keys: ["TrashSongList", "trash-on"], lists: { TrashSongList: { merge: "object" } } },
+    { id: "a/loop/loop.js", name: "Loop", addedBy: "owner", keys: ["loop:*"] },
+    { id: "a/tiny/tiny.js", name: "Tiny", addedBy: "owner", keys: ["tiny"], size: "small" },
   ],
 }) as SettingsRegistry;
 vi.mock("./settingsRegistry", async (original) => ({
@@ -131,7 +131,7 @@ describe("later syncs", () => {
     );
     expect(localStorage.getItem("trash-on")).toBe("false");
     expect(JSON.parse(localStorage.getItem("TrashSongList") ?? "null")).toEqual({ one: 1 });
-    expect(outcome.arrived).toEqual(["Trash"]);
+    expect(outcome.arrived).toEqual(["Trash Bin"]);
   });
 
   it("holds an item over its tier: it says so once and sends nothing else", async () => {
