@@ -7,13 +7,21 @@ export const VERSION_PATTERN =
 // Reads a pointer file downloaded from the bucket. A missing file means no
 // pointer yet (null); one that holds no valid version counts as none too.
 export async function readPointer(path) {
+  return (await readPointerFile(path))?.version ?? null;
+}
+
+// The whole pointer: its version and since when it has pointed there (an
+// ISO time, kept while the version stays the same), or null without a valid
+// version. Pointers written before since was added have none.
+export async function readPointerFile(path) {
   const text = await readFile(path, "utf8").catch((error) => {
     if (error.code === "ENOENT") return null;
     throw new Error(`Could not read ${path}: ${error}`);
   });
   if (text === null) return null;
-  const { version } = JSON.parse(text);
-  return VERSION_PATTERN.test(version ?? "") ? version : null;
+  const { version, since } = JSON.parse(text);
+  if (!VERSION_PATTERN.test(version ?? "")) return null;
+  return { version, since: typeof since === "string" && Number.isFinite(Date.parse(since)) ? since : null };
 }
 
 // Same order as the Worker and the loader: 1.4.0-beta.1 < 1.4.0-beta.2 < 1.4.0.

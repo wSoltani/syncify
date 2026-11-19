@@ -36,8 +36,19 @@ jobs:
           node-version-file: .node-version
           # Nothing to install here, and the job holds the R2 keys.
           package-manager-cache: false
+      # Read from the bucket, not the public address, which is cached. The
+      # pointer keeps its since when it's already at this version (its upload
+      # time, for a pointer written before since was kept), and the
+      # Discord post uses it to stay quiet on a rollback.
+      - name: Read the current latest.json
+        run: |
+          if ! aws s3api get-object --endpoint-url "$R2_ENDPOINT" \
+              --bucket syncify-releases --key latest.json previous-latest.json \
+              > previous-latest.head.json 2> get-error.txt; then
+            grep -q NoSuchKey get-error.txt || { cat get-error.txt; exit 1; }
+          fi
       - name: Write latest.json
-        run: node scripts/release-pointer.mjs latest.json "$VERSION" --stable
+        run: node scripts/release-pointer.mjs latest.json "$VERSION" --stable --since-from previous-latest.json --uploaded previous-latest.head.json
       # The Release workflow publishes the GitHub release only once the tag's
       # committed build matches src, so a tag without one never goes out.
       - name: Check the release passed and jsDelivr serves it
@@ -50,15 +61,6 @@ jobs:
             || { echo "::error::v$VERSION is a draft or prerelease"; exit 1; }
           curl -fsS -o /dev/null "https://cdn.jsdelivr.net/gh/wSoltani/syncify@v$VERSION/dist/syncify.bundle.js" \
             || { echo "::error::jsDelivr doesn't serve v$VERSION's bundle"; exit 1; }
-      # Read from the bucket, not the public address, which is cached. Only
-      # the Discord post uses it, to stay quiet on a rollback.
-      - name: Read the current latest.json
-        run: |
-          if ! aws s3api get-object --endpoint-url "$R2_ENDPOINT" \
-              --bucket syncify-releases --key latest.json previous-latest.json \
-              > /dev/null 2> get-error.txt; then
-            grep -q NoSuchKey get-error.txt || { cat get-error.txt; exit 1; }
-          fi
       - name: Upload latest.json
         run: |
           aws s3api put-object \
