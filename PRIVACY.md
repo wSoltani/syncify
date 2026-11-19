@@ -45,7 +45,7 @@ Syncify runs on Cloudflare:
 - **Workers** run Syncify's server and website.
 - **D1** databases hold your account, your Spotify accounts and installs, your activity counts, share codes, Discover posts, hearts and reports. Your synced extension settings get a database of their own.
 - **R2** holds your backup files with their extension settings, your share codes' files and your Discover images.
-- **Workers KV** still holds backups made before October 24, 2026, from before Syncify moved to D1 and R2. Syncify only reads them, to bring them in the first time that Spotify account uses it.
+- **Workers KV** still holds backups made before October 24, 2026, from before Syncify moved to D1 and R2. Syncify only reads them, to bring them into D1 and R2 once, and stops reading KV when every one is in.
 - **Workers Analytics Engine** keeps your username hash with each request for 3 months, to count how many people use Syncify.
 - **Workers Logs** keep each request for 3 days, to fix problems.
 - **Workers AI** checks Discover images.
@@ -83,7 +83,7 @@ For this, Syncify keeps when each claim was made, when it was held for a check a
 
 Deleted backups and share codes stay in storage for about 9 more days, out of reach, so they can be brought back if Syncify is ever attacked. Backups replaced by newer ones are held the same way. Images you take off a Discover post, or delete with it, stay about 9 more days at their own link, off Discover. When you change a share code, what it held before is kept for 8 days so Syncify can put it back, then held the same way. After that, all of it is erased.
 
-Backups made before October 24, 2026 stay in Workers KV, which Delete everything and the 12-month cleanup don't reach. If that Spotify account uses Syncify again, they come back as its backups.
+Backups made before October 24, 2026 are brought in from Workers KV, so Delete everything and the 12-month cleanup delete them like any other. Their old copy stays in KV, where Syncify never brings back one that was deleted, and stops reading KV once every one is in.
 
 If an admin ever changed your account manually, for example by signing out your devices, that log entry keeps a one-way hash of your email after the account is deleted, so a later question about it can still be answered.
 
