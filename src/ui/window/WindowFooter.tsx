@@ -2,7 +2,7 @@ import { getProjectConfig } from "../../core/projectConfig";
 import { Button, Meta } from "../kit";
 import { openExternal } from "./openExternal";
 
-/** The version, a newer one when it's out, and where to get help. */
+/** The version, a newer one when it's out, where to get help, and the privacy note and terms. */
 export function WindowFooter(props: {
   newerVersion: string | null;
   /** The loader fetches the latest release on reload; other copies are replaced by hand. */
@@ -14,6 +14,8 @@ export function WindowFooter(props: {
     ["GitHub", project.githubUrl],
     ["Discord", project.discordUrl],
     ["Support on Ko-fi", project.kofiUrl],
+    ["Privacy", `${project.webUrl}/privacy`],
+    ["Terms", `${project.webUrl}/terms`],
   ];
 
   return (
