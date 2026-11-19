@@ -83,7 +83,7 @@ For this, Syncify keeps when each claim was made, when it was held for a check a
 
 Deleted backups and share codes stay in storage for about 9 more days, out of reach, so they can be brought back if Syncify is ever attacked. Backups replaced by newer ones are held the same way. Images you take off a Discover post, or delete with it, stay about 9 more days at their own link, off Discover. When you change a share code, what it held before is kept for 8 days so Syncify can put it back, then held the same way. After that, all of it is erased.
 
-Backups made before October 24, 2026 are brought in from Workers KV, so Delete everything and the 12-month cleanup delete them like any other. Their old copy stays in KV, where Syncify never brings back one that was deleted, and stops reading KV once every one is in.
+Backups made before October 24, 2026 are brought in from Workers KV, so Delete everything and the 12-month cleanup delete them like any other. Their old copy stays in KV, which Syncify stops reading once every one is in. Until then, Syncify never brings back one deleted on or after November 11, 2026. One deleted before that can come back once, as a Spotify account without a Syncify account, and the 12-month cleanup deletes it again.
 
 If an admin ever changed your account manually, for example by signing out your devices, that log entry keeps a one-way hash of your email after the account is deleted, so a later question about it can still be answered.
 
