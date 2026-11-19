@@ -31,7 +31,7 @@ If you break these terms, Syncify can delete your codes or posts, reset your han
 
 - **Marketplace items:** extensions, themes, snippets and apps are made by their own developers, not by Syncify. Syncify checks where each one loads from and leaves off the ones that fail, but not what their code does.
 - **Share codes:** applying a code installs the items in it. Look through them before you apply it.
-- **Spotify and Spicetify:** Syncify isn't made by Spotify or Spicetify, or tied to either. Their own terms still apply when you use them, and Spotify's don't allow changing its app, which Spicetify does.
+- **Spotify and Spicetify:** Syncify isn't made by Spotify or Spicetify, or tied to either. Their own terms still apply when you use them, and Spotify's may not allow tools that change its app, like Spicetify.
 
 ## For developers
 
