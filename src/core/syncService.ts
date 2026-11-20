@@ -88,8 +88,9 @@ export async function fetchRemoteState(
   // recompute it with the current rules. Otherwise updating Syncify alone would
   // make every unchanged install look different and re-upload.
   // Recomputing can also make older backups identical to each other, so keep
-  // only the newest backup for each distinct set of data. The safety copy is
-  // left out when it holds the same data as a recent backup.
+  // only the newest backup for each distinct set of data. The safety copy
+  // stays even with the same data as a recent one: it's an older point in
+  // time, kept apart.
   const [rehashed, safetyCopy, pinned, unapproved] = await Promise.all([
     Promise.all(remote.backups.map(withCurrentHash)),
     remote.safetyCopy ? withCurrentHash(remote.safetyCopy) : null,
@@ -105,11 +106,7 @@ export async function fetchRemoteState(
     ...remote,
     payload: backups[0] ?? null,
     backups,
-    safetyCopy:
-      safetyCopy &&
-      !backups.some((backup) => backup.payload_hash === safetyCopy.payload_hash)
-        ? safetyCopy
-        : null,
+    safetyCopy,
     // Pinned backups stay even with the same data as a recent one: unlike
     // it, they don't rotate out.
     pinned,

@@ -91,6 +91,26 @@ describe("BackupsTab", () => {
     expect(rows[2].textContent).toContain("Clean setup");
   });
 
+  it("gives focus back to a pinned row, not a recent one with the same data", () => {
+    const pinned = { ...makeBackup("old", [one], { at: "2026-11-01T10:00:00Z" }), backup: { id: "pin-1", kind: "pinned" as const } };
+    const recent = { ...older, backup: { id: "rolling-1", kind: "rolling" as const } };
+    renderTab({ remote: { ...remote, backups: [current, recent], pinned: [pinned] } });
+    const rows = screen.getAllByRole("button", { name: /^Preview restore of / });
+    expect(rows).toHaveLength(2);
+    fireEvent.click(rows[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(document.activeElement).toBe(screen.getAllByRole("button", { name: /^Preview restore of / })[1]);
+  });
+
+  it("shows a pinned safety copy once, as the safety copy, even with the same data as a recent backup", () => {
+    const safetyCopy = { ...older, backup: { id: "safe-1", kind: "pinned" as const, safety_copy: true } };
+    renderTab({ remote: { ...remote, safetyCopy } });
+    const rows = screen.getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    expect(rows[2].textContent).toContain("Safety copy");
+    expect(rows[2].querySelectorAll(".syncify-safety-mark")).toHaveLength(2);
+  });
+
   it("opens the preview in place and gives focus back to its row", async () => {
     const onRestore = vi.fn();
     renderTab({ onRestore });

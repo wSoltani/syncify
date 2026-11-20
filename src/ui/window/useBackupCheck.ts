@@ -85,6 +85,8 @@ export function useBackupCheck(config: SyncifyConfig) {
       const { remote } = base;
       remember({
         ...base,
+        // The safety copy stays as it was. The Worker may also move it; the
+        // next check shows that.
         remote: {
           ...remote,
           exists: true,
@@ -93,10 +95,6 @@ export function useBackupCheck(config: SyncifyConfig) {
             payload,
             ...remote.backups.filter((backup) => backup.payload_hash !== payload.payload_hash),
           ].slice(0, MAX_BACKUPS),
-          // Same data as the safety copy: show it once, as the new backup.
-          // The Worker may also move the safety copy; the next check shows that.
-          safetyCopy:
-            remote.safetyCopy?.payload_hash === payload.payload_hash ? null : remote.safetyCopy,
         },
       });
     },

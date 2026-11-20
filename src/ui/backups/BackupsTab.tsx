@@ -115,7 +115,12 @@ export function BackupsTab(props: {
   // Backups waiting for approval are only this Spotify account's.
   const shown = linked ? linked.remote : remote;
   const localHash = local?.hash ?? null;
-  const rowId = (row: BackupRowModel) => `${rowIdBase}-${row.backup.payload_hash}`;
+  // A row's own key: two backups can hold the same data, such as a pinned one
+  // and a recent one. Older Workers send no id.
+  const rowKey = (row: BackupRowModel) =>
+    row.backup.backup?.id ??
+    `${row.kind}-${row.backup.payload_hash}-${row.backup.metadata.last_sync_datetime}`;
+  const rowId = (row: BackupRowModel) => `${rowIdBase}-${rowKey(row)}`;
   const rowsOf = (backups: SyncifyPayload[], kind: BackupKind) =>
     backups.map((backup) => describeBackupRow(backup, kind, localHash));
   const backups = rowsOf(shown?.backups ?? [], "backup");
@@ -126,12 +131,15 @@ export function BackupsTab(props: {
   function renderRow(row: BackupRowModel) {
     return (
       <ListRow
-        key={`${row.kind}-${row.backup.payload_hash}-${row.backup.metadata.last_sync_datetime}`}
+        key={rowKey(row)}
         id={rowId(row)}
         name={row.name}
         nameMark={
           row.kind === "safety-copy" ? (
-            <ShieldIcon className="syncify-safety-mark" />
+            <>
+              <ShieldIcon className="syncify-safety-mark" />
+              {row.backup.backup?.safety_copy ? <PinIcon className="syncify-safety-mark" /> : null}
+            </>
           ) : row.kind === "pinned" ? (
             <PinIcon className="syncify-safety-mark" />
           ) : row.kind === "unapproved" ? (
