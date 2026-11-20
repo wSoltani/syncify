@@ -54,13 +54,20 @@ export async function runStartupSyncCheck(notices: LaunchNotices): Promise<void>
     openNotice(remoteState, notices, choose);
     const cloudKeyCount = remoteState.payload?.metadata.marketplace_key_count ?? 0;
 
-    if (remoteState.exists && shouldBlockAutoBackup(localSummary.keyCount, cloudKeyCount)) {
+    // Already in a backup, such as one just restored: nothing new to save.
+    if (remoteState.backups.some((backup) => backup.payload_hash === localSummary.hash)) return;
+
+    // Much smaller than the latest backup, as after Spotify was reset: wait for
+    // a restore. Not when it's the safety copy or a pinned backup, which
+    // only a restore brings back: that's backed up as the latest.
+    const restored = [remoteState.safetyCopy, ...remoteState.pinned].some(
+      (backup) => backup?.payload_hash === localSummary.hash,
+    );
+    if (remoteState.exists && !restored && shouldBlockAutoBackup(localSummary.keyCount, cloudKeyCount)) {
       Spicetify.showNotification("Syncify found a larger cloud backup. Open Syncify to restore before backing up.", true, 8000);
       return;
     }
 
-    // Already in a backup, such as one just restored: nothing new to save.
-    if (remoteState.backups.some((backup) => backup.payload_hash === localSummary.hash)) return;
     if (localSummary.keyCount === 0) return;
 
     const { unapproved } = await backupNow(config);

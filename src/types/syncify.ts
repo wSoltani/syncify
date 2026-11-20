@@ -61,6 +61,11 @@ interface SyncifyBackupInfo {
    */
   kind: "rolling" | "anchor" | "pinned" | "quarantined";
   /**
+   * A pinned backup that is also the safety copy. Missing on every other
+   * backup, and from Workers that can't pin the safety copy.
+   */
+  safety_copy?: boolean;
+  /**
    * Given on the website, the only place backups are named. Shown here, never
    * set here. Null or missing when it has none (older Workers send none).
    */
@@ -72,7 +77,10 @@ export interface SyncifyRemoteState {
   payload: SyncifyPayload | null;
   /** The latest backups, newest first. */
   backups: SyncifyPayload[];
-  /** An older backup kept aside and updated about once a week. */
+  /**
+   * An older backup kept aside and updated about once a week. It can also be
+   * pinned; it's then here and not in `pinned`.
+   */
   safetyCopy: SyncifyPayload | null;
   /** Backups pinned on the website, kept until unpinned there, newest first. */
   pinned: SyncifyPayload[];

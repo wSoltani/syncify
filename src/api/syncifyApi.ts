@@ -227,9 +227,12 @@ export async function downloadPayload(
   }
 
   const backups = all.filter((backup) => backup.backup?.kind === "rolling");
-  const safetyCopy =
-    all.find((backup) => backup.backup?.kind === "anchor") ?? null;
-  const pinned = all.filter((backup) => backup.backup?.kind === "pinned");
+  const isSafetyCopy = (backup: SyncifyPayload) =>
+    backup.backup?.kind === "anchor" || backup.backup?.safety_copy === true;
+  const safetyCopy = all.find(isSafetyCopy) ?? null;
+  const pinned = all.filter(
+    (backup) => backup.backup?.kind === "pinned" && !isSafetyCopy(backup),
+  );
   const unapproved = all.filter(
     (backup) => backup.backup?.kind === "quarantined",
   );
