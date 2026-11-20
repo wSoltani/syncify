@@ -34,6 +34,7 @@ const remote: SyncifyRemoteState = {
   payload: current,
   backups: [current, older],
   safetyCopy: null,
+  pinned: [],
   claim: null,
   unapproved: [],
   install: null,
@@ -79,6 +80,15 @@ describe("BackupsTab", () => {
     expect(rows[0].textContent).toContain("Current");
     expect(rows[0].querySelector("button")).toBeNull();
     expect(screen.getAllByRole("button", { name: /^Preview restore of / })).toHaveLength(1);
+  });
+
+  it("lists pinned backups after the recent ones, even with the same data", () => {
+    const pinned = makeBackup("now", [one, two], { at: "2026-11-10T10:00:00Z", name: "Clean setup" });
+    renderTab({ remote: { ...remote, pinned: [pinned] } });
+    const rows = screen.getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    expect(rows[2].textContent).toContain("Pinned");
+    expect(rows[2].textContent).toContain("Clean setup");
   });
 
   it("opens the preview in place and gives focus back to its row", async () => {

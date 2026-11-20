@@ -4,7 +4,7 @@ export { Button } from "./Button";
 export { Checkbox, CheckboxRow } from "./Checkbox";
 export { Dialog, DialogContent } from "./Dialog";
 export { Field } from "./Field";
-export { AlertIcon, CheckIcon, ShieldIcon } from "./icons";
+export { AlertIcon, CheckIcon, PinIcon, ShieldIcon } from "./icons";
 export { KeyButton } from "./KeyButton";
 export { List, ListDivider, ListRow } from "./ListRow";
 export { Badge, Mark } from "./Mark";

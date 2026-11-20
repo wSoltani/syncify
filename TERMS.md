@@ -1,6 +1,6 @@
 # Terms
 
-Updated November 19, 2026
+Updated November 20, 2026
 
 These terms cover Syncify: the Spicetify extension, its website and the server behind them. Syncify is free, and Wassim Soltani makes and runs it. By using Syncify, you agree to these terms. What it stores, and why, is in the [privacy note](PRIVACY.md).
 
@@ -16,6 +16,12 @@ These terms cover Syncify: the Spicetify extension, its website and the server b
 - **Public by design:** anyone with a code or its link can see what's in it and apply it in their own Spotify, and your profile page lists all your codes. Public Discover posts, handles and profile pages can be seen by anyone.
 - **Discover posts:** follow [what's allowed on Discover](https://syncify.wsoltani.com/discover/rules). Images are checked automatically, and some by a person, before they go public.
 - **Handles:** a handle can't pretend to be someone else or be offensive. Syncify can reset one that does, which also removes your socials.
+
+## Supporting Syncify
+
+- **A gift:** support on Ko-fi is a gift to a free project. Everything Syncify does for everyone stays free, and supporting doesn't buy more of it.
+- **Thanks:** supporters get extras like a badge, a profile color and pinned backups. They're thanks, not a paid service, and they can change.
+- **Payments:** Ko-fi takes the payment under its own terms. Syncify never sees or holds your money details. Refunds and monthly memberships are handled on Ko-fi.
 
 ## Not allowed
 

@@ -181,6 +181,7 @@ export async function downloadPayload(
       payload: null,
       backups: [],
       safetyCopy: null,
+      pinned: [],
       claim: readClaim(result?.claim),
       unapproved: [],
       install: readInstall(result?.install),
@@ -216,6 +217,7 @@ export async function downloadPayload(
       payload: body,
       backups: all.slice(0, RECENT_BACKUPS),
       safetyCopy: all[RECENT_BACKUPS] ?? null,
+      pinned: [],
       claim,
       unapproved: [],
       install,
@@ -227,6 +229,7 @@ export async function downloadPayload(
   const backups = all.filter((backup) => backup.backup?.kind === "rolling");
   const safetyCopy =
     all.find((backup) => backup.backup?.kind === "anchor") ?? null;
+  const pinned = all.filter((backup) => backup.backup?.kind === "pinned");
   const unapproved = all.filter(
     (backup) => backup.backup?.kind === "quarantined",
   );
@@ -239,6 +242,7 @@ export async function downloadPayload(
       payload: null,
       backups: [],
       safetyCopy: null,
+      pinned,
       claim,
       unapproved,
       install,
@@ -254,6 +258,7 @@ export async function downloadPayload(
       payload,
       backups: [safetyCopy],
       safetyCopy: null,
+      pinned,
       claim,
       unapproved,
       install,
@@ -262,7 +267,7 @@ export async function downloadPayload(
     };
   }
 
-  return { exists: true, payload, backups, safetyCopy, claim, unapproved, install, nudge, settings };
+  return { exists: true, payload, backups, safetyCopy, pinned, claim, unapproved, install, nudge, settings };
 }
 
 /**

@@ -24,6 +24,7 @@ const NO_REMOTE_STATE: SyncifyRemoteState = {
   payload: null,
   backups: [],
   safetyCopy: null,
+  pinned: [],
   claim: null,
   unapproved: [],
   install: null,

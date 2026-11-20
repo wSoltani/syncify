@@ -74,6 +74,8 @@ export interface SyncifyRemoteState {
   backups: SyncifyPayload[];
   /** An older backup kept aside and updated about once a week. */
   safetyCopy: SyncifyPayload | null;
+  /** Backups pinned on the website, kept until unpinned there, newest first. */
+  pinned: SyncifyPayload[];
   /** A pending claim on this Spotify account, sent with its backups. */
   claim: SyncifyClaim | null;
   /** Backups from installs this Spotify account hasn't approved, newest first. */
