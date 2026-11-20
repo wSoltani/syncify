@@ -180,7 +180,7 @@
     margin-inline: calc(-1 * var(--syncify-space-2));
 }
 
-.syncify-window-footer-about {
+.syncify-window-footer-meta {
     font-size: inherit;
 }
 

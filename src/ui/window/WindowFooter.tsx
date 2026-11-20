@@ -24,7 +24,7 @@ export function WindowFooter(props: {
     <footer className="syncify-window-footer">
       <span className="syncify-window-footer-version">
         <Meta
-          className="syncify-window-footer-about"
+          className="syncify-window-footer-meta"
           parts={[
             `Syncify ${project.version}`,
             ...legal.map(([label, url]) => (
@@ -51,7 +51,10 @@ export function WindowFooter(props: {
                 : openExternal(`${project.githubUrl}#updating`)
             }
           >
-            <Meta parts={[`${props.newerVersion} is out`, props.loadedByLoader ? "Reload" : "How to update"]} />
+            <Meta
+              className="syncify-window-footer-meta"
+              parts={[`${props.newerVersion} is out`, props.loadedByLoader ? "Reload" : "How to update"]}
+            />
           </Button>
         ) : null}
       </span>
