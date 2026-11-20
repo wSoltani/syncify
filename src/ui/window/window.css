@@ -186,7 +186,6 @@
 
 /* Privacy and Terms read as part of the version line, not as buttons. */
 .syncify-ui .syncify-window-footer-legal {
-    --syncify-btn-size: auto;
     padding: 0;
     font-size: inherit;
     font-weight: inherit;
