@@ -14,6 +14,8 @@ export function WindowFooter(props: {
     ["GitHub", project.githubUrl],
     ["Discord", project.discordUrl],
     ["Support on Ko-fi", project.kofiUrl],
+  ];
+  const legal: [string, string][] = [
     ["Privacy", `${project.webUrl}/privacy`],
     ["Terms", `${project.webUrl}/terms`],
   ];
@@ -21,7 +23,23 @@ export function WindowFooter(props: {
   return (
     <footer className="syncify-window-footer">
       <span className="syncify-window-footer-version">
-        <span>Syncify {project.version}</span>
+        <Meta
+          className="syncify-window-footer-meta"
+          parts={[
+            `Syncify ${project.version}`,
+            ...legal.map(([label, url]) => (
+              <Button
+                key={label}
+                variant="subtle"
+                size="tiny"
+                className="syncify-window-footer-legal"
+                onClick={() => openExternal(url)}
+              >
+                {label}
+              </Button>
+            )),
+          ]}
+        />
         {props.newerVersion ? (
           <Button
             variant="text"
@@ -33,7 +51,10 @@ export function WindowFooter(props: {
                 : openExternal(`${project.githubUrl}#updating`)
             }
           >
-            <Meta parts={[`${props.newerVersion} is out`, props.loadedByLoader ? "Reload" : "How to update"]} />
+            <Meta
+              className="syncify-window-footer-meta"
+              parts={[`${props.newerVersion} is out`, props.loadedByLoader ? "Reload" : "How to update"]}
+            />
           </Button>
         ) : null}
       </span>
