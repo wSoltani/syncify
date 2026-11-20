@@ -174,7 +174,31 @@
     gap: var(--syncify-space-3);
 }
 
+/* Help links: the button padding hangs outside the row, so their text lines up
+   with the version's edges on one line and when wrapped. */
+.syncify-window-footer-links {
+    margin-inline: calc(-1 * var(--syncify-space-2));
+}
+
+.syncify-window-footer-about {
+    font-size: inherit;
+}
+
+/* Privacy and Terms read as part of the version line, not as buttons. */
+.syncify-ui .syncify-window-footer-legal {
+    --syncify-btn-size: auto;
+    padding: 0;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.syncify-ui .syncify-window-footer-legal:hover:not(:disabled) {
+    background: transparent;
+    text-decoration: underline;
+}
+
 .syncify-ui .syncify-window-update {
+    margin-inline-start: calc(-1 * var(--syncify-space-2));
     color: var(--syncify-color-accent);
     font-weight: 700;
 }
