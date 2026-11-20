@@ -202,6 +202,11 @@
     font-weight: 700;
 }
 
+/* The update's facts take the button's color, not the meta's muted one. */
+.syncify-window-update .syncify-meta {
+    color: inherit;
+}
+
 /* The Account tab's check, centered on its label's capitals. */
 .syncify-tab-check {
     display: inline-flex;
