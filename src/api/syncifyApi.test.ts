@@ -13,7 +13,10 @@ vi.mock("../core/account", () => ({
   saveSalt: vi.fn(),
 }));
 vi.mock("../core/installKey", () => ({ getInstallKey: vi.fn() }));
-vi.mock("../core/client", () => ({ getClientHeaders: vi.fn().mockResolvedValue({}), replaceInstall: vi.fn() }));
+vi.mock("../core/client", () => ({
+  getClientHeaders: vi.fn().mockResolvedValue({ "x-syncify-install": "install-1" }),
+  replaceInstall: vi.fn(),
+}));
 vi.mock("../core/requestSignature", () => ({ signRequest: vi.fn().mockResolvedValue("signature") }));
 
 const identity = { hash: "a".repeat(64), field: "username" as const };
@@ -58,7 +61,7 @@ describe("request", () => {
       .mockResolvedValueOnce(new Response("{}"));
     const response = await request("https://worker.test", identity, {});
     expect(response.status).toBe(200);
-    expect(replaceInstall).toHaveBeenCalledOnce();
+    expect(replaceInstall).toHaveBeenCalledExactlyOnceWith("install-1");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -24,10 +24,13 @@ let installKey: Promise<InstallKey | null> | null = null;
  * from an install it doesn't trust; it's tried again on the next request.
  */
 export function getInstallKey(): Promise<InstallKey | null> {
-  installKey ??= loadInstallKey();
-  installKey.catch(() => {
-    installKey = null;
-  });
+  if (!installKey) {
+    const loading = loadInstallKey();
+    installKey = loading;
+    loading.catch(() => {
+      if (installKey === loading) installKey = null;
+    });
+  }
   return installKey;
 }
 

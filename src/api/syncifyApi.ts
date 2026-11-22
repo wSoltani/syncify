@@ -21,6 +21,7 @@ import { AccountError } from "./accountApi";
 const USER_HASH_HEADER = "x-syncify-user-hash";
 const IDENTITY_HEADER = "x-syncify-identity";
 const SIGNATURE_HEADER = "x-syncify-signature";
+const INSTALL_HEADER = "x-syncify-install";
 const INSTALL_KEY_HEADER = "x-syncify-install-key";
 const INSTALL_SIGNATURE_HEADER = "x-syncify-install-signature";
 const SALT_HEADER = "x-syncify-salt";
@@ -373,11 +374,13 @@ export async function request(
     );
   }
 
+  const clientHeaders = await getClientHeaders();
+  const sentInstall = clientHeaders[INSTALL_HEADER];
   const response = await fetch(url, {
     ...init,
     headers: {
       ...init.headers,
-      ...(await getClientHeaders()),
+      ...clientHeaders,
       [USER_HASH_HEADER]: identity.hash,
       [IDENTITY_HEADER]: identity.field,
       ...signing,
@@ -407,9 +410,10 @@ export async function request(
       return request(workerUrl, identity, init, path, true);
     }
     // This install's key no longer matches the one bound to its ID, such as
-    // after its stored key was lost: start over as a new install, once.
+    // when the key stored next to the ID was lost and made again: start over
+    // as a new install, once.
     if (code === "install_key_mismatch" && installKey) {
-      await replaceInstall();
+      await replaceInstall(sentInstall);
       return request(workerUrl, identity, init, path, true);
     }
   }

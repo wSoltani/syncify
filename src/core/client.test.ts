@@ -30,7 +30,31 @@ function fakeDatabase(values: Map<string, unknown>) {
           },
           put(value: unknown, key: string) {
             values.set(key, value);
+            setTimeout(() => transaction.oncomplete?.());
           },
+        }),
+      };
+      return transaction;
+    },
+  } as unknown as IDBDatabase;
+}
+
+/** A database whose transactions fail. */
+function failingDatabase() {
+  return {
+    close() {},
+    transaction() {
+      const transaction = {
+        oncomplete: null as (() => void) | null,
+        onerror: null as (() => void) | null,
+        onabort: null as (() => void) | null,
+        error: new Error("IndexedDB failed."),
+        objectStore: () => ({
+          get() {
+            setTimeout(() => transaction.onerror?.());
+            return { onsuccess: null };
+          },
+          put() {},
         }),
       };
       return transaction;
@@ -65,14 +89,29 @@ describe("getInstall", () => {
     expect(localStorage.getItem(FALLBACK_KEY)).toBeNull();
   });
 
-  it("never makes up another ID when the database fails, and tries again next time", async () => {
-    vi.mocked(openDatabase).mockRejectedValueOnce(new Error("IndexedDB is blocked."));
+  it("never makes up another ID when a read fails, and tries again next time", async () => {
+    vi.mocked(openDatabase).mockResolvedValueOnce(failingDatabase());
     const { getInstall } = await loadClient();
-    await expect(getInstall()).rejects.toThrow("IndexedDB is blocked.");
+    await expect(getInstall()).rejects.toThrow("IndexedDB failed.");
     expect(localStorage.getItem(FALLBACK_KEY)).toBeNull();
 
     vi.mocked(openDatabase).mockResolvedValue(fakeDatabase(new Map([["install-id", DATABASE_ID]])));
     expect(await getInstall()).toEqual({ id: DATABASE_ID, inDatabase: true });
+  });
+
+  it("replaces a refused ID once, however many requests were refused with it", async () => {
+    const values = new Map<string, unknown>([["install-id", DATABASE_ID]]);
+    vi.mocked(openDatabase).mockImplementation(async () => fakeDatabase(values));
+    const { getInstall, replaceInstall } = await loadClient();
+    await getInstall();
+    await Promise.all([replaceInstall(DATABASE_ID), replaceInstall(DATABASE_ID)]);
+    const replaced = (await getInstall()).id;
+    expect(replaced).not.toBe(DATABASE_ID);
+    expect(values.get("install-id")).toBe(replaced);
+
+    // A request refused under the old ID doesn't replace the new one.
+    await replaceInstall(DATABASE_ID);
+    expect((await getInstall()).id).toBe(replaced);
   });
 
   it("keeps the ID in localStorage on a device without IndexedDB", async () => {

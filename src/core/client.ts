@@ -17,7 +17,7 @@ const INSTALL_ID_FALLBACK_KEY = "syncify:install-id";
  * This install's ID, and whether it's kept in Syncify's database. Only an ID
  * kept there has a key of its own (installKey.ts), stored next to it.
  */
-export interface Install {
+interface Install {
   id: string;
   inDatabase: boolean;
 }
@@ -41,35 +41,46 @@ export async function getClientHeaders(): Promise<Record<string, string>> {
  * its own Spotify account. A read that failed is tried again next time.
  */
 export function getInstall(): Promise<Install> {
-  install ??= loadInstall();
-  install.catch(() => {
-    install = null;
-  });
+  if (!install) {
+    const loading = loadInstall();
+    install = loading;
+    loading.catch(() => {
+      if (install === loading) install = null;
+    });
+  }
   return install;
 }
 
+let replacing: Promise<void> | null = null;
+
 /**
  * Starts this install over with a new ID, once its key no longer matches the
- * one the backup service bound to the old ID (installKey.ts).
+ * one the backup service bound to `staleId`. Requests that were refused
+ * together share one new ID, and an ID already replaced isn't replaced again.
  */
-export async function replaceInstall(): Promise<Install> {
-  const db = await openDatabase();
-  if (!db) throw new Error("IndexedDB isn't available.");
-  const id = createInstallId();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    transaction.objectStore(STORE_NAME).put(id, INSTALL_ID_KEY);
-    transaction.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    transaction.onerror = transaction.onabort = () => {
-      db.close();
-      reject(transaction.error ?? new Error("IndexedDB failed."));
-    };
+export function replaceInstall(staleId: string): Promise<void> {
+  replacing ??= (async () => {
+    if ((await getInstall()).id !== staleId) return;
+    const db = await openDatabase();
+    if (!db) throw new Error("IndexedDB isn't available.");
+    const id = createInstallId();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      transaction.objectStore(STORE_NAME).put(id, INSTALL_ID_KEY);
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      transaction.onerror = transaction.onabort = () => {
+        db.close();
+        reject(transaction.error ?? new Error("IndexedDB failed."));
+      };
+    });
+    install = Promise.resolve({ id, inDatabase: true });
+  })().finally(() => {
+    replacing = null;
   });
-  install = Promise.resolve({ id, inDatabase: true });
-  return install;
+  return replacing;
 }
 
 async function loadInstall(): Promise<Install> {

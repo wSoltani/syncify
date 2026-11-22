@@ -7,7 +7,7 @@ export const STORE_NAME = "state";
 // change who this device is (readState's wait).
 const DATABASE_TIMEOUT_MS = 2000;
 
-/** No IndexedDB on this device at all: nothing is or can be stored in it. */
+/** This device can't use IndexedDB: nothing is or can be stored in it. */
 export class DatabaseUnavailableError extends Error {
   constructor() {
     super("IndexedDB isn't available.");
@@ -16,9 +16,10 @@ export class DatabaseUnavailableError extends Error {
 }
 
 /**
- * Opens Syncify's database, or resolves null when this device has no
- * IndexedDB. A database that exists but fails to open rejects: that is a
- * failure, never the same as having no database.
+ * Opens Syncify's database, or resolves null when this device can't use
+ * IndexedDB: none at all, or one that refuses to open. A blocked open waits
+ * for the other connection to close (each of Syncify's closes after its
+ * transaction) rather than giving up.
  */
 export function openDatabase(): Promise<IDBDatabase | null> {
   let factory: IDBFactory | undefined;
@@ -29,7 +30,7 @@ export function openDatabase(): Promise<IDBDatabase | null> {
   }
   if (!factory) return Promise.resolve(null);
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     let request: IDBOpenDBRequest;
     try {
       request = factory.open(DATABASE_NAME, 1);
@@ -41,8 +42,7 @@ export function openDatabase(): Promise<IDBDatabase | null> {
     request.onupgradeneeded = () => {
       request.result.createObjectStore(STORE_NAME);
     };
-    request.onerror = () => reject(request.error ?? new Error("IndexedDB failed to open."));
-    request.onblocked = () => reject(new Error("IndexedDB is blocked."));
+    request.onerror = () => resolve(null);
     request.onsuccess = () => resolve(request.result);
   });
 }
