@@ -8,12 +8,10 @@ const INSTALL_HEADER = "x-syncify-install";
 const TIMEZONE_HEADER = "x-syncify-timezone";
 
 // Kept in Syncify's own database (see database.ts), which survives the Spotify
-// profile resets that wipe localStorage.
+// profile resets that wipe localStorage. A device without IndexedDB keeps it
+// in localStorage instead.
 const INSTALL_ID_KEY = "install-id";
 const INSTALL_ID_FALLBACK_KEY = "syncify:install-id";
-// Every request waits for the install ID, so a stuck IndexedDB must not hold
-// them up: past this, the localStorage copy is used instead.
-const DATABASE_TIMEOUT_MS = 2000;
 
 /**
  * This install's ID, and whether it's kept in Syncify's database. Only an ID
@@ -37,44 +35,82 @@ export async function getClientHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+/**
+ * This install, read once per Spotify session. A slow database is waited for
+ * and a failing one rejects: another ID would make this device a stranger to
+ * its own Spotify account. A read that failed is tried again next time.
+ */
 export function getInstall(): Promise<Install> {
-  install ??= loadInstall().catch(() => ({
-    id: createInstallId(),
-    inDatabase: false,
-  }));
+  if (!install) {
+    const loading = loadInstall();
+    install = loading;
+    loading.catch(() => {
+      if (install === loading) install = null;
+    });
+  }
   return install;
 }
 
-async function loadInstall(): Promise<Install> {
-  const stored = await Promise.race([
-    readOrCreateInDatabase(),
-    new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), DATABASE_TIMEOUT_MS),
-    ),
-  ]);
-  if (stored) return { id: stored, inDatabase: true };
+let replacing: Promise<void> | null = null;
 
-  // No usable IndexedDB: keep the ID in localStorage instead.
-  try {
-    const existing = window.localStorage.getItem(INSTALL_ID_FALLBACK_KEY);
-    if (existing && isInstallId(existing)) {
-      return { id: existing, inDatabase: false };
-    }
-
-    const created = createInstallId();
-    window.localStorage.setItem(INSTALL_ID_FALLBACK_KEY, created);
-    return { id: created, inDatabase: false };
-  } catch {
-    return { id: createInstallId(), inDatabase: false };
-  }
+/**
+ * Starts this install over with a new ID, once its key no longer matches the
+ * one the backup service bound to `staleId`. Requests that were refused
+ * together share one new ID, and an ID already replaced isn't replaced again.
+ */
+export function replaceInstall(staleId: string): Promise<void> {
+  replacing ??= (async () => {
+    if ((await getInstall()).id !== staleId) return;
+    const db = await openDatabase();
+    if (!db) throw new Error("IndexedDB isn't available.");
+    const id = createInstallId();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      transaction.objectStore(STORE_NAME).put(id, INSTALL_ID_KEY);
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      transaction.onerror = transaction.onabort = () => {
+        db.close();
+        reject(transaction.error ?? new Error("IndexedDB failed."));
+      };
+    });
+    install = Promise.resolve({ id, inDatabase: true });
+  })().finally(() => {
+    replacing = null;
+  });
+  return replacing;
 }
 
+async function loadInstall(): Promise<Install> {
+  const stored = await readOrCreateInDatabase();
+  if (stored) return { id: stored, inDatabase: true };
+
+  // No IndexedDB on this device: keep the ID in localStorage instead.
+  const existing = readFallbackId();
+  if (existing) return { id: existing, inDatabase: false };
+  const created = createInstallId();
+  try {
+    window.localStorage.setItem(INSTALL_ID_FALLBACK_KEY, created);
+  } catch {
+    // Not kept: this Spotify session uses it anyway.
+  }
+  return { id: created, inDatabase: false };
+}
+
+/**
+ * The ID in Syncify's database, or null on a device without IndexedDB. An ID
+ * this device kept in localStorage before its database worked moves into the
+ * database rather than being replaced, and once the database has an ID the
+ * localStorage copy is removed, so no launch can use it again.
+ */
 async function readOrCreateInDatabase(): Promise<string | null> {
   const db = await openDatabase();
   if (!db) return null;
 
-  return new Promise((resolve) => {
-    let id: string | null = null;
+  const id = await new Promise<string>((resolve, reject) => {
+    let found: string | null = null;
 
     try {
       const transaction = db.transaction(STORE_NAME, "readwrite");
@@ -83,26 +119,43 @@ async function readOrCreateInDatabase(): Promise<string | null> {
 
       read.onsuccess = () => {
         if (typeof read.result === "string" && isInstallId(read.result)) {
-          id = read.result;
+          found = read.result;
           return;
         }
 
-        id = createInstallId();
-        store.put(id, INSTALL_ID_KEY);
+        found = readFallbackId() ?? createInstallId();
+        store.put(found, INSTALL_ID_KEY);
       };
       transaction.oncomplete = () => {
         db.close();
-        resolve(id);
+        if (found) resolve(found);
+        else reject(new Error("IndexedDB failed."));
       };
       transaction.onerror = transaction.onabort = () => {
         db.close();
-        resolve(null);
+        reject(transaction.error ?? new Error("IndexedDB failed."));
       };
-    } catch {
+    } catch (error) {
       db.close();
-      resolve(null);
+      reject(error);
     }
   });
+
+  try {
+    window.localStorage.removeItem(INSTALL_ID_FALLBACK_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+  return id;
+}
+
+function readFallbackId(): string | null {
+  try {
+    const value = window.localStorage.getItem(INSTALL_ID_FALLBACK_KEY);
+    return value && isInstallId(value) ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 function createInstallId(): string {

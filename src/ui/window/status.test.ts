@@ -160,24 +160,27 @@ describe("describeAlert", () => {
   const waiting = { id: "w1", device: "Windows", first_seen_at: 0 };
 
   it("puts someone else's claim before a waiting install", () => {
-    const alert = describeAlert(pending(), waiting);
-    expect(alert).toMatchObject({ kind: "claim", title: "j***n@example.com is securing this backup", canAnswer: true });
+    const alert = describeAlert(pending(), waiting, true);
+    expect(alert).toMatchObject({ kind: "claim", title: "j***n@example.com is securing this backup", canAnswer: true, signIn: false });
+    // Signed out, it can be this person's own: signing in is offered.
+    expect(describeAlert(pending(), waiting, false)).toMatchObject({ kind: "claim", canAnswer: true, signIn: true });
   });
 
   it("can't answer a claim already sent for a check", () => {
-    expect(describeAlert(pending({ not_me: true }), null)).toMatchObject({
+    expect(describeAlert(pending({ not_me: true }), null, false)).toMatchObject({
       kind: "claim",
-      title: "Syncify is checking this claim",
+      title: "Syncify is checking who is securing this backup",
       text: null,
       canAnswer: false,
+      signIn: false,
     });
   });
 
   it("shows a waiting install when no one else is claiming", () => {
-    expect(describeAlert(pending({ mine: true }), waiting)).toMatchObject({
+    expect(describeAlert(pending({ mine: true }), waiting, true)).toMatchObject({
       kind: "install",
-      title: "A new install on Windows wants to back up this Spotify account",
+      title: "Syncify on Windows wants to back up this Spotify account",
     });
-    expect(describeAlert(null, null)).toBeNull();
+    expect(describeAlert(null, null, true)).toBeNull();
   });
 });

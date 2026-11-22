@@ -65,8 +65,10 @@
 
 /* An alert that needs an answer takes the status's place. Its mark sits on
    the title's capitals, however many lines follow. */
+/* Narrower than a short line of text, the answers move under it, as in a notice. */
 .syncify-status-alert {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: var(--syncify-space-3);
     padding: var(--syncify-space-4);
@@ -76,6 +78,19 @@
 
 .syncify-status-alert .syncify-status-title {
     font-size: var(--syncify-text-heading);
+}
+
+/* The mark sits on the title's capitals, however many lines follow. */
+.syncify-status-alert-body {
+    display: flex;
+    flex: 1 1 var(--syncify-notice-text-min);
+    align-items: flex-start;
+    gap: var(--syncify-space-3);
+    min-width: 0;
+}
+
+.syncify-status-alert .syncify-status-text {
+    overflow-wrap: anywhere;
 }
 
 .syncify-status-alert-mark {
@@ -106,11 +121,15 @@
 .syncify-status-answers {
     flex: 0 0 auto;
     align-self: center;
+    margin-left: auto;
 }
 
 .syncify-status-answers {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: var(--syncify-space-2);
+    max-width: 100%;
 }
 
 /* The status in one line under an alert. */

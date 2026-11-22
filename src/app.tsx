@@ -7,6 +7,8 @@ import { initShortcut } from "./core/shortcut";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { createProfileMenuItem, createTopbarButton } from "./core/entryButtons";
 import { markNudgePanelShown } from "./core/nudge";
+import { loadSession } from "./core/account";
+import { DatabaseUnavailableError } from "./core/database";
 import { debug, warn } from "./core/log";
 import { SyncifyWindow } from "./ui/window/SyncifyWindow";
 import { closeWindow, isWindowOpen, openWindow } from "./ui/window/openWindow";
@@ -80,7 +82,27 @@ function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" }>): v
   // Syncify's own window already shows it.
   if (isWindowOpen()) return;
   debug("Opening claim notice");
-  openWindow(<ClaimNotice claim={claim} onClose={closeWindow} />);
+  // A session that couldn't be read isn't taken for signed out: the notice
+  // waits for a later launch. Only a device without IndexedDB has none.
+  loadSession()
+    .catch((error: unknown) => {
+      if (error instanceof DatabaseUnavailableError) return null;
+      throw error;
+    })
+    .then(
+      (session) => {
+        if (isWindowOpen()) return;
+        openWindow(
+          <ClaimNotice
+            claim={claim}
+            signedIn={session !== null}
+            onSignIn={() => openWindow(<SyncifyWindow tab="account" />)}
+            onClose={closeWindow}
+          />,
+        );
+      },
+      (error: unknown) => warn("Claim notice skipped", error),
+    );
 }
 
 // An admin undid someone else's claim on this Spotify account, found when

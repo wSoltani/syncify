@@ -27,7 +27,7 @@ import { accountTabStatus, describeSecureState } from "../account/secureState";
 import { backupItems } from "../backups/backupItems";
 import { BackupsTab } from "../backups/BackupsTab";
 import type { RestoreRequest } from "../backups/RestorePreview";
-import { notMeToast } from "../claimText";
+import { installAnswerToast, notMeToast } from "../claimText";
 import { Button, Notice, useStableId } from "../kit";
 import { FirstSyncDialog } from "../settings/FirstSyncDialog";
 import { SettingsTab } from "../settings/SettingsTab";
@@ -116,7 +116,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     localConfig: local?.spicetifyConfig ?? null,
     restoreResult: restoreResult.recent ? restoreResult.result : null,
   });
-  const alert = describeAlert(remote.claim, remote.install?.waiting[0] ?? null);
+  const alert = describeAlert(remote.claim, remote.install?.waiting[0] ?? null, session != null);
   // Signed out, the backup service decides; signed in, securing sends no
   // email, so any backup that isn't secured yet shows it. Account says the
   // same once open.
@@ -194,8 +194,8 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
       // Kept apart from the approved backups: shown with them after a check.
       if (unapproved) {
         await refresh({ silent: true });
-        setMessage({ kind: "warning", text: "Backed up, but kept apart until this install is approved." });
-        Spicetify.showNotification("Syncify: backed up, waiting for approval");
+        setMessage({ kind: "warning", text: "Backed up. This device needs approval before its backups count." });
+        Spicetify.showNotification("Syncify: backed up, this device needs approval");
         return;
       }
       // Nothing was stored, so the existing backup keeps its original time.
@@ -229,7 +229,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     setAnswering(true);
     try {
       await answerWaitingInstall(config, waiting.id, answer);
-      Spicetify.showNotification(answer === "approve" ? "Syncify: install approved" : "Syncify: install refused");
+      Spicetify.showNotification(installAnswerToast(answer));
       await refresh({ silent: true });
     } catch (error) {
       handleError(error);
@@ -245,7 +245,9 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   async function cancelOtherClaim() {
     setAnswering(true);
     try {
-      Spicetify.showNotification(notMeToast(await cancelPendingClaim(config)));
+      Spicetify.showNotification(
+        notMeToast(await cancelPendingClaim(config), otherClaim?.email ?? null),
+      );
       await refresh({ silent: true });
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : String(error) });
@@ -406,6 +408,8 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
               }}
               install={locked || secureState.kind === "secured" ? null : remote.install}
               restoreResult={restoreResult.result}
+              signedOut={session === null}
+              onSignIn={() => setTab("account")}
             />
           }
           canShareSettings={syncsSettings}

@@ -49,7 +49,7 @@ export async function getDeviceKey(
 
   // A key that couldn't be read is never replaced, or the session bound to it
   // would stop working: reading errors reject instead.
-  const stored = await readState<CryptoKeyPair>(DEVICE_KEY);
+  const stored = await readState<CryptoKeyPair>(DEVICE_KEY, { wait: true });
   if (isKeyPair(stored)) {
     deviceKey = Promise.resolve(stored);
     return stored;
@@ -68,7 +68,7 @@ export async function getDeviceKey(
 }
 
 export async function loadSession(): Promise<AccountSession | null> {
-  const stored = await readState<AccountSession>(SESSION_KEY);
+  const stored = await readState<AccountSession>(SESSION_KEY, { wait: true });
   return isSession(stored) ? stored : null;
 }
 

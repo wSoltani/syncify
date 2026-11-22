@@ -51,13 +51,20 @@ describe("claim text", () => {
   });
 
   it("writes someone else's claim as a title and a sentence", () => {
-    expect(describeOtherClaim({ status: "pending", mine: false, email: null, final_at: today, held: true })).toEqual({
+    const claim = { status: "pending" as const, mine: false, email: null, final_at: today, held: false };
+    expect(describeOtherClaim({ ...claim, held: true }, false)).toEqual({
       title: "Someone is securing this backup",
-      text: "Syncify is checking it.",
+      text: "Syncify is checking who is securing it.",
     });
-    expect(
-      describeOtherClaim({ status: "pending", mine: false, email: null, final_at: today, held: false, not_me: true }),
-    ).toEqual({ title: "Syncify is checking this claim", text: null });
+    expect(describeOtherClaim({ ...claim, not_me: true }, false)).toEqual({
+      title: "Syncify is checking who is securing this backup",
+      text: null,
+    });
+    // Signed out, it can be this person's own claim.
+    expect(describeOtherClaim(claim, false).text).toBe(
+      "If that's your email, sign in to Syncify here. If it isn't, press Not me today.",
+    );
+    expect(describeOtherClaim(claim, true).text).toBe("If that isn't you, press Not me today.");
   });
 
   it("names who no longer secures the backup", () => {
@@ -66,9 +73,12 @@ describe("claim text", () => {
     );
   });
 
-  it("names the waiting install's device when known", () => {
+  it("names the waiting device when known", () => {
     expect(waitingInstallTitle({ id: "w", device: null, first_seen_at: 0 })).toBe(
-      "A new install wants to back up this Spotify account",
+      "Another device wants to back up this Spotify account",
+    );
+    expect(waitingInstallTitle({ id: "w", device: "Windows", first_seen_at: 0 })).toBe(
+      "Syncify on Windows wants to back up this Spotify account",
     );
   });
 });

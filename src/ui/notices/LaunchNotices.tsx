@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { loadConfig } from "../../core/config";
 import { answerWaitingInstall, cancelPendingClaim } from "../../core/syncService";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "../../types/syncify";
-import { describeOtherClaim, notMeToast, undoneClaimTitle, waitingInstallTitle } from "../claimText";
+import { describeOtherClaim, installAnswerToast, notMeToast, undoneClaimTitle, waitingInstallTitle } from "../claimText";
 import { Button, DialogContent, Notice } from "../kit";
 
 type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
@@ -42,33 +42,43 @@ function useAnswer() {
 }
 
 /**
- * Someone else's claim on this Spotify account is pending. Not me from an
- * install this account trusts cancels it; from any other, Syncify checks it.
+ * Someone else's claim on this Spotify account is pending. Signed out, it can
+ * be this person's own, so signing in comes first: signed in as the claimer,
+ * Syncify knows it's theirs. Not me from an install this account trusts
+ * cancels the claim; from any other, Syncify checks it.
  */
-export function ClaimNotice(props: { claim: PendingClaim; onClose(): void }) {
-  const { title, text } = describeOtherClaim(props.claim);
+export function ClaimNotice(props: { claim: PendingClaim; signedIn: boolean; onSignIn(): void; onClose(): void }) {
+  const { title, text } = describeOtherClaim(props.claim, props.signedIn);
   const answer = useAnswer();
+  const notMe = () =>
+    void answer.run(async () => {
+      Spicetify.showNotification(notMeToast(await cancelPendingClaim(loadConfig()), props.claim.email));
+      props.onClose();
+    });
   return (
     <LaunchNotice
       title={title}
       error={answer.error}
       actions={
-        <>
-          <Button variant="secondary" onClick={props.onClose} disabled={answer.busy}>
-            Close
-          </Button>
-          <Button
-            onClick={() =>
-              void answer.run(async () => {
-                Spicetify.showNotification(notMeToast(await cancelPendingClaim(loadConfig())));
-                props.onClose();
-              })
-            }
-            disabled={answer.busy}
-          >
-            Not me
-          </Button>
-        </>
+        props.signedIn ? (
+          <>
+            <Button variant="secondary" onClick={props.onClose} disabled={answer.busy}>
+              Close
+            </Button>
+            <Button onClick={notMe} disabled={answer.busy}>
+              Not me
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary" onClick={notMe} disabled={answer.busy}>
+              Not me
+            </Button>
+            <Button onClick={props.onSignIn} disabled={answer.busy}>
+              That's me, sign in
+            </Button>
+          </>
+        )
       }
     >
       {text}
@@ -83,13 +93,13 @@ export function UndoneClaimNotice(props: { claim: UndoneClaim; onClose(): void }
   );
 }
 
-/** A new install on this Spotify account waits for this one to approve it. */
+/** A new device on this Spotify account waits for this one to approve it. */
 export function InstallNotice(props: { install: SyncifyWaitingInstall; onDone(): void }) {
   const answer = useAnswer();
   const reply = (action: "approve" | "reject") =>
     void answer.run(async () => {
       await answerWaitingInstall(loadConfig(), props.install.id, action);
-      Spicetify.showNotification(action === "approve" ? "Syncify: install approved" : "Syncify: install refused");
+      Spicetify.showNotification(installAnswerToast(action));
       props.onDone();
     });
 
