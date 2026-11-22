@@ -1,6 +1,6 @@
 # Privacy
 
-Updated November 20, 2026
+Updated November 22, 2026
 
 You don't need an account. Without one, your backups follow the Spotify account you're signed in with. An account adds your email, and lets you secure your backups so only you can restore them.
 
