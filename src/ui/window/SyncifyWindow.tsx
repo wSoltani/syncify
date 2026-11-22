@@ -187,17 +187,10 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
       setMessage(null);
       // This device's extension settings go with a backup made here.
       const sync = await prepareSettingsSync(config).catch(() => null);
-      const { payload, unchanged, unapproved, settings } = await backupNow(config, sync);
+      const { payload, unchanged, settings } = await backupNow(config, sync);
       await finishSettingsSync(sync, settings, remote.backups).catch(() => null);
       await refreshLocal();
 
-      // Kept apart from the approved backups: shown with them after a check.
-      if (unapproved) {
-        await refresh({ silent: true });
-        setMessage({ kind: "warning", text: "Backed up. This device needs approval before its backups count." });
-        Spicetify.showNotification("Syncify: backed up, this device needs approval");
-        return;
-      }
       // Nothing was stored, so the existing backup keeps its original time.
       if (!unchanged) backups.addBackup(payload);
       setActivity("idle");

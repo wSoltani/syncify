@@ -70,6 +70,12 @@ interface SyncifyBackupInfo {
    * set here. Null or missing when it has none (older Workers send none).
    */
   name?: string | null;
+  /**
+   * On a "quarantined" backup: this install made it, signed with its own key.
+   * A device the account hasn't approved yet (after Spotify was reinstalled,
+   * say) shows its own backups as its own. Missing from older Workers.
+   */
+  mine?: boolean;
 }
 
 export interface SyncifyRemoteState {
@@ -86,7 +92,10 @@ export interface SyncifyRemoteState {
   pinned: SyncifyPayload[];
   /** A pending claim on this Spotify account, sent with its backups. */
   claim: SyncifyClaim | null;
-  /** Backups from installs this Spotify account hasn't approved, newest first. */
+  /**
+   * Backups from other installs this Spotify account hasn't approved, newest
+   * first. This install's own are in `backups`.
+   */
   unapproved: SyncifyPayload[];
   /** Whether this Spotify account trusts this install, and who's waiting. */
   install: SyncifyInstallState | null;
@@ -104,8 +113,8 @@ export interface SyncifyRemoteState {
 
 /**
  * How far this Spotify account trusts this install. Backups from an install
- * it doesn't trust yet are kept apart until it's approved from a trusted
- * install or signed in.
+ * it doesn't trust yet are kept apart from other devices until it's approved
+ * from a trusted install or signed in; on this one they're its own.
  */
 export interface SyncifyInstallState {
   trusted: boolean;

@@ -31,14 +31,13 @@ import type { SettingsSync } from "./settingsSync";
 import type { SnippetCatalog } from "./sourceChecks";
 
 /**
- * `unapproved`: the backup is kept apart until this install is approved from
- * a trusted install of this Spotify account, or signs in. With `sync`, this
- * device's extension settings go with it, and `settings` is the answer.
+ * With `sync`, this device's extension settings go with it, and `settings`
+ * is the answer.
  */
 export async function backupNow(
   config: SyncifyConfig,
   sync?: SettingsSync | null,
-): Promise<{ payload: SyncifyPayload; unchanged: boolean; unapproved: boolean; settings: unknown }> {
+): Promise<{ payload: SyncifyPayload; unchanged: boolean; settings: unknown }> {
   if (!hasWorkerUrl(config)) {
     throw new Error("Syncify backup service is not configured.");
   }
@@ -54,13 +53,13 @@ export async function backupNow(
     );
   }
 
-  const { unchanged, unapproved, settings } = await uploadPayload(
+  const { unchanged, settings } = await uploadPayload(
     config.workerUrl,
     identity,
     payload,
     sync?.part,
   );
-  return { payload, unchanged, unapproved, settings };
+  return { payload, unchanged, settings };
 }
 
 /**
