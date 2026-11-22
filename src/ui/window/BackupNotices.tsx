@@ -17,6 +17,9 @@ export function BackupNotices(props: {
   /** This install's trust, when it isn't secured or locked. */
   install: SyncifyInstallState | null;
   restoreResult: RestoreResult | null;
+  /** Signed out: the notice about this install offers signing in. */
+  signedOut: boolean;
+  onSignIn(): void;
 }) {
   const { install } = props;
   // This install's own backups are kept apart until it's approved or signs
@@ -47,7 +50,20 @@ export function BackupNotices(props: {
           Your backup isn't secured. Anyone who knows your Spotify username can restore it.
         </Notice>
       ) : null}
-      {installText ? <Notice tone="info">{installText}</Notice> : null}
+      {installText ? (
+        <Notice
+          tone="info"
+          actions={
+            props.signedOut ? (
+              <Button size="small" onClick={props.onSignIn}>
+                Sign in
+              </Button>
+            ) : undefined
+          }
+        >
+          {installText}
+        </Notice>
+      ) : null}
       {props.restoreResult ? <ManualCommands manual={props.restoreResult.manual} /> : null}
     </>
   );

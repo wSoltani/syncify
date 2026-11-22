@@ -45,12 +45,14 @@ export function WindowStatusBlock(props: {
     return (
       <section className="syncify-status" aria-label="Status">
         <div className="syncify-status-alert" role="alert">
-          <span className="syncify-status-alert-mark">
-            <Mark tone="warning" icon={<AlertIcon />} />
-          </span>
-          <div className="syncify-status-text">
-            <h2 className="syncify-status-title">{alert.title}</h2>
-            {alert.kind === "claim" && alert.text ? <p className="syncify-status-sentence">{alert.text}</p> : null}
+          <div className="syncify-status-alert-body">
+            <span className="syncify-status-alert-mark">
+              <Mark tone="warning" icon={<AlertIcon />} />
+            </span>
+            <div className="syncify-status-text">
+              <h2 className="syncify-status-title">{alert.title}</h2>
+              {alert.kind === "claim" && alert.text ? <p className="syncify-status-sentence">{alert.text}</p> : null}
+            </div>
           </div>
           {alert.kind === "claim" ? (
             alert.signIn ? (

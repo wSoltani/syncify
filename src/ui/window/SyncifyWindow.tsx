@@ -408,6 +408,8 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
               }}
               install={locked || secureState.kind === "secured" ? null : remote.install}
               restoreResult={restoreResult.result}
+              signedOut={session === null}
+              onSignIn={() => setTab("account")}
             />
           }
           canShareSettings={syncsSettings}
