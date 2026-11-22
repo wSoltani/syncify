@@ -24,9 +24,11 @@ export function BackupNotices(props: {
   // Only a refused install hears about it. One that's waiting (after Spotify
   // was reinstalled, say) backs up and restores its own backups as usual,
   // and is trusted once it's approved or signs in.
-  const installText = props.install?.refused
-    ? "Another device on this Spotify account refused this one. Sign in to back up from it."
-    : null;
+  const installText = !props.install?.refused
+    ? null
+    : props.signedOut
+      ? "Syncify can't back up here until you sign in."
+      : "Syncify can't back up here. Sign in with the email that secured this backup.";
 
   return (
     <>

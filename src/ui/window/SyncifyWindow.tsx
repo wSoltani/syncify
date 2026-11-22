@@ -163,9 +163,9 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
       setMessage(null);
       return;
     }
-    // Refused by a trusted install: shown with this install's state.
+    // Refused by a trusted install: the notice above the backups says so.
     if (error instanceof InstallRefusedError) {
-      setMessage({ kind: "error", text: error.message });
+      setMessage(null);
       void refresh({ silent: true });
       return;
     }

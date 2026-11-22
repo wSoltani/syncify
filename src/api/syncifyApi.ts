@@ -68,12 +68,12 @@ export class LockedError extends Error {
 }
 
 /**
- * A trusted install of this Spotify account pressed Not mine for this one
+ * A trusted install of this Spotify account pressed Not me on this one
  * (HTTP 403). Signing in to the account that secured it lifts it.
  */
 export class InstallRefusedError extends Error {
   constructor() {
-    super("This Spotify account doesn't accept backups from this install. Sign in to back up.");
+    super("Syncify can't back up here until you sign in.");
     this.name = "InstallRefusedError";
   }
 }

@@ -51,7 +51,7 @@ export function WindowStatusBlock(props: {
             </span>
             <div className="syncify-status-text">
               <h2 className="syncify-status-title">{alert.title}</h2>
-              {alert.kind === "claim" && alert.text ? <p className="syncify-status-sentence">{alert.text}</p> : null}
+              {alert.text ? <p className="syncify-status-sentence">{alert.text}</p> : null}
             </div>
           </div>
           {alert.kind === "claim" ? (
@@ -76,10 +76,10 @@ export function WindowStatusBlock(props: {
                 onClick={() => props.onAnswerInstall("reject")}
                 disabled={props.answering}
               >
-                Not mine
+                Not me
               </Button>
               <Button onClick={() => props.onAnswerInstall("approve")} disabled={props.answering}>
-                Approve
+                That's me
               </Button>
             </span>
           )}

@@ -62,23 +62,34 @@ describe("claim text", () => {
     });
     // Signed out, it can be this person's own claim.
     expect(describeOtherClaim(claim, false).text).toBe(
-      "If that's your email, sign in to Syncify here. If it isn't, press Not me today.",
+      "If that's your email, sign in. If it isn't, press Not me today or only they'll be able to restore it.",
     );
-    expect(describeOtherClaim(claim, true).text).toBe("If that isn't you, press Not me today.");
+    expect(describeOtherClaim(claim, true).text).toBe(
+      "If that isn't you, press Not me today or only they'll be able to restore it.",
+    );
   });
 
   it("names who no longer secures the backup", () => {
     expect(undoneClaimTitle({ status: "undone", mine: false, email: null, undone_at: 0 })).toBe(
-      "This backup is no longer secured by another account",
+      "This backup is no longer secured",
     );
   });
 
-  it("names the waiting device when known", () => {
-    expect(waitingInstallTitle({ id: "w", device: null, first_seen_at: 0 })).toBe(
-      "Another device wants to back up this Spotify account",
+  it("asks about backups it can't place, naming the system only when known", () => {
+    const now = new Date(2026, 10, 22, 12, 0);
+    const nov20 = new Date(2026, 10, 20, 9, 0).getTime();
+    expect(waitingInstallTitle({ id: "w", device: "Windows", first_seen_at: nov20 }, now)).toBe(
+      "Did you back up from Windows on Nov 20?",
     );
-    expect(waitingInstallTitle({ id: "w", device: "Windows", first_seen_at: 0 })).toBe(
-      "Syncify on Windows wants to back up this Spotify account",
+    expect(waitingInstallTitle({ id: "w", device: null, first_seen_at: nov20 }, now)).toBe(
+      "Did you back up with Syncify on Nov 20?",
+    );
+    // A raw user agent isn't a name.
+    expect(waitingInstallTitle({ id: "w", device: "Mozilla/5.0 (X11)", first_seen_at: nov20 }, now)).toBe(
+      "Did you back up with Syncify on Nov 20?",
+    );
+    expect(waitingInstallTitle({ id: "w", device: "macOS", first_seen_at: now.getTime() }, now)).toBe(
+      "Did you back up from macOS today?",
     );
   });
 });

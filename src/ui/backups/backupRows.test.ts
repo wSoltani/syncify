@@ -39,7 +39,7 @@ describe("describeBackupRow", () => {
 
   it("marks a backup from an install not approved", () => {
     const row = describeBackupRow(makeBackup("h3", extensions, { device: "Linux" }), "unapproved", null);
-    expect(row.name).toBe("Not approved");
+    expect(row.name).toBe("Unconfirmed");
     expect(row.meta.slice(1)).toEqual(["2 items", "from Linux"]);
   });
 });

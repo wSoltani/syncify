@@ -41,30 +41,42 @@ export function describeOtherClaim(claim: PendingClaim, signedIn: boolean): {
     text: claim.held
       ? "Syncify is checking who is securing it."
       : signedIn
-        ? `If that isn't you, press Not me ${notMeBy(claim.final_at)}.`
-        : `If that's your email, sign in to Syncify here. If it isn't, press Not me ${notMeBy(claim.final_at)}.`,
+        ? `If that isn't you, press Not me ${notMeBy(claim.final_at)} or only they'll be able to restore it.`
+        : `If that's your email, sign in. If it isn't, press Not me ${notMeBy(claim.final_at)} or only they'll be able to restore it.`,
   };
 }
 
 /** What Syncify says on a Spotify account after an admin undid someone else's claim. */
 export function undoneClaimTitle(claim: UndoneClaim): string {
-  return `This backup is no longer secured by ${claim.email ?? "another account"}`;
+  return claim.email ? `This backup is no longer secured by ${claim.email}` : "This backup is no longer secured";
 }
 
 /** The toast after Not me. */
 export function notMeToast(result: "cancelled" | "checking", email: string | null): string {
-  if (result === "checking") return "Syncify: sent for a check";
+  if (result === "checking") return "Syncify: we'll check who's securing it";
   return email ? `Syncify: ${email} won't secure this backup` : "Syncify: this backup won't be secured";
 }
 
-/** "Syncify on Windows wants to back up this Spotify account" */
-export function waitingInstallTitle(install: SyncifyWaitingInstall): string {
-  return install.device
-    ? `Syncify on ${install.device} wants to back up this Spotify account`
-    : "Another device wants to back up this Spotify account";
+// The systems Syncify names a device by. Anything else is a raw user agent.
+const KNOWN_SYSTEMS = new Set(["Windows", "macOS", "Linux"]);
+
+/**
+ * Backups this Syncify can't place, as a question: "Did you back up from
+ * Windows on Nov 20?". A question, because the same computer can show up as
+ * a new one after Spotify is reinstalled, and "yes" is then the right answer.
+ */
+export function waitingInstallTitle(install: SyncifyWaitingInstall, now = new Date()): string {
+  const day = claimDay(install.first_seen_at, now);
+  const when = day === "today" ? day : `on ${day}`;
+  return install.device && KNOWN_SYSTEMS.has(install.device)
+    ? `Did you back up from ${install.device} ${when}?`
+    : `Did you back up with Syncify ${when}?`;
 }
 
-/** The toast after answering a waiting device. */
+/** The sentence under that question. */
+export const WAITING_INSTALL_TEXT = "Syncify can't tell who made those backups. Not me deletes them and blocks new ones.";
+
+/** The toast after That's me or Not me on those backups. */
 export function installAnswerToast(action: "approve" | "reject"): string {
-  return action === "approve" ? "Syncify: device approved" : "Syncify: device refused";
+  return action === "approve" ? "Syncify: backups kept" : "Syncify: backups deleted";
 }

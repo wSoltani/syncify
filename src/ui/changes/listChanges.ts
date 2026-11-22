@@ -87,7 +87,7 @@ export function listChanges(preview: RestorePreview, checks: SourceChecks, choic
         : fixed.has(item.key)
           ? "Not in Marketplace's list"
           : choices.unapproved && isOptional
-            ? "Not approved"
+            ? "Unconfirmed"
             : null,
     };
     const change: ChangeLabel | null =

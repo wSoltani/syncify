@@ -7,8 +7,8 @@ const CANCEL_CLAIM_PATH = "/claims/cancel";
 
 const ERROR_MESSAGES: Record<string, string> = {
   no_backup: "Back up first, then secure your backup.",
-  unsupported_identity: "This Spotify account can't be secured.",
-  too_many_accounts: "Your account already has 10 Spotify accounts linked.",
+  unsupported_identity: "This backup can't be secured.",
+  too_many_accounts: "Your account already secures 10 backups.",
   undone: "This backup can't be secured with your account.",
   offline: "Couldn't reach Syncify. Check your connection and try again.",
 };
