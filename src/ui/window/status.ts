@@ -167,16 +167,18 @@ export function describeChanges(
 
 /** An alert that needs an answer, shown as the status. */
 export type WindowAlert =
-  | { kind: "claim"; title: string; text: string | null; canAnswer: boolean }
+  | { kind: "claim"; title: string; text: string | null; canAnswer: boolean; signIn: boolean }
   | { kind: "install"; title: string; install: SyncifyWaitingInstall };
 
 /** Someone else securing this backup comes first, then a new install. */
 export function describeAlert(
   claim: SyncifyClaim | null,
   waiting: SyncifyWaitingInstall | null,
+  signedIn: boolean,
 ): WindowAlert | null {
   if (claim?.status === "pending" && !claim.mine) {
-    return { kind: "claim", ...describeOtherClaim(claim), canAnswer: !claim.not_me };
+    const canAnswer = !claim.not_me;
+    return { kind: "claim", ...describeOtherClaim(claim, signedIn), canAnswer, signIn: canAnswer && !signedIn };
   }
   if (waiting) {
     return {

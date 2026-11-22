@@ -31,7 +31,7 @@ describe("InstallNotice", () => {
       fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     });
     expect(answerWaitingInstall).toHaveBeenCalledWith(config, "w", "approve");
-    expect(showNotification).toHaveBeenCalledWith("Syncify: install approved");
+    expect(showNotification).toHaveBeenCalledWith("Syncify: device approved");
     expect(onDone).toHaveBeenCalledOnce();
   });
 
@@ -49,21 +49,27 @@ describe("InstallNotice", () => {
 });
 
 describe("ClaimNotice", () => {
+  const claim = { status: "pending" as const, mine: false, email: "j***n@gmail.com", final_at: Date.now(), held: false };
+
   it("answers Not me and closes", async () => {
     vi.mocked(cancelPendingClaim).mockResolvedValue("cancelled");
     const onClose = vi.fn();
-    render(
-      <ClaimNotice
-        claim={{ status: "pending", mine: false, email: "j***n@gmail.com", final_at: Date.now(), held: false }}
-        onClose={onClose}
-      />,
-    );
+    render(<ClaimNotice claim={claim} signedIn onSignIn={() => {}} onClose={onClose} />);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Not me" }));
     });
     expect(cancelPendingClaim).toHaveBeenCalledOnce();
-    expect(showNotification).toHaveBeenCalledWith("Syncify: claim cancelled");
+    expect(showNotification).toHaveBeenCalledWith("Syncify: j***n@gmail.com won't secure this backup");
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("offers signing in first when signed out, without answering", () => {
+    const onSignIn = vi.fn();
+    render(<ClaimNotice claim={claim} signedIn={false} onSignIn={onSignIn} onClose={() => {}} />);
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Not me", "That's me, sign in"]);
+    fireEvent.click(screen.getByRole("button", { name: "That's me, sign in" }));
+    expect(onSignIn).toHaveBeenCalledOnce();
+    expect(cancelPendingClaim).not.toHaveBeenCalled();
   });
 });
 

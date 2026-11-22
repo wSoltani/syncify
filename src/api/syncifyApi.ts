@@ -1,4 +1,4 @@
-import { getClientHeaders } from "../core/client";
+import { getClientHeaders, replaceInstall } from "../core/client";
 import {
   clearSession,
   getDeviceKey,
@@ -7,6 +7,7 @@ import {
   saveSalt,
 } from "../core/account";
 import { getInstallKey } from "../core/installKey";
+import { DatabaseUnavailableError } from "../core/database";
 import { signRequest } from "../core/requestSignature";
 import type { UserIdentity } from "../core/user";
 import type {
@@ -340,8 +341,11 @@ export async function request(
 ): Promise<Response> {
   const url = path ? `${workerUrl.replace(/\/+$/, "")}${path}` : workerUrl;
   const method = init.method ?? "GET";
-  const session = await loadSession().catch(() => null);
-  const keys = session ? await getDeviceKey(false).catch(() => null) : null;
+  // What this device is signed in as is never guessed: a read that failed
+  // rejects rather than sending the request as a stranger's. Only a device
+  // without IndexedDB has nothing stored.
+  const session = await loadSession().catch(withoutDatabase);
+  const keys = session ? await getDeviceKey(false).catch(withoutDatabase) : null;
   const installKey = await getInstallKey();
   const signing: Record<string, string> = {};
   const salt = (await getSalt()) ?? NO_SALT;
@@ -402,6 +406,12 @@ export async function request(
       await clearSession();
       return request(workerUrl, identity, init, path, true);
     }
+    // This install's key no longer matches the one bound to its ID, such as
+    // after its stored key was lost: start over as a new install, once.
+    if (code === "install_key_mismatch" && installKey) {
+      await replaceInstall();
+      return request(workerUrl, identity, init, path, true);
+    }
   }
   if (code === "claimed" || code === "not_owner" || code === "not_linked") {
     throw new LockedError(code);
@@ -460,4 +470,10 @@ export function readClaim(value: unknown): SyncifyClaim | null {
     held: claim.held === true,
     ...(claim.not_me === true ? { not_me: true as const } : {}),
   };
+}
+
+/** Nothing stored on a device without IndexedDB; any other failure stands. */
+function withoutDatabase(error: unknown): null {
+  if (error instanceof DatabaseUnavailableError) return null;
+  throw error;
 }

@@ -53,7 +53,16 @@ export function WindowStatusBlock(props: {
             {alert.kind === "claim" && alert.text ? <p className="syncify-status-sentence">{alert.text}</p> : null}
           </div>
           {alert.kind === "claim" ? (
-            alert.canAnswer ? (
+            alert.signIn ? (
+              <span className="syncify-status-answers">
+                <Button variant="secondary" onClick={props.onNotMe} disabled={props.answering}>
+                  Not me
+                </Button>
+                <Button onClick={() => props.onAction("sign-in")} disabled={props.answering}>
+                  That's me, sign in
+                </Button>
+              </span>
+            ) : alert.canAnswer ? (
               <Button variant="secondary" onClick={props.onNotMe} disabled={props.answering}>
                 Not me
               </Button>

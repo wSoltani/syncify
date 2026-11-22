@@ -3,10 +3,23 @@
 // private key can't be exported.
 const DATABASE_NAME = "syncify";
 export const STORE_NAME = "state";
-// A stuck IndexedDB must not hold Syncify up.
+// A stuck IndexedDB must not hold Syncify up, except where giving up would
+// change who this device is (readState's wait).
 const DATABASE_TIMEOUT_MS = 2000;
 
-/** Opens Syncify's database, or resolves null when IndexedDB can't be used. */
+/** No IndexedDB on this device at all: nothing is or can be stored in it. */
+export class DatabaseUnavailableError extends Error {
+  constructor() {
+    super("IndexedDB isn't available.");
+    this.name = "DatabaseUnavailableError";
+  }
+}
+
+/**
+ * Opens Syncify's database, or resolves null when this device has no
+ * IndexedDB. A database that exists but fails to open rejects: that is a
+ * failure, never the same as having no database.
+ */
 export function openDatabase(): Promise<IDBDatabase | null> {
   let factory: IDBFactory | undefined;
   try {
@@ -16,7 +29,7 @@ export function openDatabase(): Promise<IDBDatabase | null> {
   }
   if (!factory) return Promise.resolve(null);
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let request: IDBOpenDBRequest;
     try {
       request = factory.open(DATABASE_NAME, 1);
@@ -28,8 +41,8 @@ export function openDatabase(): Promise<IDBDatabase | null> {
     request.onupgradeneeded = () => {
       request.result.createObjectStore(STORE_NAME);
     };
-    request.onerror = () => resolve(null);
-    request.onblocked = () => resolve(null);
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB failed to open."));
+    request.onblocked = () => reject(new Error("IndexedDB is blocked."));
     request.onsuccess = () => resolve(request.result);
   });
 }
@@ -42,12 +55,13 @@ export function openDatabase(): Promise<IDBDatabase | null> {
 function runInStore<T>(
   mode: IDBTransactionMode,
   run: (store: IDBObjectStore) => IDBRequest,
+  wait = false,
 ): Promise<T> {
   const done = openDatabase().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
         if (!db) {
-          reject(new Error("IndexedDB isn't available."));
+          reject(new DatabaseUnavailableError());
           return;
         }
 
@@ -69,6 +83,7 @@ function runInStore<T>(
       }),
   );
 
+  if (wait) return done;
   return Promise.race([
     done,
     new Promise<never>((_, reject) =>
@@ -80,8 +95,13 @@ function runInStore<T>(
   ]);
 }
 
-export function readState<T>(key: string): Promise<T | undefined> {
-  return runInStore<T | undefined>("readonly", (store) => store.get(key));
+/**
+ * With `wait`, the read waits for a slow database instead of giving up: for
+ * what says who this device is (its install, its keys, its session), where
+ * giving up would send a request as someone else.
+ */
+export function readState<T>(key: string, options: { wait?: boolean } = {}): Promise<T | undefined> {
+  return runInStore<T | undefined>("readonly", (store) => store.get(key), options.wait);
 }
 
 export async function writeState(key: string, value: unknown): Promise<void> {

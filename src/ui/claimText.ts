@@ -26,17 +26,23 @@ export function notMeBy(at: number): string {
   return day === "today" ? day : `by ${day}`;
 }
 
-/** Someone else's claim on this Spotify account, as a title and a sentence. */
-export function describeOtherClaim(claim: PendingClaim): {
+/**
+ * Someone else's claim on this Spotify account, as a title and a sentence.
+ * Signed out, it can be this person's own: from another computer, or after
+ * Syncify's data here was lost.
+ */
+export function describeOtherClaim(claim: PendingClaim, signedIn: boolean): {
   title: string;
   text: string | null;
 } {
-  if (claim.not_me) return { title: "Syncify is checking this claim", text: null };
+  if (claim.not_me) return { title: "Syncify is checking who is securing this backup", text: null };
   return {
     title: `${claim.email ?? "Someone"} is securing this backup`,
     text: claim.held
-      ? "Syncify is checking it."
-      : `If that isn't you, press Not me ${notMeBy(claim.final_at)}.`,
+      ? "Syncify is checking who is securing it."
+      : signedIn
+        ? `If that isn't you, press Not me ${notMeBy(claim.final_at)}.`
+        : `If that's your email, sign in to Syncify here. If it isn't, press Not me ${notMeBy(claim.final_at)}.`,
   };
 }
 
@@ -46,11 +52,19 @@ export function undoneClaimTitle(claim: UndoneClaim): string {
 }
 
 /** The toast after Not me. */
-export function notMeToast(result: "cancelled" | "checking"): string {
-  return result === "cancelled" ? "Syncify: claim cancelled" : "Syncify: sent for a check";
+export function notMeToast(result: "cancelled" | "checking", email: string | null): string {
+  if (result === "checking") return "Syncify: sent for a check";
+  return email ? `Syncify: ${email} won't secure this backup` : "Syncify: this backup won't be secured";
 }
 
-/** "A new install on Windows wants to back up this Spotify account" */
+/** "Syncify on Windows wants to back up this Spotify account" */
 export function waitingInstallTitle(install: SyncifyWaitingInstall): string {
-  return `A new install${install.device ? ` on ${install.device}` : ""} wants to back up this Spotify account`;
+  return install.device
+    ? `Syncify on ${install.device} wants to back up this Spotify account`
+    : "Another device wants to back up this Spotify account";
+}
+
+/** The toast after answering a waiting device. */
+export function installAnswerToast(action: "approve" | "reject"): string {
+  return action === "approve" ? "Syncify: device approved" : "Syncify: device refused";
 }

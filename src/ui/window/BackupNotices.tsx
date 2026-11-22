@@ -25,8 +25,8 @@ export function BackupNotices(props: {
     !install || install.trusted
       ? null
       : install.refused
-        ? "This Spotify account refused backups from this install. Sign in to back up from it."
-        : "This install isn't approved yet. Its backups are kept apart until you approve it from another install or sign in.";
+        ? "Another device on this Spotify account refused this one. Sign in to back up from it."
+        : "This device isn't approved yet. Sign in, or approve it on your other device.";
 
   return (
     <>

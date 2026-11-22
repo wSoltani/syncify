@@ -17,13 +17,18 @@ interface InstallKey {
 
 let installKey: Promise<InstallKey | null> | null = null;
 
+/**
+ * This install's key, or null for an install kept in localStorage (no key by
+ * design). A key that couldn't be read rejects, so no request goes out
+ * without the key the backup service knows, which would be kept apart as
+ * from an install it doesn't trust; it's tried again on the next request.
+ */
 export function getInstallKey(): Promise<InstallKey | null> {
   installKey ??= loadInstallKey();
-  // A key that couldn't be read or stored is tried again on the next request.
   installKey.catch(() => {
     installKey = null;
   });
-  return installKey.catch(() => null);
+  return installKey;
 }
 
 async function loadInstallKey(): Promise<InstallKey | null> {
@@ -31,7 +36,7 @@ async function loadInstallKey(): Promise<InstallKey | null> {
 
   // A key that couldn't be read is never replaced, or this install would
   // stop matching the key the backup service knows: reading errors reject.
-  const stored = await readState<CryptoKeyPair>(INSTALL_KEY);
+  const stored = await readState<CryptoKeyPair>(INSTALL_KEY, { wait: true });
   const pair = isKeyPair(stored) ? stored : await createAndStore();
   return {
     privateKey: pair.privateKey,

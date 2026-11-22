@@ -71,7 +71,7 @@ export async function runStartupSyncCheck(notices: LaunchNotices): Promise<void>
     if (localSummary.keyCount === 0) return;
 
     const { unapproved } = await backupNow(config);
-    Spicetify.showNotification(unapproved ? "Syncify: backed up, waiting for approval" : "Syncify auto-backup complete");
+    Spicetify.showNotification(unapproved ? "Syncify: backed up, this device needs approval" : "Syncify auto-backup complete");
   } catch (error) {
     // A secured backup refuses backups from a device that isn't signed in.
     if (error instanceof LockedError || error instanceof InstallRefusedError) {

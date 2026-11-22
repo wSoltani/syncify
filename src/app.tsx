@@ -7,6 +7,7 @@ import { initShortcut } from "./core/shortcut";
 import { applyEntryPoint, setEntryPointTargets } from "./core/entryPoints";
 import { createProfileMenuItem, createTopbarButton } from "./core/entryButtons";
 import { markNudgePanelShown } from "./core/nudge";
+import { loadSession } from "./core/account";
 import { debug, warn } from "./core/log";
 import { SyncifyWindow } from "./ui/window/SyncifyWindow";
 import { closeWindow, isWindowOpen, openWindow } from "./ui/window/openWindow";
@@ -80,7 +81,19 @@ function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" }>): v
   // Syncify's own window already shows it.
   if (isWindowOpen()) return;
   debug("Opening claim notice");
-  openWindow(<ClaimNotice claim={claim} onClose={closeWindow} />);
+  void loadSession()
+    .catch(() => null)
+    .then((session) => {
+      if (isWindowOpen()) return;
+      openWindow(
+        <ClaimNotice
+          claim={claim}
+          signedIn={session !== null}
+          onSignIn={() => openWindow(<SyncifyWindow tab="account" />)}
+          onClose={closeWindow}
+        />,
+      );
+    });
 }
 
 // An admin undid someone else's claim on this Spotify account, found when
