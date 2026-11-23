@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { openDatabase } from "./database";
 
-vi.mock("./database", () => ({ openDatabase: vi.fn(), STORE_NAME: "state" }));
+// Retries are database.ts's own (database.test.ts): here a failure is final.
+vi.mock("./database", () => ({
+  openDatabase: vi.fn(),
+  STORE_NAME: "state",
+  DURABLE: { durability: "strict" },
+  retrying: <T>(attempt: () => Promise<T>) => attempt(),
+}));
 vi.mock("./projectConfig", () => ({ getProjectConfig: () => ({ version: "1.0.0" }) }));
 
 const DATABASE_ID = "11111111-1111-4111-8111-111111111111";

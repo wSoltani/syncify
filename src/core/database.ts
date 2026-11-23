@@ -4,8 +4,15 @@
 const DATABASE_NAME = "syncify";
 export const STORE_NAME = "state";
 // A stuck IndexedDB must not hold Syncify up, except where giving up would
-// change who this device is (readState's wait).
+// change who this device is (`wait`): those reads and writes wait instead.
 const DATABASE_TIMEOUT_MS = 2000;
+
+/**
+ * Written to disk before the transaction completes, not left to the
+ * browser's next flush, so a Spotify that's closed or killed right after
+ * (Spicetify's apply restarts it) can't lose who this device is.
+ */
+export const DURABLE: IDBTransactionOptions = { durability: "strict" };
 
 /** This device can't use IndexedDB: nothing is or can be stored in it. */
 export class DatabaseUnavailableError extends Error {
@@ -53,9 +60,47 @@ export function openDatabase(): Promise<IDBDatabase | null> {
     };
     request.onsuccess = () => {
       markOpened();
+      keepStorage();
       resolve(request.result);
     };
   });
+}
+
+// How often what says who this device is gets read again after a failure,
+// and how long to wait before each try.
+const RETRY_DELAYS_MS = [500, 1500, 4000];
+
+/**
+ * Runs `attempt` again after a failure, a few times with growing pauses, so a
+ * database that fails once at launch (busy, still starting) doesn't fail the
+ * request that needed it. The last failure rejects.
+ */
+export async function retrying<T>(attempt: () => Promise<T>): Promise<T> {
+  for (const delay of RETRY_DELAYS_MS) {
+    try {
+      return await attempt();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  return attempt();
+}
+
+let keepAsked = false;
+
+/**
+ * Asks the browser, once per Spotify session, to keep this origin's storage
+ * when disk space runs low, so Syncify's ID and keys aren't cleared with the
+ * cache. Spotify can refuse; nothing depends on the answer.
+ */
+function keepStorage(): void {
+  if (keepAsked) return;
+  keepAsked = true;
+  try {
+    void navigator.storage?.persist?.().catch(() => false);
+  } catch {
+    // Not offered here.
+  }
 }
 
 function hasOpened(): boolean {
@@ -84,6 +129,8 @@ function runInStore<T>(
   run: (store: IDBObjectStore) => IDBRequest,
   wait = false,
 ): Promise<T> {
+  // Anything that waits says who this device is, so its writes go to disk.
+  const options = wait && mode === "readwrite" ? DURABLE : undefined;
   const done = openDatabase().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
@@ -93,7 +140,7 @@ function runInStore<T>(
         }
 
         try {
-          const transaction = db.transaction(STORE_NAME, mode);
+          const transaction = db.transaction(STORE_NAME, mode, options);
           const request = run(transaction.objectStore(STORE_NAME));
           transaction.oncomplete = () => {
             db.close();
@@ -131,8 +178,13 @@ export function readState<T>(key: string, options: { wait?: boolean } = {}): Pro
   return runInStore<T | undefined>("readonly", (store) => store.get(key), options.wait);
 }
 
-export async function writeState(key: string, value: unknown): Promise<void> {
-  await runInStore("readwrite", (store) => store.put(value, key));
+/**
+ * With `wait`, the write waits for a slow database and goes to disk before it
+ * resolves: for what says who this device is. Without it, a write that took
+ * too long rejects even though it may still land.
+ */
+export async function writeState(key: string, value: unknown, options: { wait?: boolean } = {}): Promise<void> {
+  await runInStore("readwrite", (store) => store.put(value, key), options.wait);
 }
 
 export async function deleteState(key: string): Promise<void> {

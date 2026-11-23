@@ -1,5 +1,5 @@
 import { getInstall } from "./client";
-import { readState, writeState } from "./database";
+import { readState, retrying, writeState } from "./database";
 import { createDeviceKey, exportPublicKey } from "./requestSignature";
 
 // This install's own key, which signs every request to the backup service so
@@ -39,7 +39,7 @@ async function loadInstallKey(): Promise<InstallKey | null> {
 
   // A key that couldn't be read is never replaced, or this install would
   // stop matching the key the backup service knows: reading errors reject.
-  const stored = await readState<CryptoKeyPair>(INSTALL_KEY, { wait: true });
+  const stored = await retrying(() => readState<CryptoKeyPair>(INSTALL_KEY, { wait: true }));
   const pair = isKeyPair(stored) ? stored : await createAndStore();
   return {
     privateKey: pair.privateKey,
@@ -49,7 +49,7 @@ async function loadInstallKey(): Promise<InstallKey | null> {
 
 async function createAndStore(): Promise<CryptoKeyPair> {
   const created = await createDeviceKey();
-  await writeState(INSTALL_KEY, created);
+  await writeState(INSTALL_KEY, created, { wait: true });
   return created;
 }
 

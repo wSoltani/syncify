@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openDatabase } from "./database";
+import { openDatabase, retrying } from "./database";
 
 const OPENED_KEY = "syncify:database-opened";
 
@@ -38,5 +38,31 @@ describe("openDatabase", () => {
 
     stubIndexedDb("error");
     await expect(openDatabase()).rejects.toThrow("IndexedDB failed to open.");
+  });
+});
+
+describe("retrying", () => {
+  it("tries again after a failure and gives up after the last try", async () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const flaky = retrying(async () => {
+        calls += 1;
+        if (calls < 3) throw new Error("busy");
+        return "id";
+      });
+      await vi.runAllTimersAsync();
+      expect(await flaky).toBe("id");
+      expect(calls).toBe(3);
+
+      const broken = retrying(async () => {
+        throw new Error("IndexedDB failed.");
+      });
+      const settled = expect(broken).rejects.toThrow("IndexedDB failed.");
+      await vi.runAllTimersAsync();
+      await settled;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
