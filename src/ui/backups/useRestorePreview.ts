@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { isUnapproved } from "../../api/syncifyApi";
 import { previewSettings } from "../../core/extensionSettings";
 import { previewRestore, type InstalledItem } from "../../core/restorePreview";
 import type { NamedItem } from "../../core/settingsNames";
@@ -65,7 +66,7 @@ export function useRestorePreview(
     () => new Map([...(catalogChecks ?? []), ...localChecks]),
     [catalogChecks, localChecks],
   );
-  const unapproved = backup.backup?.kind === "quarantined";
+  const unapproved = isUnapproved(backup);
 
   // Left off unless turned on: from a backup no approved install made, or
   // with a warning or a check that couldn't be done. Only items whose code

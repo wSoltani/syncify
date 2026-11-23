@@ -68,27 +68,23 @@ export class LockedError extends Error {
 }
 
 /**
- * A trusted install of this Spotify account pressed Not mine for this one
+ * A trusted install of this Spotify account pressed Not me on this one
  * (HTTP 403). Signing in to the account that secured it lifts it.
  */
 export class InstallRefusedError extends Error {
   constructor() {
-    super("This Spotify account doesn't accept backups from this install. Sign in to back up.");
+    super("Syncify can't back up here until you sign in.");
     this.name = "InstallRefusedError";
   }
 }
 
-/**
- * `unapproved`: kept apart until this install is approved from a trusted
- * install of this Spotify account, or signs in.
- */
 export async function uploadPayload(
   workerUrl: string,
   identity: UserIdentity,
   payload: SyncifyPayload,
   /** The extension settings part, sent ahead of the backup in the same body. */
   settingsPart?: string,
-): Promise<{ unchanged: boolean; unapproved: boolean; settings: unknown }> {
+): Promise<{ unchanged: boolean; settings: unknown }> {
   const backup = JSON.stringify(payload);
   const response = await request(workerUrl, identity, {
     method: "POST",
@@ -113,14 +109,14 @@ export async function uploadPayload(
 
   // The worker skips the write when the data matches its latest backup, so
   // nothing new was stored and the cloud copy keeps its original timestamp.
+  // A backup kept apart until this install is approved is still this
+  // device's own, so it's told apart nowhere here.
   const result = (await response.json().catch(() => null)) as {
     unchanged?: boolean;
-    quarantined?: boolean;
     settings?: unknown;
   } | null;
   return {
     unchanged: result?.unchanged === true,
-    unapproved: result?.quarantined === true,
     settings: result?.settings ?? null,
   };
 }
@@ -228,17 +224,23 @@ export async function downloadPayload(
     };
   }
 
-  const backups = all.filter((backup) => backup.backup?.kind === "rolling");
+  // This install's own backups count as its latest, approved or not: a
+  // device that's waiting (Spotify was reinstalled, say) is still its owner's.
+  const backups = all
+    .filter((backup) => backup.backup?.kind === "rolling" || isOwnUnapproved(backup))
+    .sort(
+      (a, b) =>
+        Date.parse(b.metadata.last_sync_datetime) - Date.parse(a.metadata.last_sync_datetime),
+    );
   const isSafetyCopy = (backup: SyncifyPayload) =>
     backup.backup?.kind === "anchor" || backup.backup?.safety_copy === true;
   const safetyCopy = all.find(isSafetyCopy) ?? null;
   const pinned = all.filter(
     (backup) => backup.backup?.kind === "pinned" && !isSafetyCopy(backup),
   );
-  const unapproved = all.filter(
-    (backup) => backup.backup?.kind === "quarantined",
-  );
-  // The latest backup is the newest approved one; unapproved ones never are.
+  const unapproved = all.filter(isUnapproved);
+  // The latest backup is the newest of those; another install's unapproved
+  // ones never are.
   const payload = backups[0] ?? safetyCopy;
 
   if (!payload) {
@@ -480,4 +482,17 @@ export function readClaim(value: unknown): SyncifyClaim | null {
 function withoutDatabase(error: unknown): null {
   if (error instanceof DatabaseUnavailableError) return null;
   throw error;
+}
+
+/** A backup kept apart that this install made, signed with its own key. */
+function isOwnUnapproved(backup: SyncifyPayload): boolean {
+  return backup.backup?.kind === "quarantined" && backup.backup.mine === true;
+}
+
+/**
+ * From an install this Spotify account hasn't approved, other than this one:
+ * its new items are left off in a restore.
+ */
+export function isUnapproved(backup: SyncifyPayload): boolean {
+  return backup.backup?.kind === "quarantined" && backup.backup.mine !== true;
 }

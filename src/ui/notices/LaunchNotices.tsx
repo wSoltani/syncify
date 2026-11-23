@@ -2,7 +2,14 @@ import { useState, type ReactNode } from "react";
 import { loadConfig } from "../../core/config";
 import { answerWaitingInstall, cancelPendingClaim } from "../../core/syncService";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "../../types/syncify";
-import { describeOtherClaim, installAnswerToast, notMeToast, undoneClaimTitle, waitingInstallTitle } from "../claimText";
+import {
+  WAITING_INSTALL_TEXT,
+  describeOtherClaim,
+  installAnswerToast,
+  notMeToast,
+  undoneClaimTitle,
+  waitingInstallTitle,
+} from "../claimText";
 import { Button, DialogContent, Notice } from "../kit";
 
 type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
@@ -93,7 +100,7 @@ export function UndoneClaimNotice(props: { claim: UndoneClaim; onClose(): void }
   );
 }
 
-/** A new device on this Spotify account waits for this one to approve it. */
+/** Backups this Syncify can't place wait for its That's me or Not me. */
 export function InstallNotice(props: { install: SyncifyWaitingInstall; onDone(): void }) {
   const answer = useAnswer();
   const reply = (action: "approve" | "reject") =>
@@ -110,15 +117,15 @@ export function InstallNotice(props: { install: SyncifyWaitingInstall; onDone():
       actions={
         <>
           <Button variant="secondary" onClick={() => reply("reject")} disabled={answer.busy}>
-            Not mine
+            Not me
           </Button>
           <Button onClick={() => reply("approve")} disabled={answer.busy}>
-            Approve
+            That's me
           </Button>
         </>
       }
     >
-      Approve it if it's yours.
+      {WAITING_INSTALL_TEXT}
     </LaunchNotice>
   );
 }

@@ -191,7 +191,7 @@ export function BackupsTab(props: {
       {props.lockedBy ? (
         <p className="syncify-tab-text">
           {props.lockedBy === "not_owner"
-            ? "Sign in with the account that secured them"
+            ? "Sign in with the email that secured them"
             : "Sign in to see and restore your backups"}
         </p>
       ) : (!remote || !local) && props.failed ? null : !remote || !local || (linked && !linked.remote) ? (

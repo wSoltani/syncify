@@ -56,7 +56,7 @@ export function describeBackupRow(
     };
   }
   if (kind === "unapproved") {
-    return { backup, kind, name: "Not approved", meta: [date, items, from], current, title: date };
+    return { backup, kind, name: "Unconfirmed", meta: [date, items, from], current, title: date };
   }
   return {
     backup,

@@ -7,7 +7,7 @@ import type {
   SyncifySpicetifyConfig,
   SyncifyWaitingInstall,
 } from "../../types/syncify";
-import { describeOtherClaim, waitingInstallTitle } from "../claimText";
+import { WAITING_INSTALL_TEXT, describeOtherClaim, waitingInstallTitle } from "../claimText";
 import { formatBackupDate, formatItemCount } from "../format";
 
 /** What the window is doing right now. */
@@ -76,7 +76,7 @@ function describeStatusOnly(facts: StatusFacts): Omit<WindowStatus, "line"> {
     return {
       ...plain,
       title: "Sign in to restore",
-      detail: [facts.locked === "not_owner" ? "Secured by another account" : "This backup is secured"],
+      detail: [facts.locked === "not_owner" ? "Secured with a different email" : "This backup is secured"],
       action: "sign-in",
     };
   }
@@ -168,7 +168,7 @@ export function describeChanges(
 /** An alert that needs an answer, shown as the status. */
 export type WindowAlert =
   | { kind: "claim"; title: string; text: string | null; canAnswer: boolean; signIn: boolean }
-  | { kind: "install"; title: string; install: SyncifyWaitingInstall };
+  | { kind: "install"; title: string; text: string; install: SyncifyWaitingInstall };
 
 /** Someone else securing this backup comes first, then a new install. */
 export function describeAlert(
@@ -184,6 +184,7 @@ export function describeAlert(
     return {
       kind: "install",
       title: waitingInstallTitle(waiting),
+      text: WAITING_INSTALL_TEXT,
       install: waiting,
     };
   }

@@ -91,7 +91,7 @@ describe("describeStatus", () => {
       detail: ["This backup is secured"],
       action: "sign-in",
     });
-    expect(describeStatus(facts({ locked: "not_owner" })).detail).toEqual(["Secured by another account"]);
+    expect(describeStatus(facts({ locked: "not_owner" })).detail).toEqual(["Secured with a different email"]);
   });
 
   it("puts a version too old before a lock and a backup", () => {
@@ -157,7 +157,7 @@ describe("describeAlert", () => {
     held: false,
     ...changes,
   });
-  const waiting = { id: "w1", device: "Windows", first_seen_at: 0 };
+  const waiting = { id: "w1", device: "Windows", first_seen_at: Date.now() };
 
   it("puts someone else's claim before a waiting install", () => {
     const alert = describeAlert(pending(), waiting, true);
@@ -179,7 +179,8 @@ describe("describeAlert", () => {
   it("shows a waiting install when no one else is claiming", () => {
     expect(describeAlert(pending({ mine: true }), waiting, true)).toMatchObject({
       kind: "install",
-      title: "Syncify on Windows wants to back up this Spotify account",
+      title: "Did you back up from Windows today?",
+      text: "Syncify can't tell who made those backups. Not me deletes them and blocks new ones.",
     });
     expect(describeAlert(null, null, true)).toBeNull();
   });

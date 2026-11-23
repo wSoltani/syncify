@@ -28,10 +28,10 @@ describe("InstallNotice", () => {
     const onDone = vi.fn();
     render(<InstallNotice install={install} onDone={onDone} />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+      fireEvent.click(screen.getByRole("button", { name: "That's me" }));
     });
     expect(answerWaitingInstall).toHaveBeenCalledWith(config, "w", "approve");
-    expect(showNotification).toHaveBeenCalledWith("Syncify: device approved");
+    expect(showNotification).toHaveBeenCalledWith("Syncify: backups kept");
     expect(onDone).toHaveBeenCalledOnce();
   });
 
@@ -40,10 +40,10 @@ describe("InstallNotice", () => {
     const onDone = vi.fn();
     render(<InstallNotice install={install} onDone={onDone} />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Not mine" }));
+      fireEvent.click(screen.getByRole("button", { name: "Not me" }));
     });
     expect(screen.getByText("Couldn't reach Syncify.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Not mine" })).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", { name: "Not me" })).toHaveProperty("disabled", false);
     expect(onDone).not.toHaveBeenCalled();
   });
 });

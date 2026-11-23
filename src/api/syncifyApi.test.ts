@@ -3,7 +3,7 @@ import { getDeviceKey, loadSession } from "../core/account";
 import { getInstallKey } from "../core/installKey";
 import { replaceInstall } from "../core/client";
 import { DatabaseUnavailableError } from "../core/database";
-import { request } from "./syncifyApi";
+import { downloadPayload, request } from "./syncifyApi";
 
 vi.mock("../core/account", () => ({
   clearSession: vi.fn(),
@@ -63,5 +63,27 @@ describe("request", () => {
     expect(response.status).toBe(200);
     expect(replaceInstall).toHaveBeenCalledExactlyOnceWith("install-1");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("downloadPayload", () => {
+  const backup = (hash: string, at: string, mark: Record<string, unknown>) => ({
+    payload_hash: hash,
+    metadata: { last_sync_datetime: at, device_info: "Windows", marketplace_key_count: 1 },
+    marketplace_data: { keys: {} },
+    backup: mark,
+  });
+
+  it("counts this device's own waiting backups as its latest, and keeps other devices' apart", async () => {
+    vi.mocked(loadSession).mockResolvedValue(null);
+    const rolling = backup("old", "2026-11-01T10:00:00.000Z", { id: "1", kind: "rolling" });
+    const own = backup("own", "2026-11-20T10:00:00.000Z", { id: "2", kind: "quarantined", mine: true });
+    const stranger = backup("stranger", "2026-11-21T10:00:00.000Z", { id: "3", kind: "quarantined" });
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ...rolling, backup_history: [own, stranger] })));
+
+    const remote = await downloadPayload("https://worker.test", identity);
+    expect(remote.payload?.payload_hash).toBe("own");
+    expect(remote.backups.map((entry) => entry.payload_hash)).toEqual(["own", "old"]);
+    expect(remote.unapproved.map((entry) => entry.payload_hash)).toEqual(["stranger"]);
   });
 });

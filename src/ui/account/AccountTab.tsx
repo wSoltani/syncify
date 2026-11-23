@@ -13,7 +13,7 @@ import { SignInForm } from "./SignInForm";
 import { useSignIn } from "./useSignIn";
 
 const ENDED = {
-  owner: "This backup isn't secured. Someone using this Spotify account said it isn't yours.",
+  owner: "This backup isn't secured. Someone pressed Not me when you tried to secure it.",
   admin: "This backup isn't secured. Syncify couldn't confirm it's yours.",
   undone: "This backup is no longer secured by your account.",
 } as const;
@@ -181,7 +181,7 @@ function secureStateParts(secure: SecureState): string[] {
     case "pending":
       return [pendingSecureText(secure)];
     case "other-account":
-      return ["This backup is secured by another account"];
+      return ["This backup is secured with a different email"];
     default:
       return ["Signed in"];
   }

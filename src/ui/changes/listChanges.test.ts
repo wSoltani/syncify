@@ -43,7 +43,7 @@ describe("listChanges", () => {
   it("notes items not approved", () => {
     const optional = new Set([key("Shuffle+")]);
     const list = listChanges(preview, new Map(), { optional, allowed: none, unapproved: true });
-    expect(list.changes.find((row) => row.name === "Shuffle+")?.note).toBe("Not approved");
+    expect(list.changes.find((row) => row.name === "Shuffle+")?.note).toBe("Unconfirmed");
   });
 
   it("writes out each kind of warning once, naming its items", () => {
