@@ -1,6 +1,6 @@
 # Privacy
 
-Updated November 22, 2026
+Updated November 23, 2026
 
 You don't need an account. Without one, your backups follow the Spotify account you're signed in with. An account adds your email, and lets you secure your backups so only you can restore them.
 
@@ -9,7 +9,7 @@ You don't need an account. Without one, your backups follow the Spotify account 
 - **A one-way hash of your Spotify username.** Syncify doesn't see your username or your Spotify password.
 - **Your backups:** your 3 latest and a safety copy, and for a backup with items a restore leaves off by default, a copy without them for older versions of Syncify. Each holds what Marketplace keeps about your extensions, themes (with their color scheme), snippets and apps, what you set up manually in Spicetify's config, and the kind of computer it came from (Windows, macOS or Linux). With an account, you can name a backup on your account page.
 - **Each install:** a random ID made when Syncify is installed, its version, and when it was first and last seen. Also the public half of a key the install makes for itself, and whether your Spotify account trusts that install, how it came to and when.
-- **Backups from installs your Spotify account doesn't trust yet:** kept apart from yours, the 3 latest at most, with whether each was signed with the key of the install that sent it, so that install sees its own. They join your backups when someone presses **That's me** or the install signs in, and are deleted when newer ones replace them or someone presses **Not me**.
+- **Backups from installs your Spotify account doesn't trust yet:** kept apart from yours, the 3 latest at most, with whether each was signed with the key of the install that sent it, so that install sees its own. They join your backups when someone presses **That's me**, the install signs in, or no install your Spotify account trusts has been seen for a day since it appeared (a Spotify update or reinstall can empty Syncify's storage, and the same computer comes back as a new install). They're deleted when newer ones replace them or someone presses **Not me**.
 - **Activity counts:** how many backups and restores you made, by month and by day of the week and hour, when you first had each item, the names of the items in your latest backup, and which items you added and removed each year. Your time zone is used to count these and isn't stored.
 - **With an account:** your email, the Spotify accounts you linked, and your signed-in devices, each with its user agent, the country it signed in from and when it was last used. IP addresses aren't stored.
 - **Share codes:** for each code you create, its name if you give one, the Marketplace items in it, when it was made and changed, and how many Spotify accounts applied it. A code and its page are public: anyone with the code or the link can see its name and items. They don't hold extension settings or your Spicetify config.

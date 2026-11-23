@@ -57,7 +57,7 @@ export async function getDeviceKey(
   if (!create) return null;
 
   deviceKey = createDeviceKey().then(async (created) => {
-    await writeState(DEVICE_KEY, created);
+    await writeState(DEVICE_KEY, created, { wait: true });
     return created;
   });
   // A key that couldn't be stored can't sign after a restart: try again later.
@@ -73,7 +73,7 @@ export async function loadSession(): Promise<AccountSession | null> {
 }
 
 export function saveSession(session: AccountSession): Promise<void> {
-  return writeState(SESSION_KEY, session);
+  return writeState(SESSION_KEY, session, { wait: true });
 }
 
 /** Forgets the session token. The device key stays for the next sign-in. */

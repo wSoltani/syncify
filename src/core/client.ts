@@ -1,4 +1,4 @@
-import { openDatabase, STORE_NAME } from "./database";
+import { DURABLE, openDatabase, retrying, STORE_NAME } from "./database";
 import { getProjectConfig } from "./projectConfig";
 
 // Sent with every request, so the backup service knows which version each
@@ -65,7 +65,7 @@ export function replaceInstall(staleId: string): Promise<void> {
     if (!db) throw new Error("IndexedDB isn't available.");
     const id = createInstallId();
     await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const transaction = db.transaction(STORE_NAME, "readwrite", DURABLE);
       transaction.objectStore(STORE_NAME).put(id, INSTALL_ID_KEY);
       transaction.oncomplete = () => {
         db.close();
@@ -84,7 +84,7 @@ export function replaceInstall(staleId: string): Promise<void> {
 }
 
 async function loadInstall(): Promise<Install> {
-  const stored = await readOrCreateInDatabase();
+  const stored = await retrying(readOrCreateInDatabase);
   if (stored) return { id: stored, inDatabase: true };
 
   // No IndexedDB on this device: keep the ID in localStorage instead.
@@ -113,7 +113,7 @@ async function readOrCreateInDatabase(): Promise<string | null> {
     let found: string | null = null;
 
     try {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const transaction = db.transaction(STORE_NAME, "readwrite", DURABLE);
       const store = transaction.objectStore(STORE_NAME);
       const read = store.get(INSTALL_ID_KEY);
 
