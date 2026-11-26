@@ -167,6 +167,11 @@ describe("answerInstall", () => {
 
     refuse(403, "code_mismatch");
     await expect(approve()).rejects.toBeInstanceOf(PairingCodeError);
+    // The day's wrong codes about that Syncify are used up: shown at the code too.
+    refuse(429, "daily_limit");
+    await expect(approve()).rejects.toThrow("Too many wrong codes today. Try again tomorrow.");
+    refuse(429, "daily_limit");
+    await expect(approve()).rejects.toBeInstanceOf(PairingCodeError);
     refuse(429);
     await expect(approve()).rejects.toThrow("Too many tries. Wait a minute and try again.");
     // Already answered, or it signed in since: nothing left to do.

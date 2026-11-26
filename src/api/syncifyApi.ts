@@ -51,10 +51,18 @@ export class UnsupportedVersionError extends Error {
   }
 }
 
-/** The code typed for That's me isn't the other Syncify's (HTTP 403). */
+/**
+ * That's me didn't go through because of the code: it isn't the other
+ * Syncify's (HTTP 403), or too many wrong ones were tried about that Syncify
+ * today (HTTP 429 daily_limit), which a right code can't get past either.
+ */
 export class PairingCodeError extends Error {
-  constructor() {
-    super("That code doesn't match. Check it in that Syncify's Settings and try again.");
+  constructor(limited = false) {
+    super(
+      limited
+        ? "Too many wrong codes today. Try again tomorrow."
+        : "That code doesn't match. Check it in that Syncify's Settings and try again.",
+    );
     this.name = "PairingCodeError";
   }
 }
@@ -123,6 +131,7 @@ export async function answerInstall(
   // Already answered, or it signed in since.
   if (error?.code === "not_pending") return;
   if (error?.code === "code_mismatch") throw new PairingCodeError();
+  if (error?.code === "daily_limit") throw new PairingCodeError(true);
   throw new Error(
     response.status === 429
       ? "Too many tries. Wait a minute and try again."
