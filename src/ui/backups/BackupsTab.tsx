@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { LockedError } from "../../api/syncifyApi";
 import { fetchRemoteState } from "../../core/syncService";
 import type {
   SyncifyConfig,
@@ -15,6 +14,7 @@ import {
   Menu,
   Meta,
   Notice,
+  SectionHeader,
   SettingRow,
   PinIcon,
   ShieldIcon,
@@ -25,6 +25,9 @@ import {
 import { describeBackupRow, type BackupKind, type BackupRowModel } from "./backupRows";
 import { RestorePreview, type RestoreRequest } from "./RestorePreview";
 
+// What heads the backups other Syncifys made on this Spotify username.
+const OTHERS_TITLE = "Other backups on your Spotify username";
+
 /** Another Spotify account linked to the signed-in account. */
 interface OtherAccount {
   hash: string;
@@ -32,8 +35,9 @@ interface OtherAccount {
 }
 
 /**
- * Every backup, newest first, then the safety copy and backups waiting for
- * approval. A row opens its restore preview in place of the list.
+ * This Syncify's backups, newest first, then the pinned ones and the safety
+ * copy. Under them, the backups other Syncifys made on this Spotify
+ * username. A row opens its restore preview in place of the list.
  */
 export function BackupsTab(props: {
   idBase: string;
@@ -45,7 +49,6 @@ export function BackupsTab(props: {
    * message above says why and offers Try again.
    */
   failed: boolean;
-  lockedBy: LockedError["code"] | null;
   /** null until read once: the rows wait for it to know which backup is current. */
   local: SyncifySnapshotSummary | null;
   otherAccounts: OtherAccount[];
@@ -112,7 +115,7 @@ export function BackupsTab(props: {
     }
   }
 
-  // Backups waiting for approval are only this Spotify account's.
+  // Other Syncifys' backups are only listed for this Spotify username.
   const shown = linked ? linked.remote : remote;
   const localHash = local?.hash ?? null;
   // A row's own key: two backups can hold the same data, such as a pinned one
@@ -126,7 +129,9 @@ export function BackupsTab(props: {
   const backups = rowsOf(shown?.backups ?? [], "backup");
   const pinned = rowsOf(shown?.pinned ?? [], "pinned");
   const safetyCopy = rowsOf(shown?.safetyCopy ? [shown.safetyCopy] : [], "safety-copy");
-  const unapproved = linked ? [] : rowsOf(remote?.unapproved ?? [], "unapproved");
+  const others = linked
+    ? []
+    : [...rowsOf(remote?.others ?? [], "other"), ...rowsOf(remote?.unapproved ?? [], "unapproved")];
 
   function renderRow(row: BackupRowModel) {
     return (
@@ -168,7 +173,7 @@ export function BackupsTab(props: {
       {local && !local.marketplaceAvailable ? (
         <Notice tone="warning">Install Spicetify Marketplace to restore a backup.</Notice>
       ) : null}
-      {!props.lockedBy && props.otherAccounts.length > 0 ? (
+      {props.otherAccounts.length > 0 ? (
         <SettingRow label="Show backups from">
           <Menu
             label="Show backups from"
@@ -188,29 +193,31 @@ export function BackupsTab(props: {
           />
         </SettingRow>
       ) : null}
-      {props.lockedBy ? (
-        <p className="syncify-tab-text">
-          {props.lockedBy === "not_owner"
-            ? "Sign in with the email that secured them"
-            : "Sign in to see and restore your backups"}
-        </p>
-      ) : (!remote || !local) && props.failed ? null : !remote || !local || (linked && !linked.remote) ? (
+      {(!remote || !local) && props.failed ? null : !remote || !local || (linked && !linked.remote) ? (
         <List label="Loading backups">
           <SkeletonRow />
           <SkeletonRow />
         </List>
-      ) : backups.length + pinned.length + safetyCopy.length + unapproved.length === 0 ? (
+      ) : backups.length + pinned.length + safetyCopy.length + others.length === 0 ? (
         linked ? <p className="syncify-tab-text">No backups yet.</p> : null
       ) : (
-        <List label="Backups">
-          {backups.map(renderRow)}
-          {pinned.length > 0 ? <ListDivider /> : null}
-          {pinned.map(renderRow)}
-          {safetyCopy.length > 0 ? <ListDivider /> : null}
-          {safetyCopy.map(renderRow)}
-          {unapproved.length > 0 ? <ListDivider /> : null}
-          {unapproved.map(renderRow)}
-        </List>
+        <>
+          {backups.length + pinned.length + safetyCopy.length > 0 ? (
+            <List label="Backups">
+              {backups.map(renderRow)}
+              {pinned.length > 0 && backups.length > 0 ? <ListDivider /> : null}
+              {pinned.map(renderRow)}
+              {safetyCopy.length > 0 && backups.length + pinned.length > 0 ? <ListDivider /> : null}
+              {safetyCopy.map(renderRow)}
+            </List>
+          ) : null}
+          {others.length > 0 ? (
+            <>
+              <SectionHeader title={OTHERS_TITLE} />
+              <List label={OTHERS_TITLE}>{others.map(renderRow)}</List>
+            </>
+          ) : null}
+        </>
       )}
     </TabPanel>
   );

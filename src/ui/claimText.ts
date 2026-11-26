@@ -1,6 +1,6 @@
+import type { OtherClaim } from "../core/claimNotices";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "../types/syncify";
 
-type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
 type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
 
 /** When a claim goes final, as a day: "today", or "Nov 16". */
@@ -27,22 +27,39 @@ export function notMeBy(at: number): string {
 }
 
 /**
- * Someone else's claim on this Spotify account, as a title and a sentence.
- * Signed out, it can be this person's own: from another computer, or after
- * Syncify's data here was lost.
+ * Someone else's claim on this Spotify username, as a title and a sentence.
+ * Signed out, it can be this person's own: made on a computer they also use,
+ * or before Syncify's data here was lost. Whatever the answer, the backups
+ * this Syncify made stay its own.
  */
-export function describeOtherClaim(claim: PendingClaim, signedIn: boolean): {
+export function describeOtherClaim(claim: OtherClaim, signedIn: boolean): {
   title: string;
-  text: string | null;
+  text: string;
 } {
-  if (claim.not_me) return { title: "Syncify is checking who is securing this backup", text: null };
+  if (claim.status === "final") {
+    return {
+      title: claim.email ? `This backup is secured by ${claim.email}` : "This backup is secured",
+      text: signedIn
+        ? "You're signed in with a different email. The backups you make here stay yours."
+        : "If that's your email, sign in to see your backups. If it isn't, the backups you make here stay yours.",
+    };
+  }
+  const title = `${claim.email ?? "Someone"} is securing this backup`;
+  if (claim.held) return { title, text: "Syncify is checking who is securing it." };
+  // Only a Syncify that backed up here first can stop it.
+  if (claim.can_cancel) {
+    return {
+      title,
+      text: signedIn
+        ? `If that isn't you, press Not me ${notMeBy(claim.final_at)} to stop them.`
+        : `If that's your email, sign in. If it isn't, press Not me ${notMeBy(claim.final_at)} to stop them.`,
+    };
+  }
   return {
-    title: `${claim.email ?? "Someone"} is securing this backup`,
-    text: claim.held
-      ? "Syncify is checking who is securing it."
-      : signedIn
-        ? `If that isn't you, press Not me ${notMeBy(claim.final_at)} or only they'll be able to restore it.`
-        : `If that's your email, sign in. If it isn't, press Not me ${notMeBy(claim.final_at)} or only they'll be able to restore it.`,
+    title,
+    text: signedIn
+      ? "The backups you made here stay yours."
+      : "If that's your email, sign in. If it isn't, the backups you made here stay yours.",
   };
 }
 
@@ -51,9 +68,8 @@ export function undoneClaimTitle(claim: UndoneClaim): string {
   return claim.email ? `This backup is no longer secured by ${claim.email}` : "This backup is no longer secured";
 }
 
-/** The toast after Not me. */
-export function notMeToast(result: "cancelled" | "checking", email: string | null): string {
-  if (result === "checking") return "Syncify: we'll check who's securing it";
+/** The toast after a Not me that cancelled the claim. */
+export function notMeToast(email: string | null): string {
   return email ? `Syncify: ${email} won't secure this backup` : "Syncify: this backup won't be secured";
 }
 
@@ -61,9 +77,9 @@ export function notMeToast(result: "cancelled" | "checking", email: string | nul
 const KNOWN_SYSTEMS = new Set(["Windows", "macOS", "Linux"]);
 
 /**
- * Backups this Syncify can't place, as a question: "Did you back up from
- * Windows on Nov 20?". A question, because the same computer can show up as
- * a new one after Spotify is reinstalled, and "yes" is then the right answer.
+ * Backups another Syncify made on this Spotify username, as a question: "Did
+ * you back up from Windows on Nov 20?". A question, because only the person
+ * knows whether that Syncify is theirs.
  */
 export function waitingInstallTitle(install: SyncifyWaitingInstall, now = new Date()): string {
   const day = claimDay(install.first_seen_at, now);
@@ -74,9 +90,14 @@ export function waitingInstallTitle(install: SyncifyWaitingInstall, now = new Da
 }
 
 /** The sentence under that question. */
-export const WAITING_INSTALL_TEXT = "Syncify can't tell who made those backups. Not me deletes them and blocks new ones.";
+export const WAITING_INSTALL_TEXT =
+  "Syncify keeps those backups apart from yours. If they're yours, press That's me to bring them together.";
+
+/** That's me asks for the code of the Syncify that made those backups. */
+export const INSTALL_CODE_TITLE = "Enter the code from that Syncify";
+export const INSTALL_CODE_TEXT = "It's in Settings, in the Syncify that made those backups.";
 
 /** The toast after That's me or Not me on those backups. */
 export function installAnswerToast(action: "approve" | "reject"): string {
-  return action === "approve" ? "Syncify: backups kept" : "Syncify: backups deleted";
+  return action === "approve" ? "Syncify: backups brought together" : "Syncify: backups kept apart";
 }

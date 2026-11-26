@@ -51,22 +51,39 @@ describe("claim text", () => {
   });
 
   it("writes someone else's claim as a title and a sentence", () => {
-    const claim = { status: "pending" as const, mine: false, email: null, final_at: today, held: false };
+    const claim = { status: "pending" as const, mine: false, email: null, final_at: today, held: false, can_cancel: true };
     expect(describeOtherClaim({ ...claim, held: true }, false)).toEqual({
       title: "Someone is securing this backup",
       text: "Syncify is checking who is securing it.",
     });
-    expect(describeOtherClaim({ ...claim, not_me: true }, false)).toEqual({
-      title: "Syncify is checking who is securing this backup",
-      text: null,
-    });
     // Signed out, it can be this person's own claim.
     expect(describeOtherClaim(claim, false).text).toBe(
-      "If that's your email, sign in. If it isn't, press Not me today or only they'll be able to restore it.",
+      "If that's your email, sign in. If it isn't, press Not me today to stop them.",
     );
-    expect(describeOtherClaim(claim, true).text).toBe(
-      "If that isn't you, press Not me today or only they'll be able to restore it.",
+    expect(describeOtherClaim(claim, true).text).toBe("If that isn't you, press Not me today to stop them.");
+  });
+
+  it("promises nothing a Not me can't do", () => {
+    // Only a Syncify that backed up here first stops a claim.
+    const claim = { status: "pending" as const, mine: false, email: "a@example.com", final_at: today, held: false, can_cancel: false };
+    expect(describeOtherClaim(claim, true)).toEqual({
+      title: "a@example.com is securing this backup",
+      text: "The backups you made here stay yours.",
+    });
+    expect(describeOtherClaim(claim, false).text).toBe(
+      "If that's your email, sign in. If it isn't, the backups you made here stay yours.",
     );
+  });
+
+  it("names who secured the backup, and what stays this Syncify's", () => {
+    expect(describeOtherClaim({ status: "final", mine: false, email: "a@example.com" }, false)).toEqual({
+      title: "This backup is secured by a@example.com",
+      text: "If that's your email, sign in to see your backups. If it isn't, the backups you make here stay yours.",
+    });
+    expect(describeOtherClaim({ status: "final", mine: false }, true)).toEqual({
+      title: "This backup is secured",
+      text: "You're signed in with a different email. The backups you make here stay yours.",
+    });
   });
 
   it("names who no longer secures the backup", () => {

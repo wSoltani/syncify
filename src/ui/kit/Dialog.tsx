@@ -8,6 +8,11 @@ interface DialogContentProps {
   /** Two buttons: the safe one first, the action last. */
   actions: ReactNode;
   titleId?: string;
+  /**
+   * For a dialog with a field: Enter in the field sends it, as the action
+   * button (`type="submit"`) does.
+   */
+  onSubmit?(): void;
 }
 
 /**
@@ -15,14 +20,28 @@ interface DialogContentProps {
  * Spotify's own popup; Dialog puts it in Syncify's window.
  */
 export function DialogContent(props: DialogContentProps) {
-  return (
-    <div className="syncify-dialog-content">
+  const { onSubmit } = props;
+  const content = (
+    <>
       <h2 className="syncify-dialog-title" id={props.titleId}>
         {props.title}
       </h2>
       {props.children ? <div className="syncify-dialog-text">{props.children}</div> : null}
       <div className="syncify-dialog-actions">{props.actions}</div>
-    </div>
+    </>
+  );
+  if (!onSubmit) return <div className="syncify-dialog-content">{content}</div>;
+  return (
+    <form
+      className="syncify-dialog-content"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      {content}
+    </form>
   );
 }
 
@@ -69,7 +88,7 @@ export function Dialog(props: DialogProps) {
   if (!open) return null;
   return (
     <dialog className="syncify-dialog" data-width={props.wide ? "wide" : undefined} ref={ref} aria-labelledby={titleId}>
-      <DialogContent title={props.title} actions={props.actions} titleId={titleId}>
+      <DialogContent title={props.title} actions={props.actions} titleId={titleId} onSubmit={props.onSubmit}>
         {props.children}
       </DialogContent>
     </dialog>

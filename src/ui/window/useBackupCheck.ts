@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import type { ClaimStatus } from "../../api/claimsApi";
-import { LockedError } from "../../api/syncifyApi";
 import { loadSession, type AccountSession } from "../../core/account";
 import { fetchClaims, fetchRemoteState } from "../../core/syncService";
 import type { SyncifyConfig, SyncifyPayload, SyncifyRemoteState } from "../../types/syncify";
@@ -13,18 +12,18 @@ type Claims = ClaimStatus & { hash: string };
 /** One read of this Spotify account's backups and, signed in, its claims. */
 interface BackupCheck {
   remote: SyncifyRemoteState;
-  /** A secured backup this device can't read: signed out, or another account. */
-  lockedBy: LockedError["code"] | null;
   claims: Claims | null;
 }
 
-// What a locked backup shows: nothing can be read without signing in.
+// Before the first check.
 const NO_REMOTE_STATE: SyncifyRemoteState = {
   exists: false,
   payload: null,
   backups: [],
   safetyCopy: null,
   pinned: [],
+  borrowed: false,
+  others: [],
   claim: null,
   unapproved: [],
   install: null,
@@ -51,24 +50,15 @@ export function useBackupCheck(config: SyncifyConfig) {
   }, []);
 
   const refresh = useCallback(async () => {
-    let remote: SyncifyRemoteState;
-    let lockedBy: LockedError["code"] | null = null;
-    try {
-      remote = await fetchRemoteState(config);
-    } catch (error) {
-      if (!(error instanceof LockedError)) throw error;
-      remote = NO_REMOTE_STATE;
-      lockedBy = error.code;
-    }
+    const remote = await fetchRemoteState(config);
     // Signed in, the claim and linked accounts come from the claim status.
     // A refused session is forgotten along the way, so read it after.
     const signedIn = await loadSession().catch(() => null);
     const claims = signedIn ? await fetchClaims(config).catch(() => null) : null;
     const current = signedIn ? await loadSession().catch(() => null) : null;
 
-    remember({ remote, lockedBy, claims: current ? claims : null });
+    remember({ remote, claims: current ? claims : null });
     setSession(current);
-    return lockedBy;
   }, [config, remember]);
 
   /** Reads the stored session, shown at once; the next check reads it again. */
@@ -81,8 +71,13 @@ export function useBackupCheck(config: SyncifyConfig) {
   /** A backup just made: shown as the latest without asking the service again. */
   const addBackup = useCallback(
     (payload: SyncifyPayload) => {
-      const base = lastCheck ?? { remote: NO_REMOTE_STATE, lockedBy: null, claims: null };
+      const base = lastCheck ?? { remote: NO_REMOTE_STATE, claims: null };
       const { remote } = base;
+      // This Syncify's first backup: the other Syncifys' backups that stood
+      // in for its own are listed as theirs from here on.
+      const others = remote.borrowed
+        ? [...remote.backups, ...(remote.safetyCopy ? [remote.safetyCopy] : []), ...remote.pinned]
+        : remote.others;
       remember({
         ...base,
         // The safety copy stays as it was. The Worker may also move it; the
@@ -91,10 +86,15 @@ export function useBackupCheck(config: SyncifyConfig) {
           ...remote,
           exists: true,
           payload,
-          backups: [
-            payload,
-            ...remote.backups.filter((backup) => backup.payload_hash !== payload.payload_hash),
-          ].slice(0, MAX_BACKUPS),
+          backups: remote.borrowed
+            ? [payload]
+            : [payload, ...remote.backups.filter((backup) => backup.payload_hash !== payload.payload_hash)].slice(
+                0,
+                MAX_BACKUPS,
+              ),
+          ...(remote.borrowed ? { safetyCopy: null, pinned: [] } : {}),
+          borrowed: false,
+          others: others.filter((backup) => backup.payload_hash !== payload.payload_hash),
         },
       });
     },
@@ -111,7 +111,6 @@ export function useBackupCheck(config: SyncifyConfig) {
     /** null until the backups were read once since Spotify started. */
     check,
     remote: check?.remote ?? NO_REMOTE_STATE,
-    lockedBy: check?.lockedBy ?? null,
     claims: check?.claims ?? null,
     session,
     setSession,

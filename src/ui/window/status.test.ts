@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RestoreResult } from "../../core/restoreSummary";
 import { makeBackup } from "../../test/fixtures";
-import type { SyncifyClaim, SyncifySpicetifyConfig } from "../../types/syncify";
+import type { OtherClaim } from "../../core/claimNotices";
+import type { SyncifySpicetifyConfig } from "../../types/syncify";
 import { describeAlert, describeChanges, describeRestoreResult, describeStatus, type StatusFacts } from "./status";
 
 const backup = makeBackup("abc", ["marketplace:installed:a/b/one.js", "marketplace:installed:a/b/two.js"]);
@@ -11,7 +12,6 @@ const facts = (changes: Partial<StatusFacts> = {}): StatusFacts => ({
   checked: true,
   checkError: null,
   unsupported: false,
-  locked: null,
   latest: backup,
   latestItems: ["one", "two"],
   backedUp: true,
@@ -85,24 +85,15 @@ describe("describeStatus", () => {
     });
   });
 
-  it("asks for a sign-in when the backup is locked", () => {
-    expect(describeStatus(facts({ locked: "claimed" }))).toMatchObject({
-      title: "Sign in to restore",
-      detail: ["This backup is secured"],
-      action: "sign-in",
-    });
-    expect(describeStatus(facts({ locked: "not_owner" })).detail).toEqual(["Secured with a different email"]);
-  });
-
-  it("puts a version too old before a lock and a backup", () => {
-    expect(describeStatus(facts({ unsupported: true, locked: "claimed", activity: "backing-up" }))).toMatchObject({
+  it("puts a version too old before a backup", () => {
+    expect(describeStatus(facts({ unsupported: true, activity: "backing-up" }))).toMatchObject({
       title: "Update Syncify to keep backing up",
       action: "how-to-update",
     });
   });
 
   it("puts a restore's result before everything else", () => {
-    expect(describeStatus(facts({ restoreResult: result(11, 13), locked: "claimed" }))).toMatchObject({
+    expect(describeStatus(facts({ restoreResult: result(11, 13), activity: "backing-up" }))).toMatchObject({
       title: "Restored 11 of 13",
       action: "reload",
     });
@@ -149,38 +140,36 @@ describe("describeChanges", () => {
 });
 
 describe("describeAlert", () => {
-  const pending = (changes: Partial<Extract<SyncifyClaim, { status: "pending" }>> = {}): SyncifyClaim => ({
+  const pending: OtherClaim = {
     status: "pending",
     mine: false,
     email: "j***n@example.com",
     final_at: new Date(2026, 10, 19).getTime(),
     held: false,
-    ...changes,
-  });
+    can_cancel: true,
+  };
   const waiting = { id: "w1", device: "Windows", first_seen_at: Date.now() };
 
   it("puts someone else's claim before a waiting install", () => {
-    const alert = describeAlert(pending(), waiting, true);
-    expect(alert).toMatchObject({ kind: "claim", title: "j***n@example.com is securing this backup", canAnswer: true, signIn: false });
+    const alert = describeAlert(pending, waiting, true);
+    expect(alert).toMatchObject({ kind: "claim", title: "j***n@example.com is securing this backup", signIn: false });
     // Signed out, it can be this person's own: signing in is offered.
-    expect(describeAlert(pending(), waiting, false)).toMatchObject({ kind: "claim", canAnswer: true, signIn: true });
+    expect(describeAlert(pending, waiting, false)).toMatchObject({ kind: "claim", signIn: true });
   });
 
-  it("can't answer a claim already sent for a check", () => {
-    expect(describeAlert(pending({ not_me: true }), null, false)).toMatchObject({
+  it("says who secured the backup with an email this Syncify isn't signed in with", () => {
+    expect(describeAlert({ status: "final", mine: false, email: "j***n@example.com" }, waiting, false)).toMatchObject({
       kind: "claim",
-      title: "Syncify is checking who is securing this backup",
-      text: null,
-      canAnswer: false,
-      signIn: false,
+      title: "This backup is secured by j***n@example.com",
+      signIn: true,
     });
   });
 
-  it("shows a waiting install when no one else is claiming", () => {
-    expect(describeAlert(pending({ mine: true }), waiting, true)).toMatchObject({
+  it("asks about another Syncify's backups when no one else is claiming", () => {
+    expect(describeAlert(null, waiting, true)).toMatchObject({
       kind: "install",
       title: "Did you back up from Windows today?",
-      text: "Syncify can't tell who made those backups. Not me deletes them and blocks new ones.",
+      text: "Syncify keeps those backups apart from yours. If they're yours, press That's me to bring them together.",
     });
     expect(describeAlert(null, null, true)).toBeNull();
   });

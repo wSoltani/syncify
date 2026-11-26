@@ -51,30 +51,11 @@ export class UnsupportedVersionError extends Error {
   }
 }
 
-/**
- * The backup is secured with an account this device isn't signed in to
- * (HTTP 401): `claimed` when signed out, `not_owner` when signed in with
- * another account, `not_linked` for a linked account the session can't read.
- */
-export class LockedError extends Error {
-  constructor(readonly code: "claimed" | "not_owner" | "not_linked") {
-    super(
-      code === "not_linked"
-        ? "Couldn't read that Spotify account's backups."
-        : "Sign in to restore this backup.",
-    );
-    this.name = "LockedError";
-  }
-}
-
-/**
- * A trusted install of this Spotify account pressed Not me on this one
- * (HTTP 403). Signing in to the account that secured it lifts it.
- */
-export class InstallRefusedError extends Error {
+/** The code typed for That's me isn't the other Syncify's (HTTP 403). */
+export class PairingCodeError extends Error {
   constructor() {
-    super("Syncify can't back up here until you sign in.");
-    this.name = "InstallRefusedError";
+    super("That code doesn't match. Check it in that Syncify's Settings and try again.");
+    this.name = "PairingCodeError";
   }
 }
 
@@ -97,20 +78,14 @@ export async function uploadPayload(
     body: settingsPart !== undefined ? settingsPart + backup : backup,
   });
 
-  if (response.status === 403) {
-    const code = (
-      (await response.json().catch(() => null)) as { code?: unknown } | null
-    )?.code;
-    if (code === "install_refused") throw new InstallRefusedError();
-  }
   if (!response.ok) {
     throw new Error(`Backup failed with HTTP ${response.status}.`);
   }
 
   // The worker skips the write when the data matches its latest backup, so
   // nothing new was stored and the cloud copy keeps its original timestamp.
-  // A backup kept apart until this install is approved is still this
-  // device's own, so it's told apart nowhere here.
+  // A backup kept apart on this Syncify's first day is still its own, so
+  // it's told apart nowhere here.
   const result = (await response.json().catch(() => null)) as {
     unchanged?: boolean;
     settings?: unknown;
@@ -121,12 +96,15 @@ export async function uploadPayload(
   };
 }
 
-/** A trusted install's answer about a new install waiting on this Spotify account. */
+/**
+ * This Syncify's answer about another one on this Spotify username. That's
+ * me ("approve") sends the other Syncify's code, read off its Settings.
+ */
 export async function answerInstall(
   workerUrl: string,
   identity: UserIdentity,
   installId: string,
-  action: "approve" | "reject",
+  answer: { action: "approve"; code: string } | { action: "reject" },
 ): Promise<void> {
   const response = await request(
     workerUrl,
@@ -134,7 +112,7 @@ export async function answerInstall(
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ install: installId, action }),
+      body: JSON.stringify({ install: installId, ...answer }),
     },
     INSTALLS_PATH,
   );
@@ -142,9 +120,14 @@ export async function answerInstall(
   const error = (await response.json().catch(() => null)) as {
     code?: unknown;
   } | null;
-  // Someone answered first, from another device.
+  // Already answered, or it signed in since.
   if (error?.code === "not_pending") return;
-  throw new Error(`Couldn't answer with HTTP ${response.status}.`);
+  if (error?.code === "code_mismatch") throw new PairingCodeError();
+  throw new Error(
+    response.status === 429
+      ? "Too many tries. Wait a minute and try again."
+      : `Couldn't answer with HTTP ${response.status}.`,
+  );
 }
 
 /**
@@ -180,6 +163,8 @@ export async function downloadPayload(
       backups: [],
       safetyCopy: null,
       pinned: [],
+      borrowed: false,
+      others: [],
       claim: readClaim(result?.claim),
       unapproved: [],
       install: readInstall(result?.install),
@@ -208,73 +193,92 @@ export async function downloadPayload(
   delete body.nudge;
   delete body.settings;
   const all = [body, ...(body.backup_history ?? [])];
+  const state = { claim, install, nudge, settings };
 
+  // A Worker from before backups were marked lists them in order.
   if (!all.every((backup) => backup.backup)) {
     return {
+      ...state,
       exists: true,
       payload: body,
       backups: all.slice(0, RECENT_BACKUPS),
       safetyCopy: all[RECENT_BACKUPS] ?? null,
       pinned: [],
-      claim,
+      borrowed: false,
+      others: [],
       unapproved: [],
-      install,
-      nudge,
-      settings,
     };
   }
 
-  // This install's own backups count as its latest, approved or not: a
-  // device that's waiting (Spotify was reinstalled, say) is still its owner's.
-  const backups = all
-    .filter((backup) => backup.backup?.kind === "rolling" || isOwnUnapproved(backup))
-    .sort(
-      (a, b) =>
-        Date.parse(b.metadata.last_sync_datetime) - Date.parse(a.metadata.last_sync_datetime),
-    );
-  const isSafetyCopy = (backup: SyncifyPayload) =>
-    backup.backup?.kind === "anchor" || backup.backup?.safety_copy === true;
-  const safetyCopy = all.find(isSafetyCopy) ?? null;
-  const pinned = all.filter(
-    (backup) => backup.backup?.kind === "pinned" && !isSafetyCopy(backup),
-  );
   const unapproved = all.filter(isUnapproved);
-  // The latest backup is the newest of those; another install's unapproved
-  // ones never are.
-  const payload = backups[0] ?? safetyCopy;
+  const own = sortBackups(all.filter((backup) => !backup.backup?.other && !isUnapproved(backup)));
+  const others = all.filter((backup) => backup.backup?.other === true);
+  // Until this Syncify has a backup of its own, the others stand in for
+  // them: after Spotify was reinstalled, say, what it backed up before is
+  // what it restores.
+  const borrowed = own.backups.length + own.pinned.length === 0 && !own.safetyCopy && others.length > 0;
+  const shown = borrowed ? sortBackups(others) : own;
+  // The latest backup is the newest of those; an unconfirmed one never is.
+  const payload = shown.backups[0] ?? shown.safetyCopy;
 
   if (!payload) {
     return {
+      ...state,
       exists: false,
       payload: null,
       backups: [],
       safetyCopy: null,
-      pinned,
-      claim,
+      pinned: shown.pinned,
+      borrowed,
+      others: [],
       unapproved,
-      install,
-      nudge,
-      settings,
     };
   }
 
-  // Only the safety copy could be read: show it as the latest backup.
-  if (backups.length === 0 && safetyCopy) {
-    return {
-      exists: true,
-      payload,
-      backups: [safetyCopy],
-      safetyCopy: null,
-      pinned,
-      claim,
-      unapproved,
-      install,
-      nudge,
-      settings,
-    };
-  }
+  return {
+    ...state,
+    exists: true,
+    payload,
+    // Only the safety copy could be read: it's shown as the latest backup.
+    backups: shown.backups.length > 0 ? shown.backups : [payload],
+    safetyCopy: shown.backups.length > 0 ? shown.safetyCopy : null,
+    pinned: shown.pinned,
+    borrowed,
+    others: borrowed ? [] : others.sort(newestFirst),
+    unapproved,
+  };
+}
 
-  return { exists: true, payload, backups, safetyCopy, pinned, claim, unapproved, install, nudge, settings };
+const newestFirst = (a: SyncifyPayload, b: SyncifyPayload) =>
+  Date.parse(b.metadata.last_sync_datetime) - Date.parse(a.metadata.last_sync_datetime);
+
+/**
+ * Backups as the window lists them: the latest newest first, the safety
+ * copy, the pinned ones. Backups of several Syncifys can hold a safety copy
+ * each: the newest is shown as the one, the rest with the latest.
+ */
+function sortBackups(all: SyncifyPayload[]): {
+  backups: SyncifyPayload[];
+  safetyCopy: SyncifyPayload | null;
+  pinned: SyncifyPayload[];
+} {
+  const isSafetyCopy = (backup: SyncifyPayload) =>
+    backup.backup?.kind === "anchor" || backup.backup?.safety_copy === true;
+  const safetyCopy = all.filter(isSafetyCopy).sort(newestFirst)[0] ?? null;
+  return {
+    // This install's own backups count as its latest while they're still
+    // kept apart, on its first day.
+    backups: all
+      .filter(
+        (backup) =>
+          backup.backup?.kind === "rolling" ||
+          backup.backup?.kind === "quarantined" ||
+          (isSafetyCopy(backup) && backup !== safetyCopy && backup.backup?.kind === "anchor"),
+      )
+      .sort(newestFirst),
+    safetyCopy,
+    pinned: all.filter((backup) => backup.backup?.kind === "pinned" && backup !== safetyCopy),
+  };
 }
 
 /**
@@ -419,9 +423,8 @@ export async function request(
       return request(workerUrl, identity, init, path, true);
     }
   }
-  if (code === "claimed" || code === "not_owner" || code === "not_linked") {
-    throw new LockedError(code);
-  }
+  // A linked Spotify account the session can't read.
+  if (code === "not_linked") throw new Error("Couldn't read that Spotify account's backups.");
   if (code === "signed_out") await clearSession();
   throw new AccountError(typeof code === "string" ? code : "failed");
 }
@@ -432,14 +435,12 @@ function linkedPath(path: string, linkedHash?: string): string {
     : path;
 }
 
-/** This install's state as the backup service describes it, or null. */
+/** The Syncifys this one is asked about, as the backup service lists them, or null. */
 function readInstall(value: unknown): SyncifyInstallState | null {
   const install = value as { trust?: unknown; waiting?: unknown } | null | undefined;
   if (!install || typeof install.trust !== "string") return null;
   const waiting = Array.isArray(install.waiting) ? install.waiting : [];
   return {
-    trusted: install.trust !== "pending" && install.trust !== "rejected",
-    refused: install.trust === "rejected",
     waiting: waiting.flatMap((entry) => {
       const item = entry as { id?: unknown; device?: unknown; first_seen_at?: unknown } | null;
       return item && typeof item.id === "string" && typeof item.first_seen_at === "number"
@@ -451,17 +452,18 @@ function readInstall(value: unknown): SyncifyInstallState | null {
 
 /** A claim as the backup service describes it, or null. */
 export function readClaim(value: unknown): SyncifyClaim | null {
-  const claim = value as Partial<SyncifyClaim> | null | undefined;
+  const claim = value as
+    | { status?: unknown; mine?: unknown; email?: unknown; final_at?: unknown; held?: unknown; can_cancel?: unknown; undone_at?: unknown }
+    | null
+    | undefined;
   if (!claim || typeof claim.mine !== "boolean") return null;
-  if (claim.status === "final") return { status: "final", mine: claim.mine };
+  const email = typeof claim.email === "string" ? claim.email : null;
+  if (claim.status === "final") {
+    return { status: "final", mine: claim.mine, ...(claim.mine ? {} : { email }) };
+  }
   if (claim.status === "undone") {
     return typeof claim.undone_at === "number"
-      ? {
-          status: "undone",
-          mine: false,
-          email: typeof claim.email === "string" ? claim.email : null,
-          undone_at: claim.undone_at,
-        }
+      ? { status: "undone", mine: false, email, undone_at: claim.undone_at }
       : null;
   }
   if (claim.status !== "pending" || typeof claim.final_at !== "number") {
@@ -471,10 +473,10 @@ export function readClaim(value: unknown): SyncifyClaim | null {
   return {
     status: "pending",
     mine: claim.mine,
-    email: typeof claim.email === "string" ? claim.email : null,
+    email,
     final_at: claim.final_at,
     held: claim.held === true,
-    ...(claim.not_me === true ? { not_me: true as const } : {}),
+    can_cancel: claim.can_cancel === true,
   };
 }
 
@@ -484,14 +486,9 @@ function withoutDatabase(error: unknown): null {
   throw error;
 }
 
-/** A backup kept apart that this install made, signed with its own key. */
-function isOwnUnapproved(backup: SyncifyPayload): boolean {
-  return backup.backup?.kind === "quarantined" && backup.backup.mine === true;
-}
-
 /**
- * From an install this Spotify account hasn't approved, other than this one:
- * its new items are left off in a restore.
+ * From a Syncify nobody confirmed, other than this one: its new items are
+ * left off in a restore.
  */
 export function isUnapproved(backup: SyncifyPayload): boolean {
   return backup.backup?.kind === "quarantined" && backup.backup.mine !== true;

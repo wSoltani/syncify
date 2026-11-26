@@ -1,5 +1,4 @@
 import type { ClaimStatus } from "../../api/claimsApi";
-import type { LockedError } from "../../api/syncifyApi";
 import type { AccountSession } from "../../core/account";
 import { securedOn } from "../claimText";
 
@@ -18,10 +17,9 @@ export type SecureState =
 
 export function describeSecureState(
   claims: (ClaimStatus & { hash: string }) | null,
-  locked: LockedError["code"] | null,
+  /** Someone else's claim on this backup is pending. */
   otherClaim: boolean,
 ): SecureState {
-  if (locked === "not_owner") return { kind: "other-account" };
   if (!claims) return otherClaim ? { kind: "other-claim" } : { kind: "unknown" };
 
   const { claim } = claims;
@@ -59,14 +57,15 @@ export interface AccountTabStatus {
 /**
  * A check when signed in with this backup secured, a mark when something
  * needs a sign-in or securing, nothing while it's being secured.
+ * `securedElsewhere`: it's secured with an email this Syncify isn't signed
+ * in with, and Not me wasn't answered.
  */
 export function accountTabStatus(
   session: AccountSession | null | undefined,
-  locked: LockedError["code"] | null,
+  securedElsewhere: boolean,
   secure: SecureState,
 ): AccountTabStatus | null {
-  if (locked) return { kind: "warning", label: "Sign in to see your backups" };
-  if (!session) return null;
+  if (!session) return securedElsewhere ? { kind: "warning", label: "Sign in to see your backups" } : null;
   if (secure.kind === "secured") return { kind: "ok", label: "Signed in, backup secured" };
   if (secure.kind === "pending") return null;
   if (secure.kind === "open") return { kind: "warning", label: "Backup not secured yet" };

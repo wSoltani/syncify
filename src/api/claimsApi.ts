@@ -30,7 +30,7 @@ export interface LinkedAccount {
    */
   status: "pending" | "final" | "cancelled" | "unlinked";
   final_at: number;
-  /** A pending claim held for Syncify to review. */
+  /** A pending claim Syncify checks before it becomes final. */
   held: boolean;
   /**
    * For a cancelled claim, who cancelled it: this Spotify account, or an
@@ -82,22 +82,23 @@ export async function claimBackup(
 }
 
 /**
- * Not me on someone else's pending claim on this Spotify account: from an
- * install this account trusts, it cancels the claim; from any other, Syncify
- * checks it. Signed by the claimer, it cancels the claimer's own.
+ * Not me on someone else's pending claim on this Spotify account. It cancels
+ * the claim from a Syncify that backed up here before the claimer's did
+ * (the claim's `can_cancel`); from any other it changes nothing. Signed by
+ * the claimer, it cancels the claimer's own.
  */
 export async function cancelClaim(
   workerUrl: string,
   identity: UserIdentity,
-): Promise<"cancelled" | "checking"> {
+): Promise<"cancelled" | "unchanged"> {
   const response = await send(workerUrl, identity, "POST", CANCEL_CLAIM_PATH);
   // Already gone: nothing left to cancel.
   if (response.status === 404) return "cancelled";
   if (!response.ok) throw new ClaimError(await readCode(response));
   const result = (await response.json().catch(() => null)) as {
-    held?: unknown;
+    cancelled?: unknown;
   } | null;
-  return result?.held === true ? "checking" : "cancelled";
+  return result?.cancelled === false ? "unchanged" : "cancelled";
 }
 
 async function send(

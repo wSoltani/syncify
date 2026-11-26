@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useReducer, useRef, useState, type SyntheticEvent } from "react";
 import { ClaimError } from "../../api/claimsApi";
-import { InstallRefusedError, LockedError, UnsupportedVersionError } from "../../api/syncifyApi";
+import { UnsupportedVersionError } from "../../api/syncifyApi";
 import type { AccountSession } from "../../core/account";
+import { otherClaim as unansweredClaim, rememberNotMe } from "../../core/claimNotices";
 import { loadConfig, saveConfig } from "../../core/config";
 import { hideNudge, isNudgeHidden } from "../../core/nudge";
 import { getProjectConfig } from "../../core/projectConfig";
@@ -14,20 +15,14 @@ import {
   prepareSettingsSync,
   watchSyncStatus,
 } from "../../core/settingsSync";
-import {
-  answerWaitingInstall,
-  backupNow,
-  cancelPendingClaim,
-  restoreNow,
-  secureBackup,
-} from "../../core/syncService";
+import { backupNow, cancelPendingClaim, restoreNow, secureBackup } from "../../core/syncService";
 import type { SyncifyConfig } from "../../types/syncify";
 import { AccountTab } from "../account/AccountTab";
 import { accountTabStatus, describeSecureState } from "../account/secureState";
 import { backupItems } from "../backups/backupItems";
 import { BackupsTab } from "../backups/BackupsTab";
 import type { RestoreRequest } from "../backups/RestorePreview";
-import { installAnswerToast, notMeToast } from "../claimText";
+import { notMeToast } from "../claimText";
 import { Button, Notice, useStableId } from "../kit";
 import { FirstSyncDialog } from "../settings/FirstSyncDialog";
 import { SettingsTab } from "../settings/SettingsTab";
@@ -86,12 +81,19 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   const [fromNudge, setFromNudge] = useState(props.secure === true);
   const securedFromPanel = useRef(false);
 
-  const { remote, lockedBy: locked, claims, session } = backups;
+  const { remote, claims, session } = backups;
   const busy = activity !== "idle";
   const localHash = local?.hash ?? null;
-  // Someone else's claim on this Spotify account: the real owner can cancel it.
-  const otherClaim = remote.claim?.status === "pending" && !remote.claim.mine ? remote.claim : null;
-  const secureState = describeSecureState(claims, locked, otherClaim !== null);
+  // Someone else is securing this backup, or secured it with an email this
+  // Syncify isn't signed in with, until it answers Not me, which is kept
+  // on this device and read again after the answer.
+  const [, readAnswer] = useReducer((count: number) => count + 1, 0);
+  const otherClaim = unansweredClaim(remote.claim);
+  const pendingElsewhere = remote.claim?.status === "pending" && !remote.claim.mine;
+  const secureState = describeSecureState(claims, pendingElsewhere);
+  // Secured with an email this Syncify isn't signed in with: signing in with
+  // it is what shows those backups.
+  const securedElsewhere = otherClaim?.status === "final";
   // Extension settings sync only for a signed-in owner of a secured backup.
   const secured = session != null && secureState.kind === "secured";
   const syncsSettings = secured && config.settingsSyncEnabled;
@@ -106,7 +108,6 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     checked: backups.check !== null,
     checkError,
     unsupported,
-    locked,
     latest: remote.payload,
     latestItems: remote.payload ? backupItems(remote.payload).map((item) => item.key) : [],
     backedUp: isBackedUp,
@@ -116,13 +117,12 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     localConfig: local?.spicetifyConfig ?? null,
     restoreResult: restoreResult.recent ? restoreResult.result : null,
   });
-  const alert = describeAlert(remote.claim, remote.install?.waiting[0] ?? null, session != null);
+  const alert = describeAlert(otherClaim, remote.install?.waiting[0] ?? null, session != null);
   // Signed out, the backup service decides; signed in, securing sends no
   // email, so any backup that isn't secured yet shows it. Account says the
   // same once open.
   const showNudge =
     !nudgeHidden &&
-    !locked &&
     remote.payload !== null &&
     tab !== "account" &&
     (session ? secureState.kind === "open" : session === null && remote.nudge);
@@ -145,9 +145,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
         setCheckError(null);
       }
       await refreshLocal();
-      const lockedBy = await backups.refresh();
-      // A locked backup needs a sign-in: the Account tab opens by itself.
-      if (lockedBy) setTab("account");
+      await backups.refresh();
       setCheckError(null);
       setActivity("idle");
     } catch (error) {
@@ -161,18 +159,6 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     if (error instanceof UnsupportedVersionError) {
       setUnsupported(true);
       setMessage(null);
-      return;
-    }
-    // Refused by a trusted install: the notice above the backups says so.
-    if (error instanceof InstallRefusedError) {
-      setMessage(null);
-      void refresh({ silent: true });
-      return;
-    }
-    // Secured since the window opened, or the session ended: show the lock.
-    if (error instanceof LockedError && error.code !== "not_linked") {
-      setMessage(null);
-      void refresh({ silent: true });
       return;
     }
     const text = error instanceof Error ? error.message : String(error);
@@ -216,32 +202,26 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     }
   }
 
-  async function answerInstall(answer: "approve" | "reject") {
-    const waiting = remote.install?.waiting[0];
-    if (!waiting) return;
-    setAnswering(true);
-    try {
-      await answerWaitingInstall(config, waiting.id, answer);
-      Spicetify.showNotification(installAnswerToast(answer));
-      await refresh({ silent: true });
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setAnswering(false);
-    }
-  }
-
   /**
-   * Not me: from an install this Spotify account trusts it cancels the
-   * claim, from any other Syncify checks it.
+   * Not me on someone else's claim. It cancels a pending one from a Syncify
+   * that backed up here before the claimer's did. From any other, and once
+   * the backup is secured, the notice only stops showing here.
    */
-  async function cancelOtherClaim() {
+  async function answerNotMe() {
+    if (!otherClaim) return;
     setAnswering(true);
     try {
-      Spicetify.showNotification(
-        notMeToast(await cancelPendingClaim(config), otherClaim?.email ?? null),
-      );
-      await refresh({ silent: true });
+      const cancelled =
+        otherClaim.status === "pending" &&
+        otherClaim.can_cancel &&
+        (await cancelPendingClaim(config)) === "cancelled";
+      if (cancelled) {
+        Spicetify.showNotification(notMeToast(otherClaim.email));
+        await refresh({ silent: true });
+      } else {
+        rememberNotMe(otherClaim);
+        readAnswer();
+      }
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : String(error) });
     } finally {
@@ -279,12 +259,12 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   }
 
   // Signing in from "Secure your backup" claims it at once. Signing in to a
-  // locked backup only unlocks it.
+  // backup that is secured already, or being secured, only shows it.
   function handleSignedIn(signedIn: AccountSession) {
     backups.setSession(signedIn);
     // Signing in secures it below, so the launch panel's effect doesn't too.
     securedFromPanel.current = true;
-    if (!locked && remote.payload) void runSecure();
+    if (remote.claim === null && remote.payload) void runSecure();
     else void refresh({ silent: true });
   }
 
@@ -298,7 +278,6 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   function runStatusAction(action: StatusAction) {
     if (action === "back-up") void runBackup();
     else if (action === "try-again") void refresh();
-    else if (action === "sign-in") setTab("account");
     else if (action === "how-to-update") openExternal(`${project.githubUrl}#updating`);
     else reloadAndCheck();
   }
@@ -320,11 +299,11 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
   // once the claim status says it can be.
   const secureOnce = useLatest(() => {
     if (!props.secure || securedFromPanel.current || securing) return;
-    if (!session || secureState.kind !== "open" || locked) return;
+    if (!session || secureState.kind !== "open") return;
     securedFromPanel.current = true;
     void runSecure();
   });
-  useEffect(() => secureOnce.current(), [secureOnce, session, secureState.kind, locked, securing]);
+  useEffect(() => secureOnce.current(), [secureOnce, session, secureState.kind, securing]);
 
   return (
     <div
@@ -338,11 +317,13 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           status={status}
           alert={alert}
           backingUp={activity === "backing-up"}
-          busy={busy || (status.action === "back-up" && locked !== null)}
+          busy={busy}
           answering={answering}
           onAction={runStatusAction}
-          onNotMe={() => void cancelOtherClaim()}
-          onAnswerInstall={(answer) => void answerInstall(answer)}
+          onSignIn={() => setTab("account")}
+          onNotMe={() => void answerNotMe()}
+          onInstallAnswered={() => refresh({ silent: true })}
+          onError={handleError}
           onSupport={() => openExternal(project.kofiUrl)}
         />
         {message ? (
@@ -375,7 +356,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           selected={tab}
           onSelect={setTab}
           codeCount={session ? shareInfo.codeCount : null}
-          account={accountTabStatus(session, locked, secureState)}
+          account={accountTabStatus(session, securedElsewhere, secureState)}
           newerVersion={newerVersion}
           settingsHeld={settingsHeld}
         />
@@ -387,7 +368,6 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
           config={config}
           remote={backups.check ? remote : null}
           failed={checkError !== null || localFailed}
-          lockedBy={locked}
           local={local}
           otherAccounts={otherAccounts}
           notices={
@@ -399,10 +379,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
                 hideNudge();
                 setNudgeHidden(true);
               }}
-              install={locked || secureState.kind === "secured" ? null : remote.install}
               restoreResult={restoreResult.result}
-              signedOut={session === null}
-              onSignIn={() => setTab("account")}
             />
           }
           canShareSettings={syncsSettings}
@@ -436,7 +413,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
         <AccountTab
           idBase={idBase}
           session={session}
-          locked={locked}
+          securedElsewhere={securedElsewhere}
           secure={secureState}
           securing={securing}
           secureError={secureError}

@@ -1,8 +1,7 @@
 import { isSameSpicetifyConfig } from "../../core/spicetifyConfig";
+import type { OtherClaim } from "../../core/claimNotices";
 import type { RestoreResult } from "../../core/restoreSummary";
-import type { LockedError } from "../../api/syncifyApi";
 import type {
-  SyncifyClaim,
   SyncifyPayload,
   SyncifySpicetifyConfig,
   SyncifyWaitingInstall,
@@ -14,7 +13,7 @@ import { formatBackupDate, formatItemCount } from "../format";
 export type Activity = "idle" | "checking" | "backing-up" | "restoring";
 
 /** The one main action on the status's right, when there is one. */
-export type StatusAction = "back-up" | "try-again" | "sign-in" | "how-to-update" | "reload";
+export type StatusAction = "back-up" | "try-again" | "how-to-update" | "reload";
 
 export interface WindowStatus {
   title: string;
@@ -36,7 +35,6 @@ export interface StatusFacts {
   /** Why the first check failed. */
   checkError: string | null;
   unsupported: boolean;
-  locked: LockedError["code"] | null;
   latest: SyncifyPayload | null;
   latestItems: string[];
   /** What's on this device is in one of the backups. */
@@ -71,14 +69,6 @@ function describeStatusOnly(facts: StatusFacts): Omit<WindowStatus, "line"> {
   if (facts.restoreResult && !facts.unsupported) return describeRestoreResult(facts.restoreResult);
   if (facts.unsupported) {
     return { ...plain, title: "Update Syncify to keep backing up", detail: ["Your backups are safe"], action: "how-to-update" };
-  }
-  if (facts.locked) {
-    return {
-      ...plain,
-      title: "Sign in to restore",
-      detail: [facts.locked === "not_owner" ? "Secured with a different email" : "This backup is secured"],
-      action: "sign-in",
-    };
   }
   if (facts.activity === "backing-up") {
     return { ...plain, title: "Backing up…", detail: [], action: "back-up" };
@@ -167,19 +157,20 @@ export function describeChanges(
 
 /** An alert that needs an answer, shown as the status. */
 export type WindowAlert =
-  | { kind: "claim"; title: string; text: string | null; canAnswer: boolean; signIn: boolean }
+  | { kind: "claim"; title: string; text: string; signIn: boolean }
   | { kind: "install"; title: string; text: string; install: SyncifyWaitingInstall };
 
-/** Someone else securing this backup comes first, then a new install. */
+/**
+ * Someone else securing this backup, or who secured it, comes first, then
+ * another Syncify's backups. `claim`: one this Syncify hasn't answered Not
+ * me to (otherClaim).
+ */
 export function describeAlert(
-  claim: SyncifyClaim | null,
+  claim: OtherClaim | null,
   waiting: SyncifyWaitingInstall | null,
   signedIn: boolean,
 ): WindowAlert | null {
-  if (claim?.status === "pending" && !claim.mine) {
-    const canAnswer = !claim.not_me;
-    return { kind: "claim", ...describeOtherClaim(claim, signedIn), canAnswer, signIn: canAnswer && !signedIn };
-  }
+  if (claim) return { kind: "claim", ...describeOtherClaim(claim, signedIn), signIn: !signedIn };
   if (waiting) {
     return {
       kind: "install",

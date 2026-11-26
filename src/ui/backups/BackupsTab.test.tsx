@@ -35,6 +35,8 @@ const remote: SyncifyRemoteState = {
   backups: [current, older],
   safetyCopy: null,
   pinned: [],
+  borrowed: false,
+  others: [],
   claim: null,
   unapproved: [],
   install: null,
@@ -58,7 +60,6 @@ const tabProps = (changes: Partial<TabProps> = {}): TabProps => ({
   config: {} as SyncifyConfig,
   remote,
   failed: false,
-  lockedBy: null,
   local,
   otherAccounts: [],
   canShareSettings: false,
@@ -181,8 +182,22 @@ describe("BackupsTab", () => {
     expect(screen.getByRole("list", { name: "Backups" })).toBeTruthy();
   });
 
-  it("asks for a sign-in when the backups are locked", () => {
-    renderTab({ remote: null, lockedBy: "claimed" });
-    expect(screen.getByText("Sign in to see and restore your backups")).toBeTruthy();
+  it("lists other Syncifys' backups under this one's, ready to restore", () => {
+    const theirs = makeBackup("theirs", [one], { at: "2026-11-10T20:00:00Z", device: "Linux" });
+    const unconfirmed = {
+      ...makeBackup("unconfirmed", [two], { at: "2026-11-09T20:00:00Z" }),
+      backup: { id: "q", kind: "quarantined" as const },
+    };
+    renderTab({ remote: { ...remote, others: [theirs], unapproved: [unconfirmed] } });
+    expect(screen.getByText("Other backups on your Spotify username")).toBeTruthy();
+    const others = screen.getByRole("list", { name: "Other backups on your Spotify username" });
+    expect(others.querySelectorAll("li")).toHaveLength(2);
+    expect(screen.getByRole("list", { name: "Backups" }).querySelectorAll("li")).toHaveLength(2);
+    expect(others.querySelectorAll("button[aria-label^='Preview restore']")).toHaveLength(2);
+  });
+
+  it("shows no second list without other Syncifys' backups", () => {
+    renderTab();
+    expect(screen.queryByText("Other backups on your Spotify username")).toBeNull();
   });
 });

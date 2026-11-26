@@ -6,6 +6,12 @@
     gap: var(--syncify-space-2);
 }
 
+/* This Syncify's code, in the code font, never split over two lines. */
+.syncify-settings-code {
+    font-family: var(--syncify-font-mono);
+    white-space: nowrap;
+}
+
 /* The Extension settings section and the Items list in its place. */
 .syncify-sync-section {
     display: flex;

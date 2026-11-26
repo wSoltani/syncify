@@ -31,7 +31,7 @@ type TabProps = Parameters<typeof AccountTab>[0];
 const tabProps = (changes: Partial<TabProps> = {}): TabProps => ({
   idBase: "t",
   session: null,
-  locked: null,
+  securedElsewhere: false,
   secure: { kind: "open" },
   securing: false,
   secureError: null,
@@ -100,8 +100,8 @@ describe("AccountTab signed out", () => {
     expect(screen.getByLabelText("Email for sign-in codes")).toBeTruthy();
   });
 
-  it("asks for the email that secured a locked backup", async () => {
-    await renderTab({ locked: "claimed" });
+  it("asks for the email that secured the backup", async () => {
+    await renderTab({ securedElsewhere: true });
     expect(screen.getByText("Sign in with the email that secured this backup")).toBeTruthy();
   });
 });
