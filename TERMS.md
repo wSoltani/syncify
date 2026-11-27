@@ -1,6 +1,6 @@
 # Terms
 
-Updated November 20, 2026
+Updated November 27, 2026
 
 These terms cover Syncify: the Spicetify extension, its website and the server behind them. Syncify is free, and Wassim Soltani makes and runs it. By using Syncify, you agree to these terms. What it stores, and why, is in the [privacy note](PRIVACY.md).
 
