@@ -132,7 +132,7 @@ export function SyncifyWindow(props: { tab?: WindowTab; secure?: boolean }) {
     .filter((account) => account.status === "final")
     .map((account, index) => ({
       hash: account.hash,
-      label: `Spotify account ${index + 1}${account.device_info ? ` from ${account.device_info}` : ""}`,
+      label: `Spotify username ${index + 1}${account.device_info ? ` from ${account.device_info}` : ""}`,
     }))
     .filter((account) => account.hash !== claims?.hash);
 

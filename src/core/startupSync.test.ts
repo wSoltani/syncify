@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { rememberNotMe } from "./claimNotices";
 import { summarizeMarketplaceState } from "./marketplace";
 import { runStartupSyncCheck } from "./startupSync";
+import { BackupLimitedError } from "../api/syncifyApi";
 import { backupNow, fetchRemoteState } from "./syncService";
 import type { SyncifyClaim, SyncifyPayload, SyncifyRemoteState } from "../types/syncify";
 
@@ -57,6 +58,29 @@ describe("runStartupSyncCheck", () => {
     await runStartupSyncCheck(notices);
     expect(backupNow).toHaveBeenCalledOnce();
     expect(notices.onClaim).not.toHaveBeenCalled();
+  });
+
+  it("waits out a minute's limit and backs up after it, without a word, but not a day's", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(fetchRemoteState).mockResolvedValue(remote({}));
+      vi.mocked(backupNow).mockRejectedValueOnce(new BackupLimitedError(60));
+      const check = runStartupSyncCheck(notices);
+      await vi.advanceTimersByTimeAsync(59_000);
+      expect(backupNow).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await check;
+      expect(backupNow).toHaveBeenCalledTimes(2);
+      expect(showNotification).toHaveBeenCalledExactlyOnceWith("Syncify auto-backup complete");
+
+      vi.clearAllMocks();
+      vi.mocked(backupNow).mockRejectedValueOnce(new BackupLimitedError(12 * 60 * 60));
+      await runStartupSyncCheck(notices);
+      expect(backupNow).toHaveBeenCalledOnce();
+      expect(showNotification).toHaveBeenCalledExactlyOnceWith("Syncify auto-sync skipped: Backup failed with HTTP 429.", true, 8000);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("asks before the first backup on a username secured with another email", async () => {

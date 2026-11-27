@@ -83,8 +83,7 @@ export function RestorePreview(props: {
       ) : null}
       {restore.unapproved ? (
         <Notice tone="warning">
-          An install this Spotify account hasn't approved made this backup. Its items stay off unless you
-          turn them on.
+          This backup is unconfirmed. Its items stay off unless you turn them on.
         </Notice>
       ) : null}
       <ChangeList

@@ -112,7 +112,7 @@ describe("AccountTab signed in", () => {
     expect(screen.getByText("a***e@example.com")).toBeTruthy();
     expect(screen.getByText("@alice")).toBeTruthy();
     expect(screen.getByText("This backup is secured")).toBeTruthy();
-    expect(screen.getByText("2 Spotify accounts linked")).toBeTruthy();
+    expect(screen.getByText("2 Spotify usernames linked")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Secure" })).toBeNull();
   });
 

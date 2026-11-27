@@ -1,22 +1,23 @@
 # Privacy
 
-Updated November 26, 2026
+Updated November 27, 2026
 
-You don't need an account. Without one, your backups follow the Spotify account you're signed in with. An account adds your email, and lets you secure your backups so only you can restore them.
+You don't need an account. Without one, your backups follow the Spotify username you're signed in with. An account adds your email, and lets you secure your backups so only you can restore them.
 
 ## What Syncify stores
 
 - **A one-way hash of your Spotify username.** Syncify doesn't see your username or your Spotify password.
 - **Your backups:** your 3 latest and a safety copy, and for a backup with items a restore leaves off by default, a copy without them for older versions of Syncify. Each holds what Marketplace keeps about your extensions, themes (with their color scheme), snippets and apps, what you set up manually in Spicetify's config, and the kind of computer it came from (Windows, macOS or Linux). With an account, you can name a backup on your account page.
-- **Each install:** a random ID made when Syncify is installed, its version, and when it was first and last seen. Also the public half of a key the install makes for itself, which backups are its own, what confirmed that and when (a sign-in, or **That's me** from an install), when an install answered **Not me** about it, how many backups it stored today, and how many wrong codes were tried for **That's me** about it today.
+- **Each install:** a random ID made when Syncify is installed, its version, and when it was first and last seen. Also the public half of a key the install makes for itself, which backups are its own, what confirmed that and when (a sign-in, or **That's me** from an install), when an install answered **Not me** about it, how many backups it stored today, and how many wrong codes it and the installs it shares backups with sent for **That's me** today.
 - **Whose backups are whose:** a Spotify username is often public, so anyone can send backups under it. That's why each install's backups are its own: its 3 latest and a safety copy, which other installs can't replace or delete. Installs share their backups once you sign in to the same Syncify account on them, or once you press **That's me** on one and type the code shown in the other's Settings. The code is made from that install's key, so nothing more is stored for it. **Not me** keeps them apart and deletes nothing.
-- **An install's first day on a username that already has backups:** its backups are held apart, the 3 latest at most for the whole username, with whether each was signed with that install's key, so it sees its own. After a day they become its own, or sooner with a sign-in or **That's me**.
+- **An install with no place yet:** a new install's backups are its own from its first backup. When all 10 places on a username are taken, or an older version of Syncify can't sign its backups, they are held apart instead: that install's 3 latest, with whether each was signed with its key, so it sees its own. They become its own once a place is free, or sooner with a sign-in or **That's me**. Held-apart backups are kept for the 20 installs that backed up last.
 - **After Spotify empties Syncify's storage:** a Spotify update or reinstall can do that, and Syncify then starts again as a new install. So on a username nobody secured, a new install is also shown the backups made there before, and can restore them, until it signs in or an install answers about it.
 - **How many installs:** without an account, up to 10 installs keep their own backups on one username. One more gets a place only once one of the 10 has gone unused for 12 months, and that one's backups are deleted then.
+- **New usernames:** one network can start backups for one new Spotify username a minute. Cloudflare counts this by IP address for that minute, and Syncify doesn't store the address.
 - **Activity counts:** how many backups and restores you made, by month and by day of the week and hour, when you first had each item, the names of the items in your latest backup, and which items you added and removed each year. Your time zone is used to count these and isn't stored.
-- **With an account:** your email, the Spotify accounts you linked, and your signed-in devices, each with its user agent, the country it signed in from and when it was last used. IP addresses aren't stored.
-- **Share codes:** for each code you create, its name if you give one, the Marketplace items in it, when it was made and changed, and how many Spotify accounts applied it. A code and its page are public: anyone with the code or the link can see its name and items. They don't hold extension settings or your Spicetify config.
-- **Imports of share codes:** when you apply someone's code, the hash of your Spotify username is kept with that code, so each Spotify account counts once.
+- **With an account:** your email, the Spotify usernames you linked, and your signed-in devices, each with its user agent, the country it signed in from and when it was last used. IP addresses aren't stored.
+- **Share codes:** for each code you create, its name if you give one, the Marketplace items in it, when it was made and changed, and how many Spotify usernames applied it. A code and its page are public: anyone with the code or the link can see its name and items. They don't hold extension settings or your Spicetify config.
+- **Imports of share codes:** when you apply someone's code, the hash of your Spotify username is kept with that code, so each Spotify username counts once.
 - **Your handle:** the name you pick when you first share a setup or on your account page, like @mellow-beat427, and when you last changed it. It's public: your share pages show it, and its profile page lists your codes. It's never made from your email or your Spotify username. When you change it or delete your account, the old one is held for 30 days so nobody else can take it while old links still point to it.
 - **Your socials:** the GitHub, Reddit, X and Discord usernames you add on your account page, if any. They're public on your profile page. Delete one by emptying it. They're also deleted with your account, and when Syncify resets your handle.
 - **Discover posts:** for each share code you post, its description, up to 3 images, when it was posted and changed, and whether it's public, waiting for a check or not allowed. A public post is public like its code: anyone can see it, its images and your handle. Images are checked by Cloudflare's Workers AI before anyone sees them, and its answer is kept with each one.
@@ -56,7 +57,7 @@ Developers of extensions, themes and apps can sign in with GitHub at [syncify.ws
 Syncify runs on Cloudflare, so your data can be handled outside your country:
 
 - **Workers** run Syncify's server and website.
-- **D1** databases hold your account, your Spotify accounts and installs, your activity counts, share codes, Discover posts, hearts, reports and Ko-fi payments. Your synced extension settings get a database of their own.
+- **D1** databases hold your account, your Spotify usernames and installs, your activity counts, share codes, Discover posts, hearts, reports and Ko-fi payments. Your synced extension settings get a database of their own.
 - **R2** holds your backup files with their extension settings, your share codes' files and your Discover images.
 - **Workers KV** still holds backups made before October 24, 2026, from before Syncify moved to D1 and R2. Syncify only reads them, to bring them into D1 and R2 once, and stops reading KV when every one is in.
 - **Workers Analytics Engine** keeps your username hash with each request for 3 months, to count how many people use Syncify.
@@ -84,7 +85,7 @@ Syncify follows common security practice:
 3. **Not me** from an install that backed up there before yours cancels the claim. From any other install it changes nothing.
 4. After the 7 days the backup is secured to your account: the backups of the installs you sign in on are your account's, and only your signed-in installs can see or restore them. An install that isn't signed in keeps its own backups and goes on backing up. It shows that the backup is secured, with your email partly hidden, until it answers **Not me**.
 
-Syncify can undo a secured claim if it turns out to be wrong. Your backups stay as they are, and that account can't secure them again. For 30 days, Syncify on that Spotify account says the backup is no longer secured by that account, with its email partly hidden.
+Syncify can undo a secured claim if it turns out to be wrong. Your backups stay as they are, and that account can't secure them again. For 30 days, Syncify on that Spotify username says the backup is no longer secured by that account, with its email partly hidden.
 
 For this, Syncify keeps when each claim was made, when the claiming account first signed in on an install that had backed up there before the claim, and when it was secured, cancelled or undone. For a claim Syncify held for a check before November 2026, also when and why. While a claim is pending, the install that made it is kept with its device, version, country and when it was first seen. So is each device the claiming account signs in with: its user agent, the country it signed in from and when, even after it signs out. That way an admin can compare them. All of it is deleted when the claim finishes or is cancelled.
 
@@ -94,11 +95,11 @@ For this, Syncify keeps when each claim was made, when the claiming account firs
 - **Without an account:** secure your backup first, then delete everything once it's secured.
 - **One share code:** delete it in Syncify or on your account page. Its link stops working, and who imported it goes with it, with its Discover post and hearts.
 - **One Discover post:** press **Remove from Discover** on your account page. Its images come off Discover at once, its hearts are deleted, and the code stays.
-- **Data you stop using:** a Spotify account without a Syncify account that hasn't used Syncify for 12 months is deleted with all its backups and the codes it imported. A Syncify account with no sign-in for 12 months, and none of its linked Spotify accounts using Syncify in that time, is deleted entirely, the same as Delete everything.
+- **Data you stop using:** a Spotify username without a Syncify account that hasn't used Syncify for 12 months is deleted with all its backups and the codes it imported. A Syncify account with no sign-in for 12 months, and none of its linked Spotify usernames using Syncify in that time, is deleted entirely, the same as Delete everything.
 
 Deleted backups and share codes stay in storage for about 9 more days, out of reach, so they can be brought back if Syncify is ever attacked. Backups replaced by newer ones are held the same way. Images you take off a Discover post, or delete with it, stay about 9 more days at their own link, off Discover. When you change a share code, what it held before is kept for 8 days so Syncify can put it back, then held the same way. After that, all of it is erased.
 
-Backups made before October 24, 2026 are brought in from Workers KV, so Delete everything and the 12-month cleanup delete them like any other. Their old copy stays in KV, which Syncify stops reading once every one is in. Until then, Syncify never brings back one deleted since mid-November 2026. One deleted before that wasn't recorded, so it can come back once, as a Spotify account without a Syncify account, and the 12-month cleanup deletes it again.
+Backups made before October 24, 2026 are brought in from Workers KV, so Delete everything and the 12-month cleanup delete them like any other. Their old copy stays in KV, which Syncify stops reading once every one is in. Until then, Syncify never brings back one deleted since mid-November 2026. One deleted before that wasn't recorded, so it can come back once, as a Spotify username without a Syncify account, and the 12-month cleanup deletes it again.
 
 If an admin ever changed your account manually, for example by signing out your devices, that log entry keeps a one-way hash of your email after the account is deleted, so a later question about it can still be answered.
 

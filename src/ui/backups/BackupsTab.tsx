@@ -180,9 +180,9 @@ export function BackupsTab(props: {
             trigger={{
               value:
                 props.otherAccounts.find((account) => account.hash === linked?.hash)?.label ??
-                "This Spotify account",
+                "This Spotify username",
             }}
-            items={[{ hash: null, label: "This Spotify account" }, ...props.otherAccounts].map(
+            items={[{ hash: null, label: "This Spotify username" }, ...props.otherAccounts].map(
               (account) => ({
                 label: account.label,
                 checked: (linked?.hash ?? null) === account.hash,
