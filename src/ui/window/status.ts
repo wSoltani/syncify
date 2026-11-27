@@ -1,12 +1,12 @@
 import { isSameSpicetifyConfig } from "../../core/spicetifyConfig";
-import type { OtherClaim } from "../../core/claimNotices";
+import type { SecuredElsewhere } from "../../core/claimNotices";
 import type { RestoreResult } from "../../core/restoreSummary";
 import type {
   SyncifyPayload,
   SyncifySpicetifyConfig,
   SyncifyWaitingInstall,
 } from "../../types/syncify";
-import { WAITING_INSTALL_TEXT, describeOtherClaim, waitingInstallTitle } from "../claimText";
+import { WAITING_INSTALL_TEXT, describeSecuredElsewhere, waitingInstallTitle } from "../claimText";
 import { formatBackupDate, formatItemCount } from "../format";
 
 /** What the window is doing right now. */
@@ -161,16 +161,16 @@ export type WindowAlert =
   | { kind: "install"; title: string; text: string; install: SyncifyWaitingInstall };
 
 /**
- * Someone else securing this backup, or who secured it, comes first, then
- * another Syncify's backups. `claim`: one this Syncify hasn't answered Not
- * me to (otherClaim).
+ * That the backup is secured with emails this Syncify isn't signed in with
+ * comes first, then another Syncify's backups. `claim`: one this Syncify
+ * hasn't answered Not me to (securedElsewhere).
  */
 export function describeAlert(
-  claim: OtherClaim | null,
+  claim: SecuredElsewhere | null,
   waiting: SyncifyWaitingInstall | null,
   signedIn: boolean,
 ): WindowAlert | null {
-  if (claim) return { kind: "claim", ...describeOtherClaim(claim, signedIn), signIn: !signedIn };
+  if (claim) return { kind: "claim", ...describeSecuredElsewhere(claim, signedIn), signIn: !signedIn };
   if (waiting) {
     return {
       kind: "install",

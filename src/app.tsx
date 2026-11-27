@@ -12,9 +12,9 @@ import { DatabaseUnavailableError } from "./core/database";
 import { debug, warn } from "./core/log";
 import { SyncifyWindow } from "./ui/window/SyncifyWindow";
 import { closeWindow, isWindowOpen, openWindow } from "./ui/window/openWindow";
-import { ClaimNotice, InstallNotice, NudgeNotice, UndoneClaimNotice } from "./ui/notices/LaunchNotices";
-import type { OtherClaim } from "./core/claimNotices";
-import type { SyncifyClaim, SyncifyWaitingInstall } from "./types/syncify";
+import { InstallNotice, NudgeNotice, SecuredElsewhereNotice } from "./ui/notices/LaunchNotices";
+import type { SecuredElsewhere } from "./core/claimNotices";
+import type { SyncifyWaitingInstall } from "./types/syncify";
 
 function isSpicetifyReady(): boolean {
   return Boolean(
@@ -48,8 +48,7 @@ function main(): void {
   applyEntryPoint(config.entryPoint);
   initShortcut(config.shortcut, toggleSyncify);
   void runStartupSyncCheck({
-    onClaim: openClaimNotice,
-    onUndone: openUndoneNotice,
+    onSecuredElsewhere: openSecuredElsewhereNotice,
     onInstall: openInstallNotice,
     onNudge: openNudgeNotice,
     onFirstSync: openFirstSync,
@@ -78,12 +77,12 @@ function toggleSyncify(): void {
   openWindow(<SyncifyWindow />);
 }
 
-// Someone else is securing this backup, or secured it with an email this
-// Syncify isn't signed in with, found when Spotify started.
-function openClaimNotice(claim: OtherClaim): void {
+// This backup is secured with emails this Syncify isn't signed in with, found
+// when Spotify started.
+function openSecuredElsewhereNotice(claim: SecuredElsewhere): void {
   // Syncify's own window already shows it.
   if (isWindowOpen()) return;
-  debug("Opening claim notice");
+  debug("Opening secured notice");
   // A session that couldn't be read isn't taken for signed out: the notice
   // waits for a later launch. Only a device without IndexedDB has none.
   loadSession()
@@ -95,7 +94,7 @@ function openClaimNotice(claim: OtherClaim): void {
       (session) => {
         if (isWindowOpen()) return;
         openWindow(
-          <ClaimNotice
+          <SecuredElsewhereNotice
             claim={claim}
             signedIn={session !== null}
             onSignIn={() => openWindow(<SyncifyWindow tab="account" />)}
@@ -103,18 +102,8 @@ function openClaimNotice(claim: OtherClaim): void {
           />,
         );
       },
-      (error: unknown) => warn("Claim notice skipped", error),
+      (error: unknown) => warn("Secured notice skipped", error),
     );
-}
-
-// An admin undid someone else's claim on this Spotify account, found when
-// Spotify started. Not shown over Syncify's own window, so it shows on a
-// later launch instead.
-function openUndoneNotice(claim: Extract<SyncifyClaim, { status: "undone" }>): boolean {
-  if (isWindowOpen()) return false;
-  debug("Opening undone claim notice");
-  openWindow(<UndoneClaimNotice claim={claim} onClose={closeWindow} />);
-  return true;
 }
 
 // Another Syncify backed up on this Spotify username, found when Spotify

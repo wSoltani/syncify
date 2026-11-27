@@ -207,7 +207,7 @@ export async function downloadPayload(
     nudge?: unknown;
     settings?: unknown;
   };
-  // The notice of a pending claim, this install's state and the Secure nudge
+  // Who secured the username, this install's state and the Secure nudge
   // come with the backups.
   const claim = readClaim(body.claim);
   const install = readInstall(body.install);
@@ -475,34 +475,13 @@ function readInstall(value: unknown): SyncifyInstallState | null {
   };
 }
 
-/** A claim as the backup service describes it, or null. */
+/** Who secured this Spotify username, as the backup service says it, or null. */
 export function readClaim(value: unknown): SyncifyClaim | null {
-  const claim = value as
-    | { status?: unknown; mine?: unknown; email?: unknown; final_at?: unknown; held?: unknown; can_cancel?: unknown; undone_at?: unknown }
-    | null
-    | undefined;
-  if (!claim || typeof claim.mine !== "boolean") return null;
-  const email = typeof claim.email === "string" ? claim.email : null;
-  if (claim.status === "final") {
-    return { status: "final", mine: claim.mine, ...(claim.mine ? {} : { email }) };
-  }
-  if (claim.status === "undone") {
-    return typeof claim.undone_at === "number"
-      ? { status: "undone", mine: false, email, undone_at: claim.undone_at }
-      : null;
-  }
-  if (claim.status !== "pending" || typeof claim.final_at !== "number") {
-    return null;
-  }
-
-  return {
-    status: "pending",
-    mine: claim.mine,
-    email,
-    final_at: claim.final_at,
-    held: claim.held === true,
-    can_cancel: claim.can_cancel === true,
-  };
+  const claim = value as { status?: unknown; mine?: unknown; emails?: unknown } | null;
+  if (claim?.status !== "final" || typeof claim.mine !== "boolean") return null;
+  if (claim.mine) return { status: "final", mine: true };
+  const emails = Array.isArray(claim.emails) ? claim.emails.filter((email) => typeof email === "string") : [];
+  return emails.length > 0 ? { status: "final", mine: false, emails } : null;
 }
 
 /** Nothing stored on a device without IndexedDB; any other failure stands. */

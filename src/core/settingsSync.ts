@@ -227,7 +227,7 @@ export async function prepareSettingsSync(config: SyncifyConfig): Promise<Settin
       // An item with no settings here sends nothing: its settings going
       // missing never clears the account's copy.
       if (off.has(item.id) || waiting.has(item.id) || !values) continue;
-      const size = measure(item, values);
+      const size = measure(values);
       if (size > item.limit) {
         // Held here: it neither sends nor takes. Said once per size.
         if (state.heldSent[item.id] !== size) {
@@ -338,10 +338,10 @@ export async function finishSettingsSync(
     if (off.has(item.id) || !values) continue;
     const result = sync.sent.has(item.id) ? parsed.results[item.id] : undefined;
     if (result === "held") {
-      state.heldSent[item.id] = measure(item, values);
+      state.heldSent[item.id] = measure(values);
       continue;
     }
-    if (measure(item, values) > item.limit) continue;
+    if (measure(values) > item.limit) continue;
     delete state.heldSent[item.id];
     // Sent, but not taken this time: it goes again later.
     if (result !== undefined && result !== "saved") continue;
@@ -562,7 +562,7 @@ function describe(
   const items = registry.items.flatMap((item): SyncItem[] => {
     const values = local.get(item.id);
     if (!values) return [];
-    const size = measure(item, values);
+    const size = measure(values);
     const copy = state.account[item.id];
     const hold: ItemHold | null =
       size > item.limit
@@ -665,7 +665,7 @@ function valuesOf(copy: AccountItem): Values {
 }
 
 /** The size the backup service would store these values at. */
-function measure(item: RegistryItem, values: Values): number {
+function measure(values: Values): number {
   const stored: Record<string, { v: unknown; t: number }> = {};
   for (const [key, value] of Object.entries(values)) stored[key] = { v: value, t: STORED_TIME };
   return Object.keys(stored).length === 0 ? 0 : new TextEncoder().encode(JSON.stringify(stored)).byteLength;

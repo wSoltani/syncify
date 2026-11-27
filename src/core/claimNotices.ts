@@ -1,32 +1,30 @@
 import type { SyncifyClaim } from "../types/syncify";
 import { readStored, writeStored } from "./localStore";
 
-// Someone else's claim on this Spotify username, as Syncify asks about it:
-// while it's pending, and once the backup is secured with an email this
-// Syncify isn't signed in with. Not me is remembered on this device only, so
-// the same claim isn't asked about twice.
+// Backups on this Spotify username are secured with emails this Syncify
+// isn't signed in with, as Syncify asks about it. Not me is remembered on
+// this device only, so the same emails aren't asked about twice.
 
-/** A claim that isn't this Syncify's account's: pending, or final. */
-export type OtherClaim = Extract<SyncifyClaim, { status: "pending" | "final" }>;
+/** Secured with emails this Syncify isn't signed in with. */
+export type SecuredElsewhere = Extract<SyncifyClaim, { mine: false }>;
 
-// The claim this Syncify last answered Not me to.
+// The emails this Syncify last answered Not me to.
 const NOT_ME_KEY = "syncify:claim-not-me";
 
-/** Someone else's claim this Syncify hasn't answered Not me to, or null. */
-export function otherClaim(claim: SyncifyClaim | null): OtherClaim | null {
-  if (!claim || claim.mine || claim.status === "undone") return null;
+/** Secured elsewhere, and this Syncify hasn't answered Not me to it, or null. */
+export function securedElsewhere(claim: SyncifyClaim | null): SecuredElsewhere | null {
+  if (!claim || claim.mine) return null;
   return readStored(NOT_ME_KEY) === claimKey(claim) ? null : claim;
 }
 
-/** Not me: this claim isn't asked about here again. */
-export function rememberNotMe(claim: OtherClaim): void {
+/** Not me: these emails aren't asked about here again. */
+export function rememberNotMe(claim: SecuredElsewhere): void {
   writeStored(NOT_ME_KEY, claimKey(claim));
 }
 
-// A pending claim and the same one made final are asked about once each: by
-// then it's a new fact.
-function claimKey(claim: OtherClaim): string {
-  return claim.status === "pending"
-    ? `pending ${claim.email ?? ""} ${claim.final_at}`
-    : `final ${claim.email ?? ""}`;
+// One more account securing it is a new fact, asked about once. The word in
+// front is from when a claim could also be pending: kept, so an answer given
+// then still stands.
+function claimKey(claim: SecuredElsewhere): string {
+  return `final ${claim.emails.join(" ")}`;
 }

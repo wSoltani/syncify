@@ -125,21 +125,19 @@ describe("downloadPayload", () => {
     expect(remote.others).toEqual([]);
   });
 
-  it("reads who secured the backup and whether Not me can stop a claim", async () => {
+  it("reads who secured the backup: this account, or the emails it's secured with", async () => {
     const own = backup("own", "2026-11-20T10:00:00.000Z", { id: "1", kind: "rolling" });
-    answerWith({ ...own, claim: { status: "final", mine: false, email: "j***n@example.com" } });
-    expect((await downloadPayload("https://worker.test", identity)).claim).toEqual({
-      status: "final",
-      mine: false,
-      email: "j***n@example.com",
-    });
-
-    const pending = { status: "pending", mine: false, email: "j***n@example.com", final_at: 5, held: false };
-    answerWith({ ...own, claim: { ...pending, can_cancel: true } });
-    expect((await downloadPayload("https://worker.test", identity)).claim).toMatchObject({ can_cancel: true });
-    // Without the mark, Not me promises nothing.
-    answerWith({ ...own, claim: pending });
-    expect((await downloadPayload("https://worker.test", identity)).claim).toMatchObject({ can_cancel: false });
+    const read = async (claim: unknown) => {
+      answerWith({ ...own, claim });
+      return (await downloadPayload("https://worker.test", identity)).claim;
+    };
+    const emails = ["j***n@example.com", "s***m@example.com"];
+    expect(await read({ status: "final", mine: false, email: emails[0], emails })).toEqual({ status: "final", mine: false, emails });
+    expect(await read({ status: "final", mine: true })).toEqual({ status: "final", mine: true });
+    // Nothing else is a notice to show.
+    expect(await read({ status: "final", mine: false })).toBeNull();
+    expect(await read({ status: "pending", mine: false, email: emails[0], final_at: 5 })).toBeNull();
+    expect(await read(null)).toBeNull();
   });
 });
 
