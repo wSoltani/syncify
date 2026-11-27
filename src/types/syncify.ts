@@ -98,7 +98,7 @@ export interface SyncifyRemoteState {
   safetyCopy: SyncifyPayload | null;
   /** Backups pinned on the website, kept until unpinned there, newest first. */
   pinned: SyncifyPayload[];
-  /** A pending claim on this Spotify account, sent with its backups. */
+  /** Who secured backups on this Spotify username, sent with its backups. */
   claim: SyncifyClaim | null;
   /**
    * `backups`, `safetyCopy` and `pinned` are other Syncifys': this one has
@@ -119,7 +119,7 @@ export interface SyncifyRemoteState {
   install: SyncifyInstallState | null;
   /**
    * The backup service asks for the Secure nudge: this Spotify account has
-   * backups, no account and no pending claim, and the nudge is open to it today.
+   * backups and no account, and the nudge is open to it today.
    */
   nudge: boolean;
   /**
@@ -147,39 +147,12 @@ export interface SyncifyWaitingInstall {
 }
 
 /**
- * A claim on a Spotify account's backups. `mine` is true when it was made by
- * the signed-in account.
+ * Who secured backups on this Spotify username: `mine` when the signed-in
+ * account is one of them, or else the emails it's secured with, at least
+ * one, masked ("a***e@example.com"). Each account secures only its own
+ * backups, so several can.
  */
-export type SyncifyClaim =
-  | {
-      status: "pending";
-      mine: boolean;
-      /** The claimer's email, masked ("a***e@example.com"). */
-      email: string | null;
-      /** When it becomes final, in milliseconds, unless it's held. */
-      final_at: number;
-      /** Held: Syncify checks it before it becomes final. */
-      held: boolean;
-      /**
-       * Not me from this Syncify cancels it: it backed up on this Spotify
-       * username before the claimer's did.
-       */
-      can_cancel: boolean;
-    }
-  /** Secured. Not mine: `email` is the masked email it's secured with. */
-  | { status: "final"; mine: boolean; email?: string | null }
-  /**
-   * An admin undid someone else's final claim on this Spotify account in the
-   * last 30 days, and nobody claimed it since. Never sent to the claimer.
-   */
-  | {
-      status: "undone";
-      mine: false;
-      /** The claimer's email, masked ("a***e@example.com"). */
-      email: string | null;
-      /** When it was undone, in milliseconds. */
-      undone_at: number;
-    };
+export type SyncifyClaim = { status: "final"; mine: true } | { status: "final"; mine: false; emails: string[] };
 
 export interface SyncifyConfig {
   workerUrl: string | null;

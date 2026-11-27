@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeOtherClaim, notMeBy, securedOn, undoneClaimTitle, waitingInstallTitle } from "./claimText";
+import { describeSecuredElsewhere, waitingInstallTitle } from "./claimText";
 import { formatBackupDate, formatCount, formatItemCount, joinNames } from "./format";
 
 describe("formatItemCount", () => {
@@ -38,57 +38,23 @@ describe("joinNames", () => {
 });
 
 describe("claim text", () => {
-  const today = Date.now();
-  const later = new Date(new Date().getFullYear(), 11, 31).getTime();
-
-  it("says today, or the day", () => {
-    expect(securedOn(today)).toBe("today");
-    expect(notMeBy(today)).toBe("today");
-    if (new Date(later).toDateString() !== new Date().toDateString()) {
-      expect(securedOn(later)).toMatch(/^on /);
-      expect(notMeBy(later)).toMatch(/^by /);
-    }
-  });
-
-  it("writes someone else's claim as a title and a sentence", () => {
-    const claim = { status: "pending" as const, mine: false, email: null, final_at: today, held: false, can_cancel: true };
-    expect(describeOtherClaim({ ...claim, held: true }, false)).toEqual({
-      title: "Someone is securing this backup",
-      text: "Syncify is checking who is securing it.",
-    });
-    // Signed out, it can be this person's own claim.
-    expect(describeOtherClaim(claim, false).text).toBe(
-      "If that's your email, sign in. If it isn't, press Not me today to stop them.",
-    );
-    expect(describeOtherClaim(claim, true).text).toBe("If that isn't you, press Not me today to stop them.");
-  });
-
-  it("promises nothing a Not me can't do", () => {
-    // Only a Syncify that backed up here first stops a claim.
-    const claim = { status: "pending" as const, mine: false, email: "a@example.com", final_at: today, held: false, can_cancel: false };
-    expect(describeOtherClaim(claim, true)).toEqual({
-      title: "a@example.com is securing this backup",
-      text: "The backups you made here stay yours.",
-    });
-    expect(describeOtherClaim(claim, false).text).toBe(
-      "If that's your email, sign in. If it isn't, the backups you made here stay yours.",
-    );
-  });
-
   it("names who secured the backup, and what stays this Syncify's", () => {
-    expect(describeOtherClaim({ status: "final", mine: false, email: "a@example.com" }, false)).toEqual({
+    const one = { status: "final" as const, mine: false as const, emails: ["a@example.com"] };
+    expect(describeSecuredElsewhere(one, false)).toEqual({
       title: "This backup is secured by a@example.com",
       text: "If that's your email, sign in to see your backups. If it isn't, the backups you make here stay yours.",
     });
-    expect(describeOtherClaim({ status: "final", mine: false }, true)).toEqual({
-      title: "This backup is secured",
-      text: "You're signed in with a different email. The backups you make here stay yours.",
-    });
-  });
+    expect(describeSecuredElsewhere(one, true).text).toBe(
+      "You're signed in with a different email. The backups you make here stay yours.",
+    );
 
-  it("names who no longer secures the backup", () => {
-    expect(undoneClaimTitle({ status: "undone", mine: false, email: null, undone_at: 0 })).toBe(
-      "This backup is no longer secured",
+    const three = { ...one, emails: ["a@example.com", "b@example.com", "c@example.com"] };
+    expect(describeSecuredElsewhere(three, false)).toEqual({
+      title: "This backup is secured by a@example.com, b@example.com and c@example.com",
+      text: "If one of them is your email, sign in to see your backups. If none is, the backups you make here stay yours.",
+    });
+    expect(describeSecuredElsewhere({ ...one, emails: three.emails.slice(0, 2) }, true).title).toBe(
+      "This backup is secured by a@example.com and b@example.com",
     );
   });
 

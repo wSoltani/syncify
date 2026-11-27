@@ -1,20 +1,9 @@
-import { useState, type ReactNode } from "react";
-import { rememberNotMe, type OtherClaim } from "../../core/claimNotices";
-import { loadConfig } from "../../core/config";
-import { cancelPendingClaim } from "../../core/syncService";
-import type { SyncifyClaim, SyncifyWaitingInstall } from "../../types/syncify";
-import {
-  INSTALL_CODE_TITLE,
-  WAITING_INSTALL_TEXT,
-  describeOtherClaim,
-  notMeToast,
-  undoneClaimTitle,
-  waitingInstallTitle,
-} from "../claimText";
+import type { ReactNode } from "react";
+import { rememberNotMe, type SecuredElsewhere } from "../../core/claimNotices";
+import type { SyncifyWaitingInstall } from "../../types/syncify";
+import { INSTALL_CODE_TITLE, WAITING_INSTALL_TEXT, describeSecuredElsewhere, waitingInstallTitle } from "../claimText";
 import { Button, DialogContent, Notice } from "../kit";
 import { InstallCodeActions, InstallCodeStep, useInstallAnswer } from "./InstallAnswer";
-
-type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
 
 /**
  * What Syncify shows in Spotify's popup when Spotify starts: one dialog
@@ -40,77 +29,45 @@ function LaunchNotice(props: {
   );
 }
 
-/** Runs an answer, keeping its error in view; the notice closes once it's done. */
-function useAnswer() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  async function run(answer: () => Promise<void>) {
-    setBusy(true);
-    setError(null);
-    try {
-      await answer();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-      setBusy(false);
-    }
-  }
-  return { busy, error, run };
-}
-
 /**
- * Someone else is securing this backup, or secured it with an email this
- * Syncify isn't signed in with. Signed out, it can be this person's own, so
- * signing in comes first. Not me cancels a pending claim from a Syncify that
- * backed up here before the claimer's did; from any other, and once the
- * backup is secured, it only stops the notice here.
+ * This backup is secured with emails this Syncify isn't signed in with.
+ * Signed out, one can be this person's own, so signing in comes first. Not
+ * me stops the notice here and changes nothing else.
  */
-export function ClaimNotice(props: { claim: OtherClaim; signedIn: boolean; onSignIn(): void; onClose(): void }) {
-  const { claim } = props;
-  const { title, text } = describeOtherClaim(claim, props.signedIn);
-  const answer = useAnswer();
-  const notMe = () =>
-    void answer.run(async () => {
-      const cancelled =
-        claim.status === "pending" && claim.can_cancel && (await cancelPendingClaim(loadConfig())) === "cancelled";
-      if (cancelled) Spicetify.showNotification(notMeToast(claim.email));
-      else rememberNotMe(claim);
-      props.onClose();
-    });
+export function SecuredElsewhereNotice(props: {
+  claim: SecuredElsewhere;
+  signedIn: boolean;
+  onSignIn(): void;
+  onClose(): void;
+}) {
+  const { title, text } = describeSecuredElsewhere(props.claim, props.signedIn);
+  const notMe = () => {
+    rememberNotMe(props.claim);
+    props.onClose();
+  };
   return (
     <LaunchNotice
       title={title}
-      error={answer.error}
       actions={
         props.signedIn ? (
           <>
-            <Button variant="secondary" onClick={props.onClose} disabled={answer.busy}>
+            <Button variant="secondary" onClick={props.onClose}>
               Close
             </Button>
-            <Button onClick={notMe} disabled={answer.busy}>
-              Not me
-            </Button>
+            <Button onClick={notMe}>Not me</Button>
           </>
         ) : (
           <>
-            <Button variant="secondary" onClick={notMe} disabled={answer.busy}>
+            <Button variant="secondary" onClick={notMe}>
               Not me
             </Button>
-            <Button onClick={props.onSignIn} disabled={answer.busy}>
-              That's me, sign in
-            </Button>
+            <Button onClick={props.onSignIn}>That's me, sign in</Button>
           </>
         )
       }
     >
       {text}
     </LaunchNotice>
-  );
-}
-
-/** Once, after an admin undid someone else's claim on this Spotify account. */
-export function UndoneClaimNotice(props: { claim: UndoneClaim; onClose(): void }) {
-  return (
-    <LaunchNotice title={undoneClaimTitle(props.claim)} actions={<Button onClick={props.onClose}>Close</Button>} />
   );
 }
 

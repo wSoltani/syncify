@@ -1,10 +1,8 @@
-import type { OtherClaim } from "../core/claimNotices";
-import type { SyncifyClaim, SyncifyWaitingInstall } from "../types/syncify";
+import type { SecuredElsewhere } from "../core/claimNotices";
+import type { SyncifyWaitingInstall } from "../types/syncify";
 
-type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
-
-/** When a claim goes final, as a day: "today", or "Nov 16". */
-function claimDay(at: number, now = new Date()): string {
+/** A day: "today", or "Nov 16". */
+function shortDay(at: number, now = new Date()): string {
   const date = new Date(at);
   if (date.toDateString() === now.toDateString()) return "today";
   return date.toLocaleDateString(undefined, {
@@ -14,63 +12,32 @@ function claimDay(at: number, now = new Date()): string {
   });
 }
 
-/** "on Nov 16", or "today". */
-export function securedOn(at: number): string {
-  const day = claimDay(at);
-  return day === "today" ? day : `on ${day}`;
-}
-
-/** "by Nov 16", or "today". */
-export function notMeBy(at: number): string {
-  const day = claimDay(at);
-  return day === "today" ? day : `by ${day}`;
+/** "a", "a and b", "a, b and c". */
+function listed(parts: string[]): string {
+  const last = parts[parts.length - 1];
+  return parts.length === 1 ? last : `${parts.slice(0, -1).join(", ")} and ${last}`;
 }
 
 /**
- * Someone else's claim on this Spotify username, as a title and a sentence.
- * Signed out, it can be this person's own: made on a computer they also use,
- * or before Syncify's data here was lost. Whatever the answer, the backups
- * this Syncify made stay its own.
+ * That the backup is secured with emails this Syncify isn't signed in with,
+ * as a title and a sentence. Signed out, one can be this person's own: an
+ * account they made on a computer they also use, or before Syncify's data
+ * here was lost. Whatever the answer, the backups this Syncify makes stay
+ * its own.
  */
-export function describeOtherClaim(claim: OtherClaim, signedIn: boolean): {
+export function describeSecuredElsewhere(claim: SecuredElsewhere, signedIn: boolean): {
   title: string;
   text: string;
 } {
-  if (claim.status === "final") {
-    return {
-      title: claim.email ? `This backup is secured by ${claim.email}` : "This backup is secured",
-      text: signedIn
-        ? "You're signed in with a different email. The backups you make here stay yours."
-        : "If that's your email, sign in to see your backups. If it isn't, the backups you make here stay yours.",
-    };
-  }
-  const title = `${claim.email ?? "Someone"} is securing this backup`;
-  if (claim.held) return { title, text: "Syncify is checking who is securing it." };
-  // Only a Syncify that backed up here first can stop it.
-  if (claim.can_cancel) {
-    return {
-      title,
-      text: signedIn
-        ? `If that isn't you, press Not me ${notMeBy(claim.final_at)} to stop them.`
-        : `If that's your email, sign in. If it isn't, press Not me ${notMeBy(claim.final_at)} to stop them.`,
-    };
-  }
+  const several = claim.emails.length > 1;
   return {
-    title,
+    title: `This backup is secured by ${listed(claim.emails)}`,
     text: signedIn
-      ? "The backups you made here stay yours."
-      : "If that's your email, sign in. If it isn't, the backups you made here stay yours.",
+      ? "You're signed in with a different email. The backups you make here stay yours."
+      : several
+        ? "If one of them is your email, sign in to see your backups. If none is, the backups you make here stay yours."
+        : "If that's your email, sign in to see your backups. If it isn't, the backups you make here stay yours.",
   };
-}
-
-/** What Syncify says on a Spotify account after an admin undid someone else's claim. */
-export function undoneClaimTitle(claim: UndoneClaim): string {
-  return claim.email ? `This backup is no longer secured by ${claim.email}` : "This backup is no longer secured";
-}
-
-/** The toast after a Not me that cancelled the claim. */
-export function notMeToast(email: string | null): string {
-  return email ? `Syncify: ${email} won't secure this backup` : "Syncify: this backup won't be secured";
 }
 
 // The systems Syncify names a device by. Anything else is a raw user agent.
@@ -82,7 +49,7 @@ const KNOWN_SYSTEMS = new Set(["Windows", "macOS", "Linux"]);
  * knows whether that Syncify is theirs.
  */
 export function waitingInstallTitle(install: SyncifyWaitingInstall, now = new Date()): string {
-  const day = claimDay(install.first_seen_at, now);
+  const day = shortDay(install.first_seen_at, now);
   const when = day === "today" ? day : `on ${day}`;
   return install.device && KNOWN_SYSTEMS.has(install.device)
     ? `Did you back up from ${install.device} ${when}?`

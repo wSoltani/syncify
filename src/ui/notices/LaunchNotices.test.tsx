@@ -1,15 +1,15 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PairingCodeError } from "../../api/syncifyApi";
-import { otherClaim } from "../../core/claimNotices";
-import { answerWaitingInstall, cancelPendingClaim } from "../../core/syncService";
+import { securedElsewhere, type SecuredElsewhere } from "../../core/claimNotices";
+import { answerWaitingInstall } from "../../core/syncService";
 import type { SyncifyConfig } from "../../types/syncify";
-import { ClaimNotice, InstallNotice, NudgeNotice } from "./LaunchNotices";
+import { InstallNotice, NudgeNotice, SecuredElsewhereNotice } from "./LaunchNotices";
 
 const config: SyncifyConfig = { workerUrl: null, autoBackupEnabled: true, shortcut: null, entryPoint: "both", settingsSyncEnabled: true, settingsSyncOff: [], shareRestoredSettings: true };
 
 vi.mock("../../core/config", () => ({ loadConfig: () => config }));
-vi.mock("../../core/syncService", () => ({ answerWaitingInstall: vi.fn(), cancelPendingClaim: vi.fn() }));
+vi.mock("../../core/syncService", () => ({ answerWaitingInstall: vi.fn() }));
 
 const showNotification = vi.fn();
 
@@ -87,65 +87,35 @@ describe("InstallNotice", () => {
   });
 });
 
-describe("ClaimNotice", () => {
-  const claim = {
-    status: "pending" as const,
-    mine: false,
-    email: "j***n@gmail.com",
-    final_at: Date.now(),
-    held: false,
-    can_cancel: true,
-  };
+describe("SecuredElsewhereNotice", () => {
+  const secured: SecuredElsewhere = { status: "final", mine: false, emails: ["j***n@gmail.com"] };
 
-  it("stops the claim with Not me from a Syncify that can, and closes", async () => {
-    vi.mocked(cancelPendingClaim).mockResolvedValue("cancelled");
+  it("stops asking about a backup secured with another email after Not me", () => {
     const onClose = vi.fn();
-    render(<ClaimNotice claim={claim} signedIn onSignIn={() => {}} onClose={onClose} />);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Not me" }));
-    });
-    expect(cancelPendingClaim).toHaveBeenCalledOnce();
-    expect(showNotification).toHaveBeenCalledWith("Syncify: j***n@gmail.com won't secure this backup");
-    expect(onClose).toHaveBeenCalledOnce();
-  });
-
-  it("only stops asking when Not me can't stop the claim", async () => {
-    const onClose = vi.fn();
-    const later = { ...claim, can_cancel: false };
-    render(<ClaimNotice claim={later} signedIn onSignIn={() => {}} onClose={onClose} />);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Not me" }));
-    });
-    expect(cancelPendingClaim).not.toHaveBeenCalled();
-    expect(showNotification).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalledOnce();
-    expect(otherClaim(later)).toBeNull();
-    // Once it's final it's a new fact, asked about once more.
-    expect(otherClaim({ status: "final", mine: false, email: later.email })).not.toBeNull();
-  });
-
-  it("stops asking about a backup secured with another email after Not me", async () => {
-    const secured = { status: "final" as const, mine: false, email: "j***n@gmail.com" };
-    const onClose = vi.fn();
-    render(<ClaimNotice claim={secured} signedIn={false} onSignIn={() => {}} onClose={onClose} />);
+    render(<SecuredElsewhereNotice claim={secured} signedIn onSignIn={() => {}} onClose={onClose} />);
     expect(screen.getByText("This backup is secured by j***n@gmail.com")).toBeTruthy();
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Not me" }));
-    });
-    expect(cancelPendingClaim).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Close", "Not me"]);
+    fireEvent.click(screen.getByRole("button", { name: "Not me" }));
     expect(onClose).toHaveBeenCalledOnce();
-    expect(otherClaim(secured)).toBeNull();
-    // Another email securing it is asked about again.
-    expect(otherClaim({ ...secured, email: "o***r@gmail.com" })).not.toBeNull();
+    expect(securedElsewhere(secured)).toBeNull();
+    // One more email securing it is asked about again.
+    expect(securedElsewhere({ ...secured, emails: [...secured.emails, "o***r@gmail.com"] })).not.toBeNull();
+  });
+
+  it("names every email it's secured with", () => {
+    const three = { ...secured, emails: ["j***n@gmail.com", "o***r@gmail.com", "s***m@example.com"] };
+    render(<SecuredElsewhereNotice claim={three} signedIn={false} onSignIn={() => {}} onClose={() => {}} />);
+    expect(screen.getByText("This backup is secured by j***n@gmail.com, o***r@gmail.com and s***m@example.com")).toBeTruthy();
+    expect(screen.getByText(/If one of them is your email, sign in to see your backups/)).toBeTruthy();
   });
 
   it("offers signing in first when signed out, without answering", () => {
     const onSignIn = vi.fn();
-    render(<ClaimNotice claim={claim} signedIn={false} onSignIn={onSignIn} onClose={() => {}} />);
+    render(<SecuredElsewhereNotice claim={secured} signedIn={false} onSignIn={onSignIn} onClose={() => {}} />);
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Not me", "That's me, sign in"]);
     fireEvent.click(screen.getByRole("button", { name: "That's me, sign in" }));
     expect(onSignIn).toHaveBeenCalledOnce();
-    expect(cancelPendingClaim).not.toHaveBeenCalled();
+    expect(securedElsewhere(secured)).not.toBeNull();
   });
 });
 

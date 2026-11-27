@@ -7,15 +7,9 @@ import { useLatest } from "../useLatest";
 import type { WindowMessage } from "../window/message";
 import { openExternal } from "../window/openExternal";
 import { maskEmail } from "./maskEmail";
-import { pendingSecureText, type SecureState } from "./secureState";
+import type { SecureState } from "./secureState";
 import { SignInForm } from "./SignInForm";
 import { useSignIn } from "./useSignIn";
-
-const ENDED = {
-  owner: "This backup isn't secured. Someone pressed Not me when you tried to secure it.",
-  admin: "This backup isn't secured. Syncify couldn't confirm it's yours.",
-  undone: "This backup is no longer secured by your account.",
-} as const;
 
 /**
  * Signed out, the email for sign-in codes and the code. Signed in, the
@@ -26,7 +20,7 @@ export function AccountTab(props: {
   idBase: string;
   /** undefined until the stored session has been read. */
   session: AccountSession | null | undefined;
-  /** Secured with an email this Syncify isn't signed in with. */
+  /** Secured with emails this Syncify isn't signed in with. */
   securedElsewhere: boolean;
   secure: SecureState;
   securing: boolean;
@@ -126,10 +120,6 @@ export function AccountTab(props: {
     );
   }
 
-  const canSecure =
-    secure.kind === "open" ||
-    secure.kind === "other-claim" ||
-    (secure.kind === "ended" && secure.reason !== "undone");
   const busy = signIn.busy || opening;
 
   return (
@@ -142,15 +132,17 @@ export function AccountTab(props: {
             Open
           </Button>
         </SettingRow>
-        {canSecure ? (
+        {secure.kind === "open" ? (
           <SettingRow label="Secure your backup so only you can restore it">
-            <Button onClick={props.onSecure} disabled={busy || props.securing || secure.kind === "other-claim"}>
-              {props.securing ? "Securing…" : secure.kind === "ended" ? "Secure again" : "Secure"}
+            <Button onClick={props.onSecure} disabled={busy || props.securing}>
+              {props.securing ? "Securing…" : "Secure"}
             </Button>
           </SettingRow>
         ) : null}
       </SettingGroup>
-      {secure.kind === "ended" ? <Notice tone="warning">{ENDED[secure.reason]}</Notice> : null}
+      {secure.kind === "undone" ? (
+        <Notice tone="warning">This backup is no longer secured by your account.</Notice>
+      ) : null}
       {props.secureError ? <Notice tone="error">{props.secureError}</Notice> : null}
       {message ? (
         <Notice tone={message.kind} live>
@@ -172,17 +164,6 @@ export function AccountTab(props: {
 
 /** Where securing this backup stands, at the tab's foot. */
 function secureStateParts(secure: SecureState): string[] {
-  switch (secure.kind) {
-    case "secured":
-      return [
-        "This backup is secured",
-        ...(secure.linkedCount > 1 ? [`${secure.linkedCount} Spotify usernames linked`] : []),
-      ];
-    case "pending":
-      return [pendingSecureText(secure)];
-    case "other-account":
-      return ["This backup is secured with a different email"];
-    default:
-      return ["Signed in"];
-  }
+  if (secure.kind !== "secured") return ["Signed in"];
+  return ["This backup is secured", ...(secure.linkedCount > 1 ? [`${secure.linkedCount} Spotify usernames linked`] : [])];
 }

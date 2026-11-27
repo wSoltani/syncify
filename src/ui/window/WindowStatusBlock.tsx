@@ -23,8 +23,6 @@ export function WindowStatusBlock(props: {
   backingUp: boolean;
   /** Something is running, so nothing else can start. */
   busy: boolean;
-  /** Not me on a claim is on its way. */
-  answering: boolean;
   onAction(action: StatusAction): void;
   onSignIn(): void;
   onNotMe(): void;
@@ -62,15 +60,13 @@ export function WindowStatusBlock(props: {
           {alert.kind === "claim" ? (
             alert.signIn ? (
               <span className="syncify-status-answers">
-                <Button variant="secondary" onClick={props.onNotMe} disabled={props.answering}>
+                <Button variant="secondary" onClick={props.onNotMe}>
                   Not me
                 </Button>
-                <Button onClick={props.onSignIn} disabled={props.answering}>
-                  That's me, sign in
-                </Button>
+                <Button onClick={props.onSignIn}>That's me, sign in</Button>
               </span>
             ) : (
-              <Button variant="secondary" onClick={props.onNotMe} disabled={props.answering}>
+              <Button variant="secondary" onClick={props.onNotMe}>
                 Not me
               </Button>
             )

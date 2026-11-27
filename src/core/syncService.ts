@@ -5,12 +5,7 @@ import {
   uploadPayload,
 } from "../api/syncifyApi";
 import { reportShareImport } from "../api/sharesApi";
-import {
-  cancelClaim,
-  claimBackup,
-  fetchClaimStatus,
-  type ClaimStatus,
-} from "../api/claimsApi";
+import { claimBackup, fetchClaimStatus, type ClaimStatus } from "../api/claimsApi";
 import type {
   SyncifyConfig,
   SyncifyPayload,
@@ -149,7 +144,7 @@ async function withCurrentHash(
 }
 
 /**
- * The claim on this Spotify account and this install's state, read with its
+ * Who secured this Spotify username and this install's state, read with its
  * backups but without rehashing them, for the daily launch check. With
  * `sync`, this device's extension settings go with it.
  */
@@ -258,7 +253,7 @@ export async function loadShare(
   return written;
 }
 
-/** The claim on this Spotify account, with its hash to find it in `accounts`. */
+/** Who secured this Spotify username, with its hash to find it in `accounts`. */
 export async function fetchClaims(
   config: SyncifyConfig,
 ): Promise<ClaimStatus & { hash: string }> {
@@ -267,7 +262,7 @@ export async function fetchClaims(
   return { ...status, hash: identity.hash };
 }
 
-/** Claims this Spotify account for the signed-in account. */
+/** Secures this Spotify username's backups for the signed-in account. */
 export async function secureBackup(config: SyncifyConfig): Promise<void> {
   await claimBackup(requireWorkerUrl(config), await getUserIdentity());
 }
@@ -282,11 +277,6 @@ export async function answerWaitingInstall(
   answer: { action: "approve"; code: string } | { action: "reject" },
 ): Promise<void> {
   await answerInstall(requireWorkerUrl(config), await getUserIdentity(), installId, answer);
-}
-
-/** Not me on the pending claim on this Spotify account: cancelled, or left as it is. */
-export async function cancelPendingClaim(config: SyncifyConfig): Promise<"cancelled" | "unchanged"> {
-  return cancelClaim(requireWorkerUrl(config), await getUserIdentity());
 }
 
 function requireWorkerUrl(config: SyncifyConfig): string {

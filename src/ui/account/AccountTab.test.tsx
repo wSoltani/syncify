@@ -124,6 +124,12 @@ describe("AccountTab signed in", () => {
     expect(screen.getByText("Signed in")).toBeTruthy();
   });
 
+  it("says when Syncify undid securing it, without offering Secure", async () => {
+    await renderTab({ session, secure: { kind: "undone" } });
+    expect(screen.getByText("This backup is no longer secured by your account.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Secure" })).toBeNull();
+  });
+
   it("opens the account page signed in", async () => {
     vi.mocked(createManageLink).mockResolvedValue("https://example.com/account");
     const { openExternal } = await import("../window/openExternal");

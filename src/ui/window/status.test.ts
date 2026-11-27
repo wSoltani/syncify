@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RestoreResult } from "../../core/restoreSummary";
 import { makeBackup } from "../../test/fixtures";
-import type { OtherClaim } from "../../core/claimNotices";
+import type { SecuredElsewhere } from "../../core/claimNotices";
 import type { SyncifySpicetifyConfig } from "../../types/syncify";
 import { describeAlert, describeChanges, describeRestoreResult, describeStatus, type StatusFacts } from "./status";
 
@@ -140,32 +140,20 @@ describe("describeChanges", () => {
 });
 
 describe("describeAlert", () => {
-  const pending: OtherClaim = {
-    status: "pending",
-    mine: false,
-    email: "j***n@example.com",
-    final_at: new Date(2026, 10, 19).getTime(),
-    held: false,
-    can_cancel: true,
-  };
+  const secured: SecuredElsewhere = { status: "final", mine: false, emails: ["j***n@example.com"] };
   const waiting = { id: "w1", device: "Windows", first_seen_at: Date.now() };
 
-  it("puts someone else's claim before a waiting install", () => {
-    const alert = describeAlert(pending, waiting, true);
-    expect(alert).toMatchObject({ kind: "claim", title: "j***n@example.com is securing this backup", signIn: false });
-    // Signed out, it can be this person's own: signing in is offered.
-    expect(describeAlert(pending, waiting, false)).toMatchObject({ kind: "claim", signIn: true });
-  });
-
-  it("says who secured the backup with an email this Syncify isn't signed in with", () => {
-    expect(describeAlert({ status: "final", mine: false, email: "j***n@example.com" }, waiting, false)).toMatchObject({
+  it("says who secured the backup before asking about a waiting install", () => {
+    expect(describeAlert(secured, waiting, true)).toMatchObject({
       kind: "claim",
       title: "This backup is secured by j***n@example.com",
-      signIn: true,
+      signIn: false,
     });
+    // Signed out, the email can be this person's own: signing in is offered.
+    expect(describeAlert(secured, waiting, false)).toMatchObject({ kind: "claim", signIn: true });
   });
 
-  it("asks about another Syncify's backups when no one else is claiming", () => {
+  it("asks about another Syncify's backups when nothing is secured elsewhere", () => {
     expect(describeAlert(null, waiting, true)).toMatchObject({
       kind: "install",
       title: "Did you back up from Windows today?",
