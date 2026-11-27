@@ -67,6 +67,18 @@ export class PairingCodeError extends Error {
   }
 }
 
+/**
+ * The backup service asked to wait (HTTP 429). `retryAfter`: for how many
+ * seconds, when it said: a minute when too much came from this network in
+ * one, the rest of the day for a daily limit.
+ */
+export class BackupLimitedError extends Error {
+  constructor(readonly retryAfter: number | null) {
+    super("Backup failed with HTTP 429.");
+    this.name = "BackupLimitedError";
+  }
+}
+
 export async function uploadPayload(
   workerUrl: string,
   identity: UserIdentity,
@@ -86,14 +98,18 @@ export async function uploadPayload(
     body: settingsPart !== undefined ? settingsPart + backup : backup,
   });
 
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("retry-after"));
+    throw new BackupLimitedError(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
+  }
   if (!response.ok) {
     throw new Error(`Backup failed with HTTP ${response.status}.`);
   }
 
   // The worker skips the write when the data matches its latest backup, so
   // nothing new was stored and the cloud copy keeps its original timestamp.
-  // A backup kept apart on this Syncify's first day is still its own, so
-  // it's told apart nowhere here.
+  // A backup kept apart while this Syncify has no place of its own is still
+  // its own, so it's told apart nowhere here.
   const result = (await response.json().catch(() => null)) as {
     unchanged?: boolean;
     settings?: unknown;
@@ -276,7 +292,7 @@ function sortBackups(all: SyncifyPayload[]): {
   const safetyCopy = all.filter(isSafetyCopy).sort(newestFirst)[0] ?? null;
   return {
     // This install's own backups count as its latest while they're still
-    // kept apart, on its first day.
+    // kept apart.
     backups: all
       .filter(
         (backup) =>
@@ -433,7 +449,7 @@ export async function request(
     }
   }
   // A linked Spotify account the session can't read.
-  if (code === "not_linked") throw new Error("Couldn't read that Spotify account's backups.");
+  if (code === "not_linked") throw new Error("Couldn't read that Spotify username's backups.");
   if (code === "signed_out") await clearSession();
   throw new AccountError(typeof code === "string" ? code : "failed");
 }

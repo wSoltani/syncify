@@ -1,3 +1,4 @@
+import { BackupLimitedError } from "../api/syncifyApi";
 import { fetchRemoteState, backupNow, fetchLaunchNotices } from "./syncService";
 import { otherClaim, type OtherClaim } from "./claimNotices";
 import { loadConfig } from "./config";
@@ -24,6 +25,10 @@ interface LaunchNotices {
   onFirstSync(): void;
 }
 
+// The longest wait the launch backup sits out before trying once more: the
+// minute the backup service asks for when too much came from this network in
+// one, such as two new Spotify usernames starting from it together.
+const SHORT_WAIT_SECONDS = 60;
 // The local day of the last launch check made with auto-backup off.
 const CLAIM_CHECK_KEY = "syncify:claim-check-day";
 // When the last undone claim shown was undone: each opens once.
@@ -75,7 +80,15 @@ export async function runStartupSyncCheck(notices: LaunchNotices): Promise<void>
 
     if (localSummary.keyCount === 0) return;
 
-    await backupNow(config);
+    try {
+      await backupNow(config);
+    } catch (error) {
+      // Asked to wait a minute: once more after it, without a word.
+      const wait = error instanceof BackupLimitedError ? error.retryAfter : null;
+      if (wait === null || wait > SHORT_WAIT_SECONDS) throw error;
+      await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+      await backupNow(config);
+    }
     Spicetify.showNotification("Syncify auto-backup complete");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

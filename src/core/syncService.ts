@@ -189,7 +189,7 @@ export async function restoreNow(
 
   if (!payload) {
     throw new Error(
-      "No Syncify cloud backup was found for this Spotify account.",
+      "No Syncify cloud backup was found for this Spotify username.",
     );
   }
 

@@ -176,7 +176,7 @@ function secureStateParts(secure: SecureState): string[] {
     case "secured":
       return [
         "This backup is secured",
-        ...(secure.linkedCount > 1 ? [`${secure.linkedCount} Spotify accounts linked`] : []),
+        ...(secure.linkedCount > 1 ? [`${secure.linkedCount} Spotify usernames linked`] : []),
       ];
     case "pending":
       return [pendingSecureText(secure)];

@@ -31,7 +31,7 @@ These terms cover Syncify: the Spicetify extension, its website and the server b
 - Using reports to harass someone
 - Anything illegal where you live
 
-If you break these terms, Syncify can delete your codes or posts, reset your handle, stop you from posting to Discover, ban your account for a while or for good, or delete it. A ban signs you out, takes your codes, posts and profile page off the website, and locks your secured backups until it ends. Deleting an account also deletes the backups of every Spotify account linked to it. If you think Syncify got it wrong, say so in the Discord or at [syncify@wsoltani.com](mailto:syncify@wsoltani.com).
+If you break these terms, Syncify can delete your codes or posts, reset your handle, stop you from posting to Discover, ban your account for a while or for good, or delete it. A ban signs you out, takes your codes, posts and profile page off the website, and locks your secured backups until it ends. Deleting an account also deletes the backups of every Spotify username linked to it. If you think Syncify got it wrong, say so in the Discord or at [syncify@wsoltani.com](mailto:syncify@wsoltani.com).
 
 ## Other people's extensions and setups
 
