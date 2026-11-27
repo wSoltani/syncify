@@ -6,6 +6,12 @@ import { getProjectConfig } from "./projectConfig";
 const VERSION_HEADER = "x-syncify-version";
 const INSTALL_HEADER = "x-syncify-install";
 const TIMEZONE_HEADER = "x-syncify-timezone";
+// Which rules for backups this version follows. From 2, each Syncify keeps
+// the backups it made: this one shows a backup secured with an email it
+// isn't signed in with as a notice, never as a lock, and sends a code with
+// That's me.
+const TRUST_HEADER = "x-syncify-trust";
+const TRUST_RULES = "2";
 
 // Kept in Syncify's own database (see database.ts), which survives the Spotify
 // profile resets that wipe localStorage. A device without IndexedDB keeps it
@@ -28,6 +34,7 @@ export async function getClientHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     [VERSION_HEADER]: getProjectConfig().version,
     [INSTALL_HEADER]: (await getInstall()).id,
+    [TRUST_HEADER]: TRUST_RULES,
   };
 
   const timezone = getTimezone();

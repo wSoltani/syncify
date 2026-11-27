@@ -1,18 +1,19 @@
 import { useState, type ReactNode } from "react";
+import { rememberNotMe, type OtherClaim } from "../../core/claimNotices";
 import { loadConfig } from "../../core/config";
-import { answerWaitingInstall, cancelPendingClaim } from "../../core/syncService";
+import { cancelPendingClaim } from "../../core/syncService";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "../../types/syncify";
 import {
+  INSTALL_CODE_TITLE,
   WAITING_INSTALL_TEXT,
   describeOtherClaim,
-  installAnswerToast,
   notMeToast,
   undoneClaimTitle,
   waitingInstallTitle,
 } from "../claimText";
 import { Button, DialogContent, Notice } from "../kit";
+import { InstallCodeActions, InstallCodeStep, useInstallAnswer } from "./InstallAnswer";
 
-type PendingClaim = Extract<SyncifyClaim, { status: "pending" }>;
 type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
 
 /**
@@ -20,11 +21,19 @@ type UndoneClaim = Extract<SyncifyClaim, { status: "undone" }>;
  * layout for each, a title, the facts, the safe button first and the action
  * last. Spotify's close button dismisses any of them.
  */
-function LaunchNotice(props: { title: string; children?: ReactNode; error?: string | null; actions: ReactNode }) {
+function LaunchNotice(props: {
+  title: string;
+  /** A sentence, or the parts of a step. */
+  children?: ReactNode;
+  error?: string | null;
+  actions: ReactNode;
+  /** The notice holds a field: Enter sends it. */
+  onSubmit?(): void;
+}) {
   return (
     <div className="syncify-ui syncify-launch-notice">
-      <DialogContent title={props.title} actions={props.actions}>
-        {props.children ? <p>{props.children}</p> : null}
+      <DialogContent title={props.title} actions={props.actions} onSubmit={props.onSubmit}>
+        {typeof props.children === "string" ? <p>{props.children}</p> : props.children}
         {props.error ? <Notice tone="error">{props.error}</Notice> : null}
       </DialogContent>
     </div>
@@ -49,17 +58,22 @@ function useAnswer() {
 }
 
 /**
- * Someone else's claim on this Spotify account is pending. Signed out, it can
- * be this person's own, so signing in comes first: signed in as the claimer,
- * Syncify knows it's theirs. Not me from an install this account trusts
- * cancels the claim; from any other, Syncify checks it.
+ * Someone else is securing this backup, or secured it with an email this
+ * Syncify isn't signed in with. Signed out, it can be this person's own, so
+ * signing in comes first. Not me cancels a pending claim from a Syncify that
+ * backed up here before the claimer's did; from any other, and once the
+ * backup is secured, it only stops the notice here.
  */
-export function ClaimNotice(props: { claim: PendingClaim; signedIn: boolean; onSignIn(): void; onClose(): void }) {
-  const { title, text } = describeOtherClaim(props.claim, props.signedIn);
+export function ClaimNotice(props: { claim: OtherClaim; signedIn: boolean; onSignIn(): void; onClose(): void }) {
+  const { claim } = props;
+  const { title, text } = describeOtherClaim(claim, props.signedIn);
   const answer = useAnswer();
   const notMe = () =>
     void answer.run(async () => {
-      Spicetify.showNotification(notMeToast(await cancelPendingClaim(loadConfig()), props.claim.email));
+      const cancelled =
+        claim.status === "pending" && claim.can_cancel && (await cancelPendingClaim(loadConfig())) === "cancelled";
+      if (cancelled) Spicetify.showNotification(notMeToast(claim.email));
+      else rememberNotMe(claim);
       props.onClose();
     });
   return (
@@ -100,15 +114,25 @@ export function UndoneClaimNotice(props: { claim: UndoneClaim; onClose(): void }
   );
 }
 
-/** Backups this Syncify can't place wait for its That's me or Not me. */
+/**
+ * Another Syncify backed up on this Spotify username: Not me, or That's me,
+ * which asks for that Syncify's code in place of the question.
+ */
 export function InstallNotice(props: { install: SyncifyWaitingInstall; onDone(): void }) {
-  const answer = useAnswer();
-  const reply = (action: "approve" | "reject") =>
-    void answer.run(async () => {
-      await answerWaitingInstall(loadConfig(), props.install.id, action);
-      Spicetify.showNotification(installAnswerToast(action));
-      props.onDone();
-    });
+  const answer = useInstallAnswer(props.install, { onDone: props.onDone });
+
+  if (answer.step === "code") {
+    return (
+      <LaunchNotice
+        title={INSTALL_CODE_TITLE}
+        error={answer.error}
+        actions={<InstallCodeActions answer={answer} />}
+        onSubmit={answer.confirm}
+      >
+        <InstallCodeStep answer={answer} />
+      </LaunchNotice>
+    );
+  }
 
   return (
     <LaunchNotice
@@ -116,10 +140,10 @@ export function InstallNotice(props: { install: SyncifyWaitingInstall; onDone():
       error={answer.error}
       actions={
         <>
-          <Button variant="secondary" onClick={() => reply("reject")} disabled={answer.busy}>
+          <Button variant="secondary" onClick={answer.notMe} disabled={answer.busy}>
             Not me
           </Button>
-          <Button onClick={() => reply("approve")} disabled={answer.busy}>
+          <Button onClick={answer.askForCode} disabled={answer.busy}>
             That's me
           </Button>
         </>

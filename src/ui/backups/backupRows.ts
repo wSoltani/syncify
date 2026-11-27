@@ -3,10 +3,11 @@ import { formatBackupDate, formatItemCount } from "../format";
 import { backupItems } from "./backupItems";
 
 /**
- * A rolling backup, one pinned on the website, the weekly safety copy, or one
- * from an install not approved yet.
+ * A rolling backup, one pinned on the website, the weekly safety copy, one
+ * another Syncify made on this Spotify username ("other"), or one from a
+ * Syncify nobody confirmed ("unapproved").
  */
-export type BackupKind = "backup" | "pinned" | "safety-copy" | "unapproved";
+export type BackupKind = "backup" | "pinned" | "safety-copy" | "other" | "unapproved";
 
 export interface BackupRowModel {
   backup: SyncifyPayload;

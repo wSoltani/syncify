@@ -13,6 +13,7 @@ import { debug, warn } from "./core/log";
 import { SyncifyWindow } from "./ui/window/SyncifyWindow";
 import { closeWindow, isWindowOpen, openWindow } from "./ui/window/openWindow";
 import { ClaimNotice, InstallNotice, NudgeNotice, UndoneClaimNotice } from "./ui/notices/LaunchNotices";
+import type { OtherClaim } from "./core/claimNotices";
 import type { SyncifyClaim, SyncifyWaitingInstall } from "./types/syncify";
 
 function isSpicetifyReady(): boolean {
@@ -77,8 +78,9 @@ function toggleSyncify(): void {
   openWindow(<SyncifyWindow />);
 }
 
-// Someone else's claim on this Spotify account, found when Spotify started.
-function openClaimNotice(claim: Extract<SyncifyClaim, { status: "pending" }>): void {
+// Someone else is securing this backup, or secured it with an email this
+// Syncify isn't signed in with, found when Spotify started.
+function openClaimNotice(claim: OtherClaim): void {
   // Syncify's own window already shows it.
   if (isWindowOpen()) return;
   debug("Opening claim notice");
@@ -115,8 +117,8 @@ function openUndoneNotice(claim: Extract<SyncifyClaim, { status: "undone" }>): b
   return true;
 }
 
-// A new install on this Spotify account waiting for this one's approval,
-// found when Spotify started.
+// Another Syncify backed up on this Spotify username, found when Spotify
+// started: this one is asked whether those backups are the same person's.
 function openInstallNotice(install: SyncifyWaitingInstall): void {
   // Syncify's own window already shows it.
   if (isWindowOpen()) return;

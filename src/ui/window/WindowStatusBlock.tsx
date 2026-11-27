@@ -1,10 +1,12 @@
-import { AlertIcon, Button, CheckIcon, Mark, Meta } from "../kit";
+import type { SyncifyWaitingInstall } from "../../types/syncify";
+import { INSTALL_CODE_TITLE } from "../claimText";
+import { AlertIcon, Button, CheckIcon, Dialog, Mark, Meta } from "../kit";
+import { InstallCodeActions, InstallCodeStep, useInstallAnswer } from "../notices/InstallAnswer";
 import type { StatusAction, WindowAlert, WindowStatus } from "./status";
 
 const ACTION_LABELS: Record<StatusAction, string> = {
   "back-up": "Back up now",
   "try-again": "Try again",
-  "sign-in": "Sign in",
   "how-to-update": "How to update",
   reload: "Reload",
 };
@@ -21,18 +23,21 @@ export function WindowStatusBlock(props: {
   backingUp: boolean;
   /** Something is running, so nothing else can start. */
   busy: boolean;
-  /** An answer to the alert is on its way. */
+  /** Not me on a claim is on its way. */
   answering: boolean;
   onAction(action: StatusAction): void;
+  onSignIn(): void;
   onNotMe(): void;
-  onAnswerInstall(answer: "approve" | "reject"): void;
+  /** That's me or Not me about another Syncify's backups went through. */
+  onInstallAnswered(): Promise<void>;
+  onError(error: unknown): void;
   onSupport(): void;
 }) {
   const { status, alert } = props;
   const statusAction = status.action;
   const action = statusAction ? (
     <Button
-      variant={statusAction === "back-up" || statusAction === "sign-in" ? "primary" : "secondary"}
+      variant={statusAction === "back-up" ? "primary" : "secondary"}
       size={alert ? "small" : "regular"}
       onClick={() => props.onAction(statusAction)}
       disabled={props.busy}
@@ -60,28 +65,23 @@ export function WindowStatusBlock(props: {
                 <Button variant="secondary" onClick={props.onNotMe} disabled={props.answering}>
                   Not me
                 </Button>
-                <Button onClick={() => props.onAction("sign-in")} disabled={props.answering}>
+                <Button onClick={props.onSignIn} disabled={props.answering}>
                   That's me, sign in
                 </Button>
               </span>
-            ) : alert.canAnswer ? (
+            ) : (
               <Button variant="secondary" onClick={props.onNotMe} disabled={props.answering}>
                 Not me
               </Button>
-            ) : null
+            )
           ) : (
-            <span className="syncify-status-answers">
-              <Button
-                variant="secondary"
-                onClick={() => props.onAnswerInstall("reject")}
-                disabled={props.answering}
-              >
-                Not me
-              </Button>
-              <Button onClick={() => props.onAnswerInstall("approve")} disabled={props.answering}>
-                That's me
-              </Button>
-            </span>
+            // Each Syncify asked about starts from the question.
+            <InstallAnswers
+              key={alert.install.id}
+              install={alert.install}
+              onDone={props.onInstallAnswered}
+              onError={props.onError}
+            />
           )}
         </div>
         <div className="syncify-status-line" aria-live="polite">
@@ -111,5 +111,38 @@ export function WindowStatusBlock(props: {
         {action}
       </div>
     </section>
+  );
+}
+
+/**
+ * Not me and That's me about another Syncify's backups. That's me asks for
+ * that Syncify's code in a dialog: nothing joins without it.
+ */
+function InstallAnswers(props: {
+  install: SyncifyWaitingInstall;
+  onDone(): Promise<void>;
+  onError(error: unknown): void;
+}) {
+  const answer = useInstallAnswer(props.install, { onDone: props.onDone, onError: props.onError });
+  return (
+    <>
+      <span className="syncify-status-answers">
+        <Button variant="secondary" onClick={answer.notMe} disabled={answer.busy}>
+          Not me
+        </Button>
+        <Button onClick={answer.askForCode} disabled={answer.busy}>
+          That's me
+        </Button>
+      </span>
+      <Dialog
+        open={answer.step === "code"}
+        title={INSTALL_CODE_TITLE}
+        actions={<InstallCodeActions answer={answer} />}
+        onClose={answer.back}
+        onSubmit={answer.confirm}
+      >
+        <InstallCodeStep answer={answer} />
+      </Dialog>
+    </>
   );
 }

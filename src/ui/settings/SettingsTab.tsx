@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { loadConfig, saveConfig } from "../../core/config";
+import { getInstallKey } from "../../core/installKey";
+import { formatPairingCode, pairingCode } from "../../core/pairingCode";
 import type { SettingsSyncStatus } from "../../core/settingsSync";
 import { applyEntryPoint, isMenuEntryPointAvailable } from "../../core/entryPoints";
 import { applyShortcut, DEFAULT_SHORTCUT, formatShortcut } from "../../core/shortcut";
@@ -15,8 +17,31 @@ const ENTRY_POINTS: { value: SyncifyEntryPoint; label: string }[] = [
 ];
 
 /**
- * Automatic backup, where Syncify opens from, its keyboard shortcut, and
- * extension settings sync, whose Items list opens in place of the rest.
+ * This Syncify's code, which That's me asks for on another Syncify, once
+ * its key was read. null for a Syncify without a key.
+ */
+function usePairingCode(): string | null {
+  const [code, setCode] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    void getInstallKey()
+      .then((key) => (key ? pairingCode(key.publicKey) : null))
+      .then((read) => {
+        if (current) setCode(read);
+      })
+      // A key that couldn't be read: no code to show.
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, []);
+  return code;
+}
+
+/**
+ * Automatic backup, where Syncify opens from, its keyboard shortcut, this
+ * Syncify's code, and extension settings sync, whose Items list opens in
+ * place of the rest.
  */
 export function SettingsTab(props: {
   idBase: string;
@@ -37,6 +62,7 @@ export function SettingsTab(props: {
   const [menuAvailable] = useState(() => isMenuEntryPointAvailable());
   const keyId = useStableId("shortcut");
   const recorder = useShortcutRecorder(keyId, updateShortcut);
+  const code = usePairingCode();
   const entryPoint = menuAvailable ? config.entryPoint : "topbar";
   const keys = recorder.recording ? "Press keys" : config.shortcut ? formatShortcut(config.shortcut) : "Off";
 
@@ -121,6 +147,11 @@ export function SettingsTab(props: {
             />
           </span>
         </SettingRow>
+        {code ? (
+          <SettingRow label="Code to confirm this Syncify is yours">
+            <span className="syncify-settings-code">{formatPairingCode(code)}</span>
+          </SettingRow>
+        ) : null}
       </SettingGroup>
       {recorder.error ? (
         <Notice tone="warning" live>

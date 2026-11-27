@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AccountError } from "../../api/accountApi";
 import { describeShareError, fetchShare } from "../../api/sharesApi";
-import { LockedError } from "../../api/syncifyApi";
 import { listItems, type InstalledItem } from "../../core/restorePreview";
 import { savePendingRestore } from "../../core/restoreSummary";
 import {
@@ -191,12 +190,7 @@ export function useShareLoad(props: {
 /** Why loading failed; a backup first that failed says why too. */
 function describeApplyError(error: unknown): string {
   if (error instanceof SafetyBackupError) {
-    const reason =
-      error.reason instanceof LockedError
-        ? "Sign in to back up."
-        : error.reason instanceof Error
-          ? error.reason.message
-          : String(error.reason);
+    const reason = error.reason instanceof Error ? error.reason.message : String(error.reason);
     return `${error.message} ${reason}`;
   }
   return error instanceof Error ? error.message : String(error);

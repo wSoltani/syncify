@@ -47,6 +47,11 @@
     margin: 0;
 }
 
+/* A field under the dialog's sentence stands apart from it like the title. */
+.syncify-dialog-text > p + .syncify-field-group {
+    margin-top: var(--syncify-space-2);
+}
+
 .syncify-dialog-actions {
     display: flex;
     flex-wrap: wrap;

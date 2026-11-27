@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { AccountError, createManageLink, describeAccountError, refreshSession } from "../../api/accountApi";
 import { listShares } from "../../api/sharesApi";
-import type { LockedError } from "../../api/syncifyApi";
 import type { AccountSession } from "../../core/account";
 import { Button, CheckIcon, Meta, Notice, SettingGroup, SettingRow, TabPanel } from "../kit";
 import { useLatest } from "../useLatest";
@@ -27,7 +26,8 @@ export function AccountTab(props: {
   idBase: string;
   /** undefined until the stored session has been read. */
   session: AccountSession | null | undefined;
-  locked: LockedError["code"] | null;
+  /** Secured with an email this Syncify isn't signed in with. */
+  securedElsewhere: boolean;
   secure: SecureState;
   securing: boolean;
   secureError: string | null;
@@ -112,7 +112,7 @@ export function AccountTab(props: {
     return (
       <TabPanel idBase={props.idBase} id="account">
         <p className="syncify-tab-text">
-          {props.locked
+          {props.securedElsewhere
             ? "Sign in with the email that secured this backup"
             : "Sign in to secure your backup so only you can restore it"}
         </p>

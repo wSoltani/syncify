@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { saveConfig } from "../../core/config";
 import { applyEntryPoint, isMenuEntryPointAvailable } from "../../core/entryPoints";
+import { getInstallKey } from "../../core/installKey";
 import { applyShortcut, DEFAULT_SHORTCUT, isShortcutTaken } from "../../core/shortcut";
 import type { SettingsSyncStatus } from "../../core/settingsSync";
 import type { SyncifyConfig } from "../../types/syncify";
@@ -9,6 +10,7 @@ import { SettingsTab } from "./SettingsTab";
 
 vi.mock("../../core/config", () => ({ saveConfig: vi.fn(), loadConfig: vi.fn(() => ({ settingsSyncOff: [] })) }));
 vi.mock("../../core/entryPoints", () => ({ applyEntryPoint: vi.fn(), isMenuEntryPointAvailable: vi.fn() }));
+vi.mock("../../core/installKey", () => ({ getInstallKey: vi.fn() }));
 vi.mock("../../core/shortcut", async (original) => ({
   ...(await original<typeof import("../../core/shortcut")>()),
   applyShortcut: vi.fn(),
@@ -49,6 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(isMenuEntryPointAvailable).mockReturnValue(true);
   vi.mocked(isShortcutTaken).mockReturnValue(false);
+  vi.mocked(getInstallKey).mockResolvedValue(null);
 });
 
 describe("SettingsTab", () => {
@@ -58,6 +61,19 @@ describe("SettingsTab", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Automatic backup when Spotify starts" }));
     expect(saveConfig).toHaveBeenCalledWith({ ...config, autoBackupEnabled: false });
     expect(onConfigChange).toHaveBeenCalledWith({ ...config, autoBackupEnabled: false });
+  });
+
+  it("shows this Syncify's code, for That's me on another Syncify", async () => {
+    vi.mocked(getInstallKey).mockResolvedValue({ privateKey: {} as CryptoKey, publicKey: "syncify-pairing-test-key" });
+    renderTab();
+    expect(await screen.findByText("K1C YES")).toBeTruthy();
+    expect(screen.getByText("Code to confirm this Syncify is yours")).toBeTruthy();
+  });
+
+  it("shows no code for a Syncify without a key", async () => {
+    renderTab();
+    await act(async () => {});
+    expect(screen.queryByText("Code to confirm this Syncify is yours")).toBeNull();
   });
 
   it("moves where Syncify opens from", () => {

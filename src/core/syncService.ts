@@ -90,17 +90,21 @@ export async function fetchRemoteState(
   // only the newest backup for each distinct set of data. The safety copy
   // stays even with the same data as a recent one: it's an older point in
   // time, kept apart.
-  const [rehashed, safetyCopy, pinned, unapproved] = await Promise.all([
+  const [rehashed, safetyCopy, pinned, others, unapproved] = await Promise.all([
     Promise.all(remote.backups.map(withCurrentHash)),
     remote.safetyCopy ? withCurrentHash(remote.safetyCopy) : null,
     Promise.all(remote.pinned.map(withCurrentHash)),
+    Promise.all(remote.others.map(withCurrentHash)),
     Promise.all(remote.unapproved.map(withCurrentHash)),
   ]);
-  const backups = rehashed.filter(
-    (backup, index) =>
-      rehashed.findIndex((other) => other.payload_hash === backup.payload_hash) ===
-      index,
-  );
+  const newestOfEach = (list: SyncifyPayload[]) =>
+    list.filter(
+      (backup, index) =>
+        list.findIndex((other) => other.payload_hash === backup.payload_hash) === index,
+    );
+  const backups = newestOfEach(rehashed);
+  const adds = (backup: SyncifyPayload) =>
+    !backups.some((other) => other.payload_hash === backup.payload_hash);
   return {
     ...remote,
     payload: backups[0] ?? null,
@@ -109,11 +113,10 @@ export async function fetchRemoteState(
     // Pinned backups stay even with the same data as a recent one: unlike
     // it, they don't rotate out.
     pinned,
-    // An unapproved backup with the same data as an approved one adds nothing.
-    unapproved: unapproved.filter(
-      (backup) =>
-        !backups.some((other) => other.payload_hash === backup.payload_hash),
-    ),
+    // Another Syncify's backup with the same data as one of this Syncify's
+    // own adds nothing.
+    others: newestOfEach(others).filter(adds),
+    unapproved: unapproved.filter(adds),
   };
 }
 
@@ -227,8 +230,8 @@ export class SafetyBackupError extends Error {
 
 /**
  * Loads a share code: a backup of this setup first, then the code's items.
- * When the backup can't be made, nothing changes. A backup that's unchanged,
- * or kept apart until this install is approved, is saved all the same.
+ * When the backup can't be made, nothing changes. A backup that's unchanged
+ * is saved all the same.
  * `pick`: it came from Syncify picks.
  */
 export async function loadShare(
@@ -269,17 +272,20 @@ export async function secureBackup(config: SyncifyConfig): Promise<void> {
   await claimBackup(requireWorkerUrl(config), await getUserIdentity());
 }
 
-/** Approves or refuses a new install waiting on this Spotify account. */
+/**
+ * This Syncify's answer about another one on this Spotify username: That's
+ * me with the code from that Syncify's Settings, or Not me.
+ */
 export async function answerWaitingInstall(
   config: SyncifyConfig,
   installId: string,
-  action: "approve" | "reject",
+  answer: { action: "approve"; code: string } | { action: "reject" },
 ): Promise<void> {
-  await answerInstall(requireWorkerUrl(config), await getUserIdentity(), installId, action);
+  await answerInstall(requireWorkerUrl(config), await getUserIdentity(), installId, answer);
 }
 
-/** Not me on the pending claim on this Spotify account: cancelled, or Syncify checks it. */
-export async function cancelPendingClaim(config: SyncifyConfig): Promise<"cancelled" | "checking"> {
+/** Not me on the pending claim on this Spotify account: cancelled, or left as it is. */
+export async function cancelPendingClaim(config: SyncifyConfig): Promise<"cancelled" | "unchanged"> {
   return cancelClaim(requireWorkerUrl(config), await getUserIdentity());
 }
 

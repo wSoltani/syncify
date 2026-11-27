@@ -17,22 +17,23 @@ describe("describeSecureState", () => {
   it("reads a backup secured by this account, with its linked accounts", () => {
     const state = describeSecureState(
       { hash: "h", claim: { status: "final", mine: true }, accounts: [account({}), account({ hash: "h2" })] },
-      null,
       false,
     );
     expect(state).toEqual({ kind: "secured", linkedCount: 2 });
   });
 
   it("tells another account's claim from an open backup", () => {
-    expect(describeSecureState(null, "not_owner", false)).toEqual({ kind: "other-account" });
-    expect(describeSecureState(null, null, true)).toEqual({ kind: "other-claim" });
-    expect(describeSecureState(null, null, false)).toEqual({ kind: "unknown" });
-    expect(describeSecureState({ hash: "h", claim: null, accounts: [] }, null, false)).toEqual({ kind: "open" });
+    expect(describeSecureState({ hash: "h", claim: { status: "final", mine: false }, accounts: [] }, false)).toEqual({
+      kind: "other-account",
+    });
+    expect(describeSecureState(null, true)).toEqual({ kind: "other-claim" });
+    expect(describeSecureState(null, false)).toEqual({ kind: "unknown" });
+    expect(describeSecureState({ hash: "h", claim: null, accounts: [] }, false)).toEqual({ kind: "open" });
   });
 
   it("says how a claim on this backup ended lately", () => {
     const ended = (changes: Partial<LinkedAccount>) =>
-      describeSecureState({ hash: "h", claim: null, accounts: [account(changes)] }, null, false);
+      describeSecureState({ hash: "h", claim: null, accounts: [account(changes)] }, false);
     expect(ended({ status: "unlinked" })).toEqual({ kind: "ended", reason: "undone" });
     expect(ended({ status: "cancelled", cancelled_by: "owner" })).toEqual({ kind: "ended", reason: "owner" });
     expect(ended({ status: "cancelled", cancelled_by: null })).toEqual({ kind: "ended", reason: "admin" });
@@ -42,14 +43,15 @@ describe("describeSecureState", () => {
 
 describe("accountTabStatus", () => {
   it("shows a check when secured and a mark when something is needed", () => {
-    expect(accountTabStatus(session, null, { kind: "secured", linkedCount: 1 })).toMatchObject({ kind: "ok" });
-    expect(accountTabStatus(session, null, { kind: "open" })).toMatchObject({ kind: "warning" });
-    expect(accountTabStatus(null, "claimed", { kind: "unknown" })).toMatchObject({ kind: "warning" });
+    expect(accountTabStatus(session, false, { kind: "secured", linkedCount: 1 })).toMatchObject({ kind: "ok" });
+    expect(accountTabStatus(session, false, { kind: "open" })).toMatchObject({ kind: "warning" });
+    expect(accountTabStatus(null, true, { kind: "unknown" })).toMatchObject({ kind: "warning" });
+    expect(accountTabStatus(session, true, { kind: "other-account" })).toMatchObject({ kind: "ok" });
   });
 
   it("shows nothing signed out or while securing", () => {
-    expect(accountTabStatus(null, null, { kind: "open" })).toBeNull();
-    expect(accountTabStatus(session, null, { kind: "pending", finalAt: 0, held: false })).toBeNull();
+    expect(accountTabStatus(null, false, { kind: "open" })).toBeNull();
+    expect(accountTabStatus(session, false, { kind: "pending", finalAt: 0, held: false })).toBeNull();
   });
 });
 

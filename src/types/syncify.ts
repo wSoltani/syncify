@@ -56,8 +56,9 @@ export interface SyncifySpicetifyConfig {
 interface SyncifyBackupInfo {
   id: string;
   /**
-   * "anchor" is the safety copy. "quarantined" came from an install this
-   * Spotify account hasn't approved.
+   * "anchor" is the safety copy. "quarantined" isn't one of this Syncify's
+   * backups: nobody confirmed the Syncify that made it, or it's kept apart
+   * for now.
    */
   kind: "rolling" | "anchor" | "pinned" | "quarantined";
   /**
@@ -71,17 +72,24 @@ interface SyncifyBackupInfo {
    */
   name?: string | null;
   /**
-   * On a "quarantined" backup: this install made it, signed with its own key.
-   * A device the account hasn't approved yet (after Spotify was reinstalled,
-   * say) shows its own backups as its own. Missing from older Workers.
+   * On a "quarantined" backup: this install made it, signed with its own key,
+   * so it's shown as this Syncify's own (after Spotify was reinstalled, say).
    */
   mine?: boolean;
+  /**
+   * A backup another Syncify on this Spotify username made, sent as it is so
+   * a Syncify that lost its data can restore what it backed up before.
+   */
+  other?: boolean;
 }
 
 export interface SyncifyRemoteState {
   exists: boolean;
   payload: SyncifyPayload | null;
-  /** The latest backups, newest first. */
+  /**
+   * This Syncify's latest backups, newest first. While it has none of its
+   * own, the other backups on this Spotify username stand in for them.
+   */
   backups: SyncifyPayload[];
   /**
    * An older backup kept aside and updated about once a week. It can also be
@@ -93,11 +101,21 @@ export interface SyncifyRemoteState {
   /** A pending claim on this Spotify account, sent with its backups. */
   claim: SyncifyClaim | null;
   /**
-   * Backups from other installs this Spotify account hasn't approved, newest
-   * first. This install's own are in `backups`.
+   * `backups`, `safetyCopy` and `pinned` are other Syncifys': this one has
+   * none of its own yet.
+   */
+  borrowed: boolean;
+  /**
+   * Backups other Syncifys on this Spotify username made, newest first,
+   * while this one has backups of its own. Restored as they are.
+   */
+  others: SyncifyPayload[];
+  /**
+   * Backups from a Syncify nobody confirmed, newest first: a restore leaves
+   * their new items off. This install's own are in `backups`.
    */
   unapproved: SyncifyPayload[];
-  /** Whether this Spotify account trusts this install, and who's waiting. */
+  /** The Syncifys on this Spotify username this one is asked about. */
   install: SyncifyInstallState | null;
   /**
    * The backup service asks for the Secure nudge: this Spotify account has
@@ -112,14 +130,12 @@ export interface SyncifyRemoteState {
 }
 
 /**
- * How far this Spotify account trusts this install. Backups from an install
- * it doesn't trust yet are kept apart from other devices until it's approved
- * from a trusted install or signed in; on this one they're its own.
+ * Each Syncify keeps the backups it made. One that started backing up on a
+ * Spotify username where this one already did is asked about here: That's
+ * me, with that Syncify's code, brings their backups together, and Not me
+ * leaves each with its own.
  */
 export interface SyncifyInstallState {
-  trusted: boolean;
-  refused: boolean;
-  /** New installs waiting for this one to approve them. Only sent to a trusted install. */
   waiting: SyncifyWaitingInstall[];
 }
 
@@ -144,10 +160,14 @@ export type SyncifyClaim =
       final_at: number;
       /** Held: Syncify checks it before it becomes final. */
       held: boolean;
-      /** This install pressed Not me, and Syncify is checking the claim. */
-      not_me?: true;
+      /**
+       * Not me from this Syncify cancels it: it backed up on this Spotify
+       * username before the claimer's did.
+       */
+      can_cancel: boolean;
     }
-  | { status: "final"; mine: boolean }
+  /** Secured. Not mine: `email` is the masked email it's secured with. */
+  | { status: "final"; mine: boolean; email?: string | null }
   /**
    * An admin undid someone else's final claim on this Spotify account in the
    * last 30 days, and nobody claimed it since. Never sent to the claimer.

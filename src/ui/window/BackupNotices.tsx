@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { dismissManualItems, manualCommands, type RestoreResult } from "../../core/restoreSummary";
-import type { SyncifyInstallState } from "../../types/syncify";
 import { copyToClipboard } from "../clipboard";
 import { Button, Notice } from "../kit";
 
@@ -14,22 +13,8 @@ export function BackupNotices(props: {
   securing: boolean;
   onSecure(): void;
   onHideNudge(): void;
-  /** This install's trust, when it isn't secured or locked. */
-  install: SyncifyInstallState | null;
   restoreResult: RestoreResult | null;
-  /** Signed out: the notice about this install offers signing in. */
-  signedOut: boolean;
-  onSignIn(): void;
 }) {
-  // Only a refused install hears about it. One that's waiting (after Spotify
-  // was reinstalled, say) backs up and restores its own backups as usual,
-  // and is trusted once it's approved or signs in.
-  const installText = !props.install?.refused
-    ? null
-    : props.signedOut
-      ? "Syncify can't back up here until you sign in."
-      : "Syncify can't back up here. Sign in with the email that secured this backup.";
-
   return (
     <>
       {props.nudge ? (
@@ -47,20 +32,6 @@ export function BackupNotices(props: {
           }
         >
           Your backup isn't secured. Anyone who knows your Spotify username can restore it.
-        </Notice>
-      ) : null}
-      {installText ? (
-        <Notice
-          tone="info"
-          actions={
-            props.signedOut ? (
-              <Button size="small" onClick={props.onSignIn}>
-                Sign in
-              </Button>
-            ) : undefined
-          }
-        >
-          {installText}
         </Notice>
       ) : null}
       {props.restoreResult ? <ManualCommands manual={props.restoreResult.manual} /> : null}
